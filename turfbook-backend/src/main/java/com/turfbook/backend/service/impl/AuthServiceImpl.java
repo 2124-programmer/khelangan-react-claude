@@ -38,7 +38,7 @@ public class AuthServiceImpl implements AuthService {
 
         UserEntity.Role role;
         try {
-            role = UserEntity.Role.valueOf(request.getRole().toUpperCase());
+            role = UserEntity.Role.valueOf(request.getRole().name().toUpperCase());
         } catch (Exception e) {
             role = UserEntity.Role.PLAYER;
         }

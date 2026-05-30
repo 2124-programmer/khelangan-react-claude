@@ -5,7 +5,7 @@ import com.turfbook.backend.entity.BookingEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {DateTimeMapper.class})
 public interface BookingMapper {
 
     @Mapping(target = "playerId", source = "player.id")
@@ -20,5 +20,6 @@ public interface BookingMapper {
     @Mapping(target = "startTime", expression = "java(entity.getStartTime().toString())")
     @Mapping(target = "endTime", expression = "java(entity.getEndTime().toString())")
     @Mapping(target = "hasReview", expression = "java(entity.isHasReview())")
+    @Mapping(target = "createdAt", expression = "java(entity.getCreatedAt() != null ? entity.getCreatedAt().atOffset(java.time.ZoneOffset.UTC) : null)")
     BookingDto toDto(BookingEntity entity);
 }
