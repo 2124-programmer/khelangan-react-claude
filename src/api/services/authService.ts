@@ -1,0 +1,24 @@
+import { apiClient } from '../client';
+import type {
+  RegisterRequest, LoginRequest, OtpSendRequest, OtpVerifyRequest,
+  ForgotPasswordRequest, AuthResponse, MessageResponse,
+} from '../types';
+
+const BASE = '/api/v1/auth';
+
+export const authService = {
+  register: (data: RegisterRequest) =>
+    apiClient.post<AuthResponse>(`${BASE}/register`, data).then((r) => r.data),
+
+  login: (data: LoginRequest) =>
+    apiClient.post<AuthResponse>(`${BASE}/login`, data).then((r) => r.data),
+
+  sendOtp: (data: OtpSendRequest) =>
+    apiClient.post<MessageResponse>(`${BASE}/otp/send`, data).then((r) => r.data),
+
+  verifyOtp: (data: OtpVerifyRequest) =>
+    apiClient.post<AuthResponse>(`${BASE}/otp/verify`, data).then((r) => r.data),
+
+  forgotPassword: (data: ForgotPasswordRequest) =>
+    apiClient.post<MessageResponse>(`${BASE}/forgot-password`, data).then((r) => r.data),
+};

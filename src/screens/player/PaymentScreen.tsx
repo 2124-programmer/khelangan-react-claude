@@ -1,21 +1,46 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, Alert } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, AppButton } from '../../components/common';
 import { PaymentFailedModal } from '../../modals';
+import { useCreateBooking } from '../../api/hooks/useBookings';
+import { extractApiError } from '../../api/client';
 
 export default function PaymentScreen({ navigation, route }: any) {
-  const { total } = route.params;
+  const { total, venueId, courtId, slotId, sport, couponCode, method } = route.params;
   const [processing, setProcessing] = useState(false);
   const [showFailed, setShowFailed] = useState(false);
+  const createBooking = useCreateBooking();
 
-  const pay = (succeed: boolean) => {
+  const pay = async (succeed: boolean) => {
+    if (!succeed) {
+      setShowFailed(true);
+      return;
+    }
     setProcessing(true);
-    setTimeout(() => {
+    try {
+      const booking = await createBooking.mutateAsync({
+        venueId: Number(venueId),
+        courtId: Number(courtId),
+        slotId: Number(slotId),
+        sport,
+        couponCode: couponCode ?? undefined,
+        paymentMethod: method?.toUpperCase() ?? 'CARD',
+      });
+      navigation.replace('BookingSuccess', {
+        ...route.params,
+        bookingId: String(booking.id),
+        venueName: booking.venueName,
+      });
+    } catch (err) {
       setProcessing(false);
-      if (succeed) navigation.replace('BookingSuccess', route.params);
-      else setShowFailed(true);
-    }, 1500);
+      const msg = extractApiError(err);
+      if (msg.toLowerCase().includes('not available') || msg.toLowerCase().includes('slot')) {
+        Alert.alert('Slot Unavailable', msg);
+      } else {
+        setShowFailed(true);
+      }
+    }
   };
 
   return (
@@ -38,7 +63,11 @@ export default function PaymentScreen({ navigation, route }: any) {
               💡 This is a demo. Choose an outcome to simulate the payment gateway response.
             </Text>
             <AppButton label="Simulate Successful Payment" onPress={() => pay(true)} />
-            <AppButton label="Simulate Failed Payment" variant="danger" onPress={() => pay(false)} />
+            <AppButton
+              label="Simulate Failed Payment"
+              variant="danger"
+              onPress={() => pay(false)}
+            />
           </View>
         )}
       </View>

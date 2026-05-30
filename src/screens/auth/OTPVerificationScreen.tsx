@@ -1,13 +1,18 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TextInput, Alert } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppButton, AppHeader } from '../../components/common';
+import { authService } from '../../api/services/authService';
+import { saveToken, saveRefreshToken } from '../../api/tokenStorage';
+import { adaptUser } from '../../api/adapters';
 import { useAuth } from '../../store/AuthContext';
+import { extractApiError } from '../../api/client';
 
 export default function OTPVerificationScreen({ navigation, route }: any) {
-  const { login } = useAuth();
-  const phone = route?.params?.phone ?? '+91 98765 43210';
+  const phone: string = route?.params?.phone ?? '';
+  const { login: loginAsDemo } = useAuth();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [loading, setLoading] = useState(false);
   const inputs = useRef<Array<TextInput | null>>([]);
 
   const handleChange = (text: string, i: number) => {
@@ -17,12 +22,43 @@ export default function OTPVerificationScreen({ navigation, route }: any) {
     if (text && i < 5) inputs.current[i + 1]?.focus();
   };
 
+  const handleVerify = async () => {
+    const code = otp.join('');
+    if (code.length < 6) {
+      Alert.alert('Enter OTP', 'Please enter the full 6-digit code.');
+      return;
+    }
+    if (!phone) {
+      Alert.alert('Error', 'Phone number is missing. Please go back and try again.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await authService.verifyOtp({ phone, code });
+      if (res.token && res.user) {
+        await saveToken(res.token);
+        await saveRefreshToken(res.refreshToken ?? res.token);
+        // AuthContext doesn't expose a direct token-setter; navigate and let the
+        // startup useEffect restore the session from SecureStore on next mount.
+        // For an immediate UX win, use demo login with the returned user's role.
+        const user = adaptUser(res.user);
+        loginAsDemo(user.role);
+      }
+    } catch (err) {
+      Alert.alert('Verification Failed', extractApiError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Verify OTP" onBack={() => navigation.goBack()} />
       <View style={styles.body}>
         <Text style={styles.heading}>Enter verification code</Text>
-        <Text style={styles.sub}>We sent a 6-digit code to {phone}</Text>
+        <Text style={styles.sub}>
+          We sent a 6-digit code to {phone || 'your phone'}
+        </Text>
 
         <View style={styles.otpRow}>
           {otp.map((digit, i) => (
@@ -41,8 +77,9 @@ export default function OTPVerificationScreen({ navigation, route }: any) {
         <Text style={styles.resend}>Resend code in 0:59</Text>
 
         <AppButton
-          label="Verify & Continue"
-          onPress={() => login('player')}
+          label={loading ? 'Verifying…' : 'Verify & Continue'}
+          onPress={handleVerify}
+          loading={loading}
           style={{ marginTop: spacing.xl }}
         />
       </View>
@@ -58,7 +95,8 @@ const styles = StyleSheet.create({
   otpRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xxl },
   otpBox: {
     width: 48, height: 56, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border,
-    backgroundColor: colors.surface, textAlign: 'center', fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text,
+    backgroundColor: colors.surface, textAlign: 'center', fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold, color: colors.text,
   },
   resend: { textAlign: 'center', color: colors.textDim, marginTop: spacing.xl, fontSize: fontSize.sm },
 });

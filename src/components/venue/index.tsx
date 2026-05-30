@@ -4,7 +4,7 @@ import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { Venue, Slot, Booking } from '../../types';
 import { StarRating, StatusBadge, AppButton } from '../common';
-import { getSportIcon, getSportName } from '../../data/mockData';
+import { getSportIcon, getSportName } from '../../utils/sportUtils';
 
 /* ───────────────── VenueCard ───────────────── */
 export function VenueCard({ venue, onPress }: { venue: Venue; onPress: () => void }) {

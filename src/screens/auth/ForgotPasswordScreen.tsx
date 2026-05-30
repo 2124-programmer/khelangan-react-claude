@@ -1,19 +1,53 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Alert } from 'react-native';
 import { colors, spacing, fontSize, fontWeight } from '../../theme';
 import { AppInput, AppButton, AppHeader } from '../../components/common';
+import { authService } from '../../api/services/authService';
+import { extractApiError } from '../../api/client';
 
 export default function ForgotPasswordScreen({ navigation }: any) {
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const handleSend = async () => {
+    if (!email.trim()) {
+      Alert.alert('Required', 'Please enter your email address.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await authService.forgotPassword({ email: email.trim().toLowerCase() });
+      setSent(true);
+      Alert.alert('Email Sent', res.message ?? 'Check your inbox for the reset link.');
+    } catch (err) {
+      Alert.alert('Error', extractApiError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Reset Password" onBack={() => navigation.goBack()} />
       <View style={styles.body}>
         <Text style={styles.heading}>Forgot your password?</Text>
-        <Text style={styles.sub}>Enter your phone number and we'll send you a reset code.</Text>
+        <Text style={styles.sub}>
+          Enter your email address and we'll send you a reset link.
+        </Text>
         <View style={{ marginTop: spacing.xl }}>
-          <AppInput label="Phone Number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+91 98765 43210" />
-          <AppButton label="Send Reset Code" onPress={() => navigation.navigate('OTPVerification', { phone })} />
+          <AppInput
+            label="Email Address"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            placeholder="you@example.com"
+          />
+          <AppButton
+            label={loading ? 'Sending…' : sent ? 'Resend Link' : 'Send Reset Link'}
+            onPress={handleSend}
+            loading={loading}
+          />
         </View>
       </View>
     </SafeAreaView>

@@ -15,10 +15,15 @@
       "bundleIdentifier": "com.turfbook.app"
     },
     "android": {
-      "package": "com.turfbook.app"
+      "package": "com.turfbook.app",
+      "usesCleartextTraffic": true
     },
     "web": {
       "bundler": "metro"
+    },
+    "extra": {
+      "apiBaseUrl": "http://10.0.2.2:8080",
+      "apiBaseUrlIos": "http://localhost:8080"
     }
   }
 }

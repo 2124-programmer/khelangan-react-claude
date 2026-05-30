@@ -4,8 +4,8 @@ import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../the
 import { AppButton } from '../../components/common';
 
 export default function BookingSuccessScreen({ navigation, route }: any) {
-  const { venueId, sport, date, startTime, endTime, total } = route.params;
-  const bookingId = 'TB' + Math.floor(100000 + Math.random() * 900000);
+  const { bookingId: rawBookingId, sport, date, startTime, endTime, total, venueName } = route.params;
+  const bookingId = rawBookingId ? `TB${String(rawBookingId).padStart(6, '0')}` : 'TB' + Math.floor(100000 + Math.random() * 900000);
 
   return (
     <SafeAreaView style={styles.container}>

@@ -1,31 +1,55 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import {
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  TouchableOpacity, ActivityIndicator,
+} from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, EmptyState } from '../../components/common';
-import { NOTIFICATIONS } from '../../data/mockData';
+import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../../api/hooks/useNotifications';
 
 const ICONS: Record<string, string> = {
   booking: '✅', payment: '💰', offer: '🎉', review: '⭐', system: '🔔',
 };
 
 export default function NotificationsScreen({ navigation }: any) {
+  const { data, isLoading } = useNotifications();
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
+
+  const notifications = data?.notifications ?? [];
+
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="Notifications" onBack={() => navigation.goBack()} />
+      <AppHeader
+        title="Notifications"
+        onBack={() => navigation.goBack()}
+        rightLabel="Mark all read"
+        onRightPress={() => markAllRead.mutate()}
+      />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        {NOTIFICATIONS.length === 0 ? (
-          <EmptyState icon="🔔" title="No notifications yet" />
+        {isLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
+        ) : notifications.length === 0 ? (
+          <EmptyState icon="🔔" title="No notifications yet" subtitle="" />
         ) : (
-          NOTIFICATIONS.map((n) => (
-            <View key={n.id} style={[styles.row, !n.isRead && styles.unread]}>
-              <View style={styles.iconBox}><Text style={{ fontSize: 20 }}>{ICONS[n.type]}</Text></View>
+          notifications.map((n) => (
+            <TouchableOpacity
+              key={n.id}
+              style={[styles.row, !n.isRead && styles.unread]}
+              onPress={() => {
+                if (!n.isRead) markRead.mutate(Number(n.id));
+              }}
+            >
+              <View style={styles.iconBox}>
+                <Text style={{ fontSize: 20 }}>{ICONS[n.type] ?? '🔔'}</Text>
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.title}>{n.title}</Text>
                 <Text style={styles.body}>{n.body}</Text>
                 <Text style={styles.time}>{n.date}</Text>
               </View>
               {!n.isRead && <View style={styles.dot} />}
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>
