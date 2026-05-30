@@ -15,7 +15,7 @@ interface AuthState {
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<UserRole | null>('player');
+  const [role, setRole] = useState<UserRole | null>(null);
 
   const login = (selectedRole: UserRole) => setRole(selectedRole);
   const logout = () => setRole(null);
