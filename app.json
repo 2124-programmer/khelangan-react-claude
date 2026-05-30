@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "TurfBook",
+    "slug": "turfbook",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "backgroundColor": "#0FAE6E"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.turfbook.app"
+    },
+    "android": {
+      "package": "com.turfbook.app"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

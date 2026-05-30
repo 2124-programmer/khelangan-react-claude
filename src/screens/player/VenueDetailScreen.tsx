@@ -1,0 +1,140 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { AppButton, StarRating } from '../../components/common';
+import { RatingDetailModal } from '../../modals';
+import { VENUES, REVIEWS, getSportIcon, getSportName } from '../../data/mockData';
+
+export default function VenueDetailScreen({ navigation, route }: any) {
+  const venue = VENUES.find((v) => v.id === route.params.venueId)!;
+  const reviews = REVIEWS.filter((r) => r.venueId === venue.id);
+  const [showRating, setShowRating] = useState(false);
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Photo */}
+        <View>
+          <Image source={{ uri: venue.coverPhoto }} style={styles.cover} />
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Text style={{ fontSize: 24, color: colors.white }}>‹</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.body}>
+          <Text style={styles.name}>{venue.name}</Text>
+          <Text style={styles.addr}>📍 {venue.address}</Text>
+          <TouchableOpacity style={styles.ratingRow} onPress={() => setShowRating(true)}>
+            <StarRating value={Math.round(venue.rating)} size={16} />
+            <Text style={styles.ratingText}>{venue.rating} · {venue.reviewCount} reviews ›</Text>
+          </TouchableOpacity>
+
+          {/* Sports */}
+          <Text style={styles.sectionTitle}>Sports Available</Text>
+          <View style={styles.chipWrap}>
+            {venue.sports.map((s) => (
+              <View key={s} style={styles.chip}>
+                <Text style={styles.chipText}>{getSportIcon(s)} {getSportName(s)}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Amenities */}
+          <Text style={styles.sectionTitle}>Amenities</Text>
+          <View style={styles.chipWrap}>
+            {venue.amenities.map((a) => (
+              <View key={a} style={styles.amenityChip}>
+                <Text style={styles.amenityText}>✓ {a}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* About */}
+          <Text style={styles.sectionTitle}>About</Text>
+          <Text style={styles.desc}>{venue.description}</Text>
+
+          {/* Map placeholder */}
+          <Text style={styles.sectionTitle}>Location</Text>
+          <View style={styles.mapPlaceholder}>
+            <Text style={{ fontSize: 32 }}>🗺️</Text>
+            <Text style={styles.mapText}>{venue.address}</Text>
+          </View>
+
+          {/* Reviews */}
+          <Text style={styles.sectionTitle}>Reviews ({reviews.length})</Text>
+          {reviews.map((r) => (
+            <View key={r.id} style={styles.reviewCard}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={styles.reviewName}>{r.playerName}</Text>
+                <StarRating value={r.rating} size={13} />
+              </View>
+              <Text style={styles.reviewText}>{r.comment}</Text>
+              {r.ownerReply ? (
+                <View style={styles.replyBox}>
+                  <Text style={styles.replyLabel}>Owner replied:</Text>
+                  <Text style={styles.replyText}>{r.ownerReply}</Text>
+                </View>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+
+      {/* Sticky Book bar */}
+      <View style={[styles.bottomBar, shadow.modal]}>
+        <View>
+          <Text style={styles.priceLabel}>Starting from</Text>
+          <Text style={styles.price}>₹{venue.pricePerSlot}<Text style={styles.perSlot}>/slot</Text></Text>
+        </View>
+        <AppButton
+          label="Book Now"
+          fullWidth={false}
+          onPress={() => navigation.navigate('SlotSelection', { venueId: venue.id })}
+          style={{ paddingHorizontal: 40 }}
+        />
+      </View>
+
+      <RatingDetailModal
+        visible={showRating}
+        rating={venue.rating}
+        breakdown={[
+          { label: 'Cleanliness', value: 5 },
+          { label: 'Ground Quality', value: 5 },
+          { label: 'Staff', value: 4 },
+          { label: 'Facilities', value: 4 },
+        ]}
+        onDismiss={() => setShowRating(false)}
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
+  cover: { width: '100%', height: 240, backgroundColor: colors.surfaceAlt },
+  backBtn: { position: 'absolute', top: spacing.lg, left: spacing.lg, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
+  body: { padding: spacing.lg, paddingBottom: 120 },
+  name: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
+  addr: { fontSize: fontSize.sm, color: colors.textMid, marginTop: spacing.xs },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm },
+  ratingText: { fontSize: fontSize.sm, color: colors.textMid },
+  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.xl, marginBottom: spacing.md },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip: { backgroundColor: colors.primaryLight, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill },
+  chipText: { fontSize: fontSize.sm, color: colors.primaryDark, fontWeight: fontWeight.semibold },
+  amenityChip: { backgroundColor: colors.surface, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
+  amenityText: { fontSize: fontSize.sm, color: colors.textMid },
+  desc: { fontSize: fontSize.sm, color: colors.textMid, lineHeight: 22 },
+  mapPlaceholder: { height: 120, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  mapText: { fontSize: fontSize.sm, color: colors.textMid },
+  reviewCard: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border },
+  reviewName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
+  reviewText: { fontSize: fontSize.sm, color: colors.textMid, marginTop: spacing.sm, lineHeight: 20 },
+  replyBox: { backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, padding: spacing.md, marginTop: spacing.sm },
+  replyLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textMid },
+  replyText: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2 },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border },
+  priceLabel: { fontSize: fontSize.xs, color: colors.textDim },
+  price: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
+  perSlot: { fontSize: fontSize.xs, color: colors.textDim, fontWeight: fontWeight.regular },
+});

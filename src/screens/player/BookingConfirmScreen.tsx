@@ -1,0 +1,121 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { AppHeader, AppButton } from '../../components/common';
+import { PriceSummary } from '../../components/venue';
+import { CouponApplyModal } from '../../modals';
+import { VENUES, COUPONS } from '../../data/mockData';
+
+const CONVENIENCE_FEE = 20;
+const PAYMENT_METHODS = [
+  { id: 'upi', label: 'UPI (GPay, PhonePe)', icon: '📲' },
+  { id: 'card', label: 'Credit / Debit Card', icon: '💳' },
+  { id: 'wallet', label: 'TurfBook Wallet', icon: '👛' },
+];
+
+export default function BookingConfirmScreen({ navigation, route }: any) {
+  const { venueId, sport, date, slotPrice, startTime, endTime } = route.params;
+  const venue = VENUES.find((v) => v.id === venueId)!;
+  const [coupon, setCoupon] = useState<string | null>(null);
+  const [showCoupon, setShowCoupon] = useState(false);
+  const [method, setMethod] = useState('upi');
+
+  const discount = coupon === 'TURF20' ? Math.round(slotPrice * 0.2)
+    : coupon === 'FIRST100' ? 100 : 0;
+  const total = slotPrice + CONVENIENCE_FEE - discount;
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <AppHeader title="Confirm Booking" onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}>
+        {/* Summary */}
+        <View style={[styles.summary, shadow.card]}>
+          <Text style={styles.venueName}>{venue.name}</Text>
+          <Row label="Sport" value={sport} />
+          <Row label="Date" value={date} />
+          <Row label="Time" value={`${startTime} – ${endTime}`} />
+          <Row label="Address" value={venue.address} />
+        </View>
+
+        {/* Coupon */}
+        <TouchableOpacity style={styles.couponBtn} onPress={() => setShowCoupon(true)}>
+          <Text style={{ fontSize: 18 }}>🎟️</Text>
+          <Text style={styles.couponText}>
+            {coupon ? `Coupon "${coupon}" applied` : 'Apply Coupon'}
+          </Text>
+          <Text style={styles.couponArrow}>›</Text>
+        </TouchableOpacity>
+
+        {/* Payment method */}
+        <Text style={styles.sectionTitle}>Payment Method</Text>
+        {PAYMENT_METHODS.map((m) => (
+          <TouchableOpacity key={m.id} onPress={() => setMethod(m.id)} style={[styles.methodRow, method === m.id && styles.methodRowActive]}>
+            <Text style={{ fontSize: 20 }}>{m.icon}</Text>
+            <Text style={styles.methodLabel}>{m.label}</Text>
+            <View style={[styles.radio, method === m.id && styles.radioActive]}>
+              {method === m.id && <View style={styles.radioDot} />}
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        {/* Price */}
+        <Text style={styles.sectionTitle}>Price Details</Text>
+        <PriceSummary base={slotPrice} fee={CONVENIENCE_FEE} discount={discount} total={total} />
+      </ScrollView>
+
+      <View style={[styles.bottomBar, shadow.modal]}>
+        <View>
+          <Text style={styles.totalLabel}>Total</Text>
+          <Text style={styles.totalValue}>₹{total}</Text>
+        </View>
+        <AppButton
+          label="Pay & Confirm"
+          fullWidth={false}
+          onPress={() => navigation.navigate('Payment', { ...route.params, total, method })}
+          style={{ paddingHorizontal: 32 }}
+        />
+      </View>
+
+      <CouponApplyModal
+        visible={showCoupon}
+        coupons={COUPONS.filter((c) => c.isActive).map((c) => ({
+          code: c.code,
+          label: c.discountType === 'percent' ? `${c.discountValue}% off (min ₹${c.minBooking})` : `₹${c.discountValue} off (min ₹${c.minBooking})`,
+        }))}
+        onApply={(code) => { setCoupon(code); setShowCoupon(false); }}
+        onDismiss={() => setShowCoupon(false)}
+      />
+    </SafeAreaView>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.row}>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Text style={styles.rowValue}>{value}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
+  summary: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg },
+  venueName: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.md },
+  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
+  rowLabel: { fontSize: fontSize.sm, color: colors.textMid },
+  rowValue: { fontSize: fontSize.sm, color: colors.text, fontWeight: fontWeight.semibold, flex: 1, textAlign: 'right' },
+  couponBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginTop: spacing.lg, borderWidth: 1, borderColor: colors.primary, borderStyle: 'dashed' },
+  couponText: { flex: 1, fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.primary },
+  couponArrow: { fontSize: 22, color: colors.primary },
+  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.xl, marginBottom: spacing.md },
+  methodRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1.5, borderColor: colors.border },
+  methodRowActive: { borderColor: colors.primary },
+  methodLabel: { flex: 1, fontSize: fontSize.md, color: colors.text },
+  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  radioActive: { borderColor: colors.primary },
+  radioDot: { width: 11, height: 11, borderRadius: 6, backgroundColor: colors.primary },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border },
+  totalLabel: { fontSize: fontSize.xs, color: colors.textDim },
+  totalValue: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
+});
