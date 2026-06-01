@@ -5,7 +5,9 @@
       "Bash(Get-ChildItem -Path \"e:\\\\PROJECTS\\\\Khelangan-java\\\\turfbook-claudeAI\" -File)",
       "Bash(Select-Object Name)",
       "Bash(Sort-Object Name)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(xargs grep -l \"CORS\\\\|CorsConfig\\\\|CrossOrigin\\\\|WebMvcConfigurer\")",
+      "Bash(mvn compile *)"
     ]
   }
 }

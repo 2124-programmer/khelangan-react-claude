@@ -1,14 +1,24 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { Platform } from 'react-native';
 import { getToken, getRefreshToken, saveToken, saveRefreshToken, clearTokens } from './tokenStorage';
 
 /**
- * BASE URL — change per environment:
- *   Android emulator  → http://10.0.2.2:8080
- *   iOS simulator     → http://localhost:8080
- *   Physical device   → http://<your-LAN-IP>:8080
- *   Staging/Prod      → https://api.yourdomain.com
+ * BASE URL — resolved by platform at runtime:
+ *   android  → 10.0.2.2  (emulator loopback to host machine)
+ *   ios/web  → localhost  (simulator / browser both reach host directly)
+ *   physical device (any platform) → set EXPO_PUBLIC_API_URL env var
+ *                                    or change DEVICE_LAN_IP below
  */
-export const BASE_URL = 'http://10.0.2.2:8080';
+const DEVICE_LAN_IP = '192.168.1.100'; // ← change only if testing on a real device
+
+function resolveBaseUrl(): string {
+  // Allow override via env var for physical devices / staging
+  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+  if (Platform.OS === 'android') return 'http://10.0.2.2:8080';
+  return 'http://localhost:8080'; // ios simulator + web browser
+}
+
+export const BASE_URL = resolveBaseUrl();
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -23,6 +33,8 @@ apiClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) =>
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // DEBUG — remove once connectivity is confirmed
+  console.log(`[API] → ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
   return config;
 });
 
@@ -42,8 +54,14 @@ function processQueue(error: unknown, token: string | null) {
 }
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // DEBUG — remove once connectivity is confirmed
+    console.log(`[API] ← ${response.status} ${response.config.url}`);
+    return response;
+  },
   async (error: AxiosError) => {
+    // DEBUG — remove once connectivity is confirmed
+    console.warn(`[API] ✗ ${error.message} | code=${error.code} | status=${error.response?.status} | url=${error.config?.url}`);
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     if (error.response?.status === 401 && original && !original._retry) {
       if (isRefreshing) {
