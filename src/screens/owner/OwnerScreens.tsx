@@ -199,10 +199,11 @@ export function OwnerProfileScreen({ navigation }: any) {
           { icon: '💰', label: 'Bank & Payouts', onPress: () => navigation.navigate('EarningsTab') },
           { icon: '🔔', label: 'Notifications', onPress: () => navigation.navigate('OwnerNotifications') },
           { icon: '⚙️', label: 'Settings', onPress: () => navigation.navigate('OwnerSettings') },
+          { icon: '👤', label: 'Switch to Player', onPress: () => navigation.navigate('RoleChange', { targetRole: 'PLAYER' }), color: colors.primary },
         ].map((item) => (
           <TouchableOpacity key={item.label} style={styles.menuRow} onPress={item.onPress}>
             <Text style={{ fontSize: 20 }}>{item.icon}</Text>
-            <Text style={styles.menuLabel}>{item.label}</Text>
+            <Text style={[styles.menuLabel, item.color ? { color: item.color } : undefined]}>{item.label}</Text>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
         ))}

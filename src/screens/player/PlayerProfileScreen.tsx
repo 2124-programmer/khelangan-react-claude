@@ -11,6 +11,7 @@ const MENU = [
   { icon: '🎟️', label: 'Offers & Coupons', route: 'Offers' },
   { icon: '❓', label: 'Help & Support', route: 'HelpSupport' },
   { icon: '⚙️', label: 'Settings', route: 'Settings' },
+  { icon: '🏟', label: 'Switch to Venue Owner', route: 'RoleChange', params: { targetRole: 'OWNER' } },
 ];
 
 export default function PlayerProfileScreen({ navigation }: any) {
@@ -45,9 +46,9 @@ export default function PlayerProfileScreen({ navigation }: any) {
 
         <View style={styles.menu}>
           {MENU.map((m) => (
-            <TouchableOpacity key={m.label} style={styles.menuRow} onPress={() => navigation.navigate(m.route)}>
+            <TouchableOpacity key={m.label} style={styles.menuRow} onPress={() => navigation.navigate(m.route, (m as any).params)}>
               <Text style={{ fontSize: 20 }}>{m.icon}</Text>
-              <Text style={styles.menuLabel}>{m.label}</Text>
+              <Text style={[styles.menuLabel, m.route === 'RoleChange' && { color: colors.owner }]}>{m.label}</Text>
               <Text style={styles.menuArrow}>›</Text>
             </TouchableOpacity>
           ))}

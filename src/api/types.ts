@@ -20,11 +20,21 @@ export interface LoginRequest {
 }
 
 export interface OtpSendRequest {
-  phone: string;
+  /** Account email. Backend resolves the registered phone and sends OTP there. */
+  email: string;
+}
+
+export interface OtpSendResponse {
+  /** Masked phone where the code was sent, e.g. +91•••••3210. Shows "••••••••" for unknown emails. */
+  maskedDestination: string;
+  /** Seconds until OTP expires (300 = 5 min). */
+  expiresInSec: number;
+  /** Seconds until resend is allowed (0 = allowed now). */
+  resendAfterSec: number;
 }
 
 export interface OtpVerifyRequest {
-  phone: string;
+  email: string;
   code: string;
 }
 
@@ -67,6 +77,13 @@ export interface UpdateProfileRequest {
   phone?: string;
   avatarUrl?: string;
   preferredSports?: string[];
+}
+
+export interface ChangeRoleRequest {
+  /** Target role — only PLAYER or OWNER are self-assignable */
+  targetRole: 'PLAYER' | 'OWNER';
+  /** Current password for re-authentication before role change */
+  password: string;
 }
 
 // ─── Sport ───────────────────────────────────────────────────────────────────

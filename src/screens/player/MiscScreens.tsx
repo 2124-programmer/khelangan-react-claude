@@ -11,6 +11,8 @@ import { useAuth } from '../../store/AuthContext';
 import { useUpdateProfile } from '../../api/hooks/useUser';
 import { useCreateDispute } from '../../api/hooks/useDisputes';
 import { extractApiError } from '../../api/client';
+import { userService } from '../../api/services/userService';
+import type { UserRole } from '../../types';
 
 /* ───────────────── OffersScreen ───────────────── */
 export function OffersScreen({ navigation }: any) {
@@ -225,6 +227,62 @@ export function DisputeScreen({ navigation, route }: any) {
   );
 }
 
+/* ───────────────── RoleChangeScreen ───────────────── */
+export function RoleChangeScreen({ navigation, route }: any) {
+  const targetRole: 'PLAYER' | 'OWNER' = route?.params?.targetRole ?? 'PLAYER';
+  const { updateSession } = useAuth();
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const label = targetRole === 'OWNER' ? 'Venue Owner' : 'Player';
+
+  const handleConfirm = async () => {
+    if (!password.trim()) return;
+    setLoading(true);
+    try {
+      const res = await userService.changeRole({ targetRole, password });
+      if (!res.token || !res.user) throw new Error('Invalid server response');
+      // updateSession saves new token + updates user; RootNavigator re-routes automatically
+      await updateSession(res.token, res.user);
+    } catch (err) {
+      Alert.alert('Role Change Failed', extractApiError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <AppHeader title={`Switch to ${label}`} onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+        <View style={styles.roleInfoBox}>
+          <Text style={styles.roleInfoIcon}>{targetRole === 'OWNER' ? '🏟' : '👤'}</Text>
+          <Text style={styles.roleInfoTitle}>Switch to {label}</Text>
+          <Text style={styles.roleInfoBody}>
+            {targetRole === 'OWNER'
+              ? 'You\'ll be able to list and manage sports venues, track bookings, and receive payouts.'
+              : 'You\'ll be able to browse and book venues. Your existing venue data will remain but you won\'t be able to manage it.'}
+          </Text>
+        </View>
+        <AppInput
+          label="Confirm your password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          placeholder="Enter current password"
+        />
+        <AppButton
+          label={loading ? 'Switching…' : `Switch to ${label}`}
+          loading={loading}
+          disabled={!password.trim()}
+          onPress={handleConfirm}
+          style={{ marginTop: spacing.md }}
+        />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md },
@@ -244,4 +302,8 @@ const styles = StyleSheet.create({
   linkRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   toggleLabel: { fontSize: fontSize.md, color: colors.text },
   menuArrow: { fontSize: 22, color: colors.textDim },
+  roleInfoBox: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.xl, alignItems: 'center', marginBottom: spacing.lg, borderWidth: 1, borderColor: colors.border },
+  roleInfoIcon: { fontSize: 40, marginBottom: spacing.sm },
+  roleInfoTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.xs },
+  roleInfoBody: { fontSize: fontSize.sm, color: colors.textMid, textAlign: 'center', lineHeight: 20 },
 });

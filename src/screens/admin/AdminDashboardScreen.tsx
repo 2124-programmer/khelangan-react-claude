@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
 import { useAdminStats } from '../../api/hooks/useAdmin';
 
 export default function AdminDashboardScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { data: stats } = useAdminStats();
+  const [showLogout, setShowLogout] = useState(false);
 
   const kpis = [
     { label: 'Bookings Today', value: stats?.bookingsToday ?? 0, icon: '📅', accent: colors.admin },
@@ -43,9 +45,14 @@ export default function AdminDashboardScreen({ navigation }: any) {
             <Text style={styles.hi}>Admin Panel</Text>
             <Text style={styles.name}>{user?.name}</Text>
           </View>
-          <TouchableOpacity onPress={() => navigation.navigate('AdminSettings')}>
-            <View style={styles.gear}><Text style={{ fontSize: 20 }}>⚙️</Text></View>
-          </TouchableOpacity>
+          <View style={styles.topBarActions}>
+            <TouchableOpacity onPress={() => navigation.navigate('AdminSettings')}>
+              <View style={styles.gear}><Text style={{ fontSize: 20 }}>⚙️</Text></View>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowLogout(true)}>
+              <View style={styles.gear}><Text style={{ fontSize: 20 }}>🚪</Text></View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* KPIs */}
@@ -91,6 +98,16 @@ export default function AdminDashboardScreen({ navigation }: any) {
           ))}
         </View>
       </ScrollView>
+
+      <ConfirmActionModal
+        visible={showLogout}
+        title="Logout?"
+        message="You'll be signed out of the Admin panel."
+        confirmLabel="Logout"
+        danger
+        onConfirm={() => { setShowLogout(false); logout(); }}
+        onDismiss={() => setShowLogout(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -98,6 +115,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
+  topBarActions: { flexDirection: 'row', gap: spacing.sm },
   hi: { fontSize: fontSize.sm, color: colors.textMid },
   name: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
   gear: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', ...shadow.card },

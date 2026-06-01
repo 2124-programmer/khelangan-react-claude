@@ -1,7 +1,7 @@
 import { apiClient } from '../client';
 import type {
-  RegisterRequest, LoginRequest, OtpSendRequest, OtpVerifyRequest,
-  ForgotPasswordRequest, AuthResponse, MessageResponse,
+  RegisterRequest, LoginRequest, OtpSendRequest, OtpSendResponse,
+  OtpVerifyRequest, ForgotPasswordRequest, AuthResponse, MessageResponse,
 } from '../types';
 
 const BASE = '/api/v1/auth';
@@ -14,7 +14,7 @@ export const authService = {
     apiClient.post<AuthResponse>(`${BASE}/login`, data).then((r) => r.data),
 
   sendOtp: (data: OtpSendRequest) =>
-    apiClient.post<MessageResponse>(`${BASE}/otp/send`, data).then((r) => r.data),
+    apiClient.post<OtpSendResponse>(`${BASE}/otp/send`, data).then((r) => r.data),
 
   verifyOtp: (data: OtpVerifyRequest) =>
     apiClient.post<AuthResponse>(`${BASE}/otp/verify`, data).then((r) => r.data),

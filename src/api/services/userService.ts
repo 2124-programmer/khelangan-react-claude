@@ -1,5 +1,5 @@
 import { apiClient } from '../client';
-import type { UserDto, UpdateProfileRequest, Page } from '../types';
+import type { UserDto, UpdateProfileRequest, ChangeRoleRequest, AuthResponse, Page } from '../types';
 
 export const userService = {
   getMe: () =>
@@ -7,6 +7,9 @@ export const userService = {
 
   updateMe: (data: UpdateProfileRequest) =>
     apiClient.put<UserDto>('/api/v1/users/me', data).then((r) => r.data),
+
+  changeRole: (data: ChangeRoleRequest) =>
+    apiClient.patch<AuthResponse>('/api/v1/users/me/role', data).then((r) => r.data),
 
   // Admin
   listAdmin: (params?: { page?: number; size?: number; role?: string; search?: string }) =>

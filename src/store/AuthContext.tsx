@@ -6,7 +6,8 @@ import { saveToken, saveRefreshToken, getToken, clearTokens } from '../api/token
 import { userService } from '../api/services/userService';
 import { adaptUser } from '../api/adapters';
 import { setSessionExpiredCallback } from '../api/client';
-import type { RegisterRequest } from '../api/types';
+import { queryClient } from '../api/queryClient';
+import type { RegisterRequest, UserDto } from '../api/types';
 
 interface AuthState {
   user: User | null;
@@ -23,6 +24,8 @@ interface AuthState {
   /** Real auth: register a new user */
   registerUser: (data: Omit<RegisterRequest, 'role'> & { role: UserRole }) => Promise<void>;
   logout: () => Promise<void>;
+  /** Update token + user after a role change — issues new JWT immediately */
+  updateSession: (newToken: string, userDto: UserDto) => Promise<void>;
   clearAuthError: () => void;
 }
 
@@ -120,11 +123,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    // NOTE: no server-side token revocation endpoint exists; logout is client-side only.
+    // The JWT remains technically valid until its expiry (app.jwt.expiration-ms).
     await clearTokens();
+    queryClient.clear();
     setUser(null);
     setToken(null);
     setIsDemoMode(false);
     setAuthError(null);
+  }, []);
+
+  const updateSession = useCallback(async (newToken: string, userDto: UserDto) => {
+    await saveToken(newToken);
+    await saveRefreshToken(newToken);
+    queryClient.clear();
+    setToken(newToken);
+    setUser(adaptUser(userDto));
+    setIsDemoMode(false);
   }, []);
 
   const clearAuthError = useCallback(() => setAuthError(null), []);
@@ -143,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loginWithCredentials,
     registerUser,
     logout,
+    updateSession,
     clearAuthError,
   };
 

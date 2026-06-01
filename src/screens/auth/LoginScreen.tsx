@@ -7,6 +7,7 @@ import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppInput, AppButton, AppHeader } from '../../components/common';
 import { useAuth } from '../../store/AuthContext';
 import { extractApiError, extractFieldErrors } from '../../api/client';
+import { authService } from '../../api/services/authService';
 
 export default function LoginScreen({ navigation }: any) {
   const { loginWithCredentials, isLoading } = useAuth();
@@ -14,6 +15,7 @@ export default function LoginScreen({ navigation }: any) {
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
 
   const handleLogin = async () => {
     setFieldErrors({});
@@ -84,10 +86,31 @@ export default function LoginScreen({ navigation }: any) {
             <View style={styles.line} />
           </View>
           <AppButton
-            label="Continue with OTP"
+            label={otpLoading ? 'Sending OTP…' : 'Continue with OTP'}
             icon="📱"
             variant="secondary"
-            onPress={() => navigation.navigate('OTPVerification', {})}
+            loading={otpLoading}
+            onPress={async () => {
+              const trimmed = email.trim();
+              if (!trimmed) {
+                setFieldErrors((prev) => ({ ...prev, email: 'Enter your email to receive an OTP' }));
+                return;
+              }
+              setFieldErrors({});
+              setOtpLoading(true);
+              try {
+                const res = await authService.sendOtp({ email: trimmed.toLowerCase() });
+                navigation.navigate('OTPVerification', {
+                  email: trimmed.toLowerCase(),
+                  maskedDestination: res.maskedDestination,
+                  resendAfterSec: res.resendAfterSec ?? 60,
+                });
+              } catch (err) {
+                Alert.alert('Could not send OTP', extractApiError(err));
+              } finally {
+                setOtpLoading(false);
+              }
+            }}
           />
         </View>
 

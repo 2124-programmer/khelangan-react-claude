@@ -11,8 +11,12 @@ import { useSports } from '../../api/hooks/useSports';
 import { useVenues } from '../../api/hooks/useVenues';
 
 export default function PlayerHomeScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { user, isLoggedIn } = useAuth();
   const [activeSport, setActiveSport] = useState<string | null>(null);
+
+  const requireAuth = (action: () => void) => {
+    if (isLoggedIn) { action(); } else { navigation.navigate('Login'); }
+  };
 
   const sportsQuery = useSports();
   const venuesQuery = useVenues(
@@ -28,10 +32,12 @@ export default function PlayerHomeScreen({ navigation }: any) {
         {/* Top bar */}
         <View style={styles.topBar}>
           <View>
-            <Text style={styles.greeting}>Hi, {user?.name?.split(' ')[0]} 👋</Text>
+            <Text style={styles.greeting}>
+              {user ? `Hi, ${user.name.split(' ')[0]} 👋` : 'Welcome 👋'}
+            </Text>
             <Text style={styles.location}>📍 Nashik, Maharashtra</Text>
           </View>
-          <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
+          <TouchableOpacity onPress={() => requireAuth(() => navigation.navigate('Notifications'))}>
             <View style={styles.bell}><Text style={{ fontSize: 20 }}>🔔</Text></View>
           </TouchableOpacity>
         </View>
