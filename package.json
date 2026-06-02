@@ -7,7 +7,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "generate-api": "npx @openapitools/openapi-generator-cli generate -i turfbook-backend/src/main/resources/openapi/api.yaml -g typescript-axios -o src/api/generated --additional-properties=supportsES6=true,withInterfaces=true,npmName=turfbook-api-client"
+    "generate-api": "npx @openapitools/openapi-generator-cli generate -i turfbook-backend/src/main/resources/openapi/api.yaml -g typescript-axios -o src/api/generated --additional-properties=supportsES6=true,withInterfaces=true,npmName=turfbook-api-client",
+    "build:apk": "eas build -p android --profile preview",
+    "build:apk:local": "powershell -ExecutionPolicy Bypass -File build-apk-local.ps1"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",

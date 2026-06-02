@@ -9,13 +9,16 @@
     "splash": {
       "backgroundColor": "#0FAE6E"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.turfbook.app"
     },
     "android": {
       "package": "com.turfbook.app",
+      "versionCode": 1,
       "usesCleartextTraffic": true
     },
     "web": {
@@ -24,7 +27,10 @@
     "extra": {
       "apiBaseUrlAndroid": "http://10.0.2.2:8080",
       "apiBaseUrlIos": "http://localhost:8080",
-      "apiBaseUrlWeb": "http://localhost:8080"
+      "apiBaseUrlWeb": "http://localhost:8080",
+      "eas": {
+        "projectId": "2bcdd95d-6e74-4e06-9ad5-0c9f0e64de32"
+      }
     }
   }
 }

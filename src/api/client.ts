@@ -1,5 +1,5 @@
+/// <reference types="node" />
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { Platform } from 'react-native';
 import { getToken, getRefreshToken, saveToken, saveRefreshToken, clearTokens } from './tokenStorage';
 
 /**
@@ -9,12 +9,11 @@ import { getToken, getRefreshToken, saveToken, saveRefreshToken, clearTokens } f
  *   physical device (any platform) → set EXPO_PUBLIC_API_URL env var
  *                                    or change DEVICE_LAN_IP below
  */
-const DEVICE_LAN_IP = '192.168.1.100'; // ← change only if testing on a real device
+const DEVICE_LAN_IP = '192.168.1.5'; // PC's LAN IP — update if it changes
 
 function resolveBaseUrl(): string {
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
-  if (Platform.OS === 'android') return 'http://10.0.2.2:8080';
-  return 'http://localhost:8080';
+  return `http://${DEVICE_LAN_IP}:8080`;
 }
 
 export const BASE_URL = resolveBaseUrl();
