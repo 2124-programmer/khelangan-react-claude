@@ -1,21 +1,27 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TextInput, TouchableOpacity } from 'react-native';
-import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
+import {
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  TextInput, TouchableOpacity, ActivityIndicator,
+} from 'react-native';
+import { colors, spacing, radius, fontSize } from '../../theme';
 import { AppHeader, SportChip, EmptyState } from '../../components/common';
 import { VenueCard } from '../../components/venue';
-import { SPORTS, VENUES } from '../../data/mockData';
+import { useSports } from '../../api/hooks/useSports';
+import { useVenues } from '../../api/hooks/useVenues';
+import { useDebounce } from '../../hooks/useDebounce';
 
 export default function SearchScreen({ navigation }: any) {
   const [query, setQuery] = useState('');
   const [activeSport, setActiveSport] = useState<string | null>(null);
+  const debouncedQuery = useDebounce(query, 400);
 
-  const results = VENUES.filter((v) => {
-    const matchSport = activeSport ? v.sports.includes(activeSport) : true;
-    const matchQuery = query
-      ? v.name.toLowerCase().includes(query.toLowerCase()) || v.address.toLowerCase().includes(query.toLowerCase())
-      : true;
-    return matchSport && matchQuery;
-  });
+  const { data: sports = [] } = useSports();
+  const { data, isLoading } = useVenues(
+    debouncedQuery || activeSport
+      ? { search: debouncedQuery || undefined, sport: activeSport || undefined }
+      : undefined
+  );
+  const results = data?.venues ?? [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -36,20 +42,45 @@ export default function SearchScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow} contentContainerStyle={{ paddingHorizontal: spacing.lg }}>
-        {SPORTS.map((s) => (
-          <SportChip key={s.id} icon={s.icon} name={s.name} active={activeSport === s.id} onPress={() => setActiveSport(activeSport === s.id ? null : s.id)} />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.chipRow}
+        contentContainerStyle={{ paddingHorizontal: spacing.lg }}
+      >
+        {sports.map((s) => (
+          <SportChip
+            key={s.id}
+            icon={s.icon}
+            name={s.name}
+            active={activeSport === s.id}
+            onPress={() => setActiveSport(activeSport === s.id ? null : s.id)}
+          />
         ))}
       </ScrollView>
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        <Text style={styles.resultCount}>{results.length} venues found</Text>
-        {results.length === 0 ? (
-          <EmptyState icon="🔍" title="No venues found" subtitle="Try adjusting your search or filters" />
+        {isLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
         ) : (
-          results.map((v) => (
-            <VenueCard key={v.id} venue={v} onPress={() => navigation.navigate('VenueDetail', { venueId: v.id })} />
-          ))
+          <>
+            <Text style={styles.resultCount}>{results.length} venues found</Text>
+            {results.length === 0 ? (
+              <EmptyState
+                icon="🔍"
+                title="No venues found"
+                subtitle="Try adjusting your search or filters"
+              />
+            ) : (
+              results.map((v) => (
+                <VenueCard
+                  key={v.id}
+                  venue={v}
+                  onPress={() => navigation.navigate('VenueDetail', { venueId: v.id })}
+                />
+              ))
+            )}
+          </>
         )}
       </ScrollView>
     </SafeAreaView>

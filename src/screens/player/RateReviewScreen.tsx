@@ -1,18 +1,60 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
-import { AppHeader, AppButton, AppInput, StarRating } from '../../components/common';
+import { AppHeader, AppButton, AppInput, StarRating, EmptyState } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
-import { BOOKINGS } from '../../data/mockData';
+import { useBookingDetail } from '../../api/hooks/useBookings';
+import { useCreateReview } from '../../api/hooks/useReviews';
+import { extractApiError } from '../../api/client';
 
 export default function RateReviewScreen({ navigation, route }: any) {
-  const booking = BOOKINGS.find((b) => b.id === route.params.bookingId)!;
+  const bookingId: string = route.params.bookingId;
+  const { data: booking, isLoading } = useBookingDetail(bookingId);
+  const createReview = useCreateReview();
+
   const [overall, setOverall] = useState(0);
   const [cleanliness, setCleanliness] = useState(0);
   const [ground, setGround] = useState(0);
   const [staff, setStaff] = useState(0);
   const [comment, setComment] = useState('');
   const [confirm, setConfirm] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!booking) return;
+    try {
+      await createReview.mutateAsync({
+        bookingId: Number(bookingId),
+        rating: overall,
+        comment,
+        cleanliness,
+        ground,
+        staff,
+      });
+      setConfirm(false);
+      navigation.goBack();
+    } catch (err) {
+      setConfirm(false);
+      Alert.alert('Failed', extractApiError(err));
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <AppHeader title="Rate & Review" onBack={() => navigation.goBack()} />
+        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <AppHeader title="Rate & Review" onBack={() => navigation.goBack()} />
+        <EmptyState icon="⚠️" title="Booking not found" subtitle="" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -31,12 +73,18 @@ export default function RateReviewScreen({ navigation, route }: any) {
         <CategoryRow label="Staff Behaviour" value={staff} onChange={setStaff} />
 
         <Text style={[styles.label, { marginTop: spacing.xl }]}>Write a review</Text>
-        <AppInput value={comment} onChangeText={setComment} placeholder="Share your experience..." multiline />
+        <AppInput
+          value={comment}
+          onChangeText={setComment}
+          placeholder="Share your experience..."
+          multiline
+        />
 
         <AppButton
-          label="Submit Review"
+          label={createReview.isPending ? 'Submitting…' : 'Submit Review'}
           onPress={() => setConfirm(true)}
           disabled={overall === 0}
+          loading={createReview.isPending}
           style={{ marginTop: spacing.md }}
         />
       </ScrollView>
@@ -46,7 +94,7 @@ export default function RateReviewScreen({ navigation, route }: any) {
         title="Post Review?"
         message="Your review will be visible to other players and the venue owner."
         confirmLabel="Post"
-        onConfirm={() => { setConfirm(false); navigation.goBack(); }}
+        onConfirm={handleSubmit}
         onDismiss={() => setConfirm(false)}
       />
     </SafeAreaView>

@@ -1,18 +1,30 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image } from 'react-native';
+import {
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  TouchableOpacity, ActivityIndicator,
+} from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { SportChip, AvatarImage } from '../../components/common';
+import { SportChip, AvatarImage, EmptyState } from '../../components/common';
 import { VenueCard } from '../../components/venue';
-import { SPORTS, VENUES } from '../../data/mockData';
 import { useAuth } from '../../store/AuthContext';
+import { useSports } from '../../api/hooks/useSports';
+import { useVenues } from '../../api/hooks/useVenues';
 
 export default function PlayerHomeScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { user, isLoggedIn } = useAuth();
   const [activeSport, setActiveSport] = useState<string | null>(null);
 
-  const filtered = activeSport
-    ? VENUES.filter((v) => v.sports.includes(activeSport))
-    : VENUES;
+  const requireAuth = (action: () => void) => {
+    if (isLoggedIn) { action(); } else { navigation.navigate('Login'); }
+  };
+
+  const sportsQuery = useSports();
+  const venuesQuery = useVenues(
+    activeSport ? { sport: activeSport } : undefined
+  );
+
+  const sports = sportsQuery.data ?? [];
+  const venues = venuesQuery.data?.venues ?? [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -20,16 +32,21 @@ export default function PlayerHomeScreen({ navigation }: any) {
         {/* Top bar */}
         <View style={styles.topBar}>
           <View>
-            <Text style={styles.greeting}>Hi, {user?.name?.split(' ')[0]} 👋</Text>
+            <Text style={styles.greeting}>
+              {user ? `Hi, ${user.name.split(' ')[0]} 👋` : 'Welcome 👋'}
+            </Text>
             <Text style={styles.location}>📍 Nashik, Maharashtra</Text>
           </View>
-          <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
+          <TouchableOpacity onPress={() => requireAuth(() => navigation.navigate('Notifications'))}>
             <View style={styles.bell}><Text style={{ fontSize: 20 }}>🔔</Text></View>
           </TouchableOpacity>
         </View>
 
         {/* Search bar */}
-        <TouchableOpacity style={[styles.searchBar, shadow.card]} onPress={() => navigation.navigate('Search')}>
+        <TouchableOpacity
+          style={[styles.searchBar, shadow.card]}
+          onPress={() => navigation.navigate('Search')}
+        >
           <Text style={{ fontSize: 18 }}>🔍</Text>
           <Text style={styles.searchPlaceholder}>Search turfs, sports, areas...</Text>
         </TouchableOpacity>
@@ -45,17 +62,26 @@ export default function PlayerHomeScreen({ navigation }: any) {
 
         {/* Sport filter */}
         <Text style={styles.sectionTitle}>Choose a sport</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingLeft: spacing.lg }} contentContainerStyle={{ paddingRight: spacing.lg }}>
-          {SPORTS.map((s) => (
-            <SportChip
-              key={s.id}
-              icon={s.icon}
-              name={s.name}
-              active={activeSport === s.id}
-              onPress={() => setActiveSport(activeSport === s.id ? null : s.id)}
-            />
-          ))}
-        </ScrollView>
+        {sportsQuery.isLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ margin: spacing.lg }} />
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ paddingLeft: spacing.lg }}
+            contentContainerStyle={{ paddingRight: spacing.lg }}
+          >
+            {sports.map((s) => (
+              <SportChip
+                key={s.id}
+                icon={s.icon}
+                name={s.name}
+                active={activeSport === s.id}
+                onPress={() => setActiveSport(activeSport === s.id ? null : s.id)}
+              />
+            ))}
+          </ScrollView>
+        )}
 
         {/* Venues */}
         <View style={styles.sectionRow}>
@@ -64,10 +90,27 @@ export default function PlayerHomeScreen({ navigation }: any) {
             <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
+
         <View style={{ paddingHorizontal: spacing.lg }}>
-          {filtered.map((v) => (
-            <VenueCard key={v.id} venue={v} onPress={() => navigation.navigate('VenueDetail', { venueId: v.id })} />
-          ))}
+          {venuesQuery.isLoading ? (
+            <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+          ) : venuesQuery.isError ? (
+            <EmptyState
+              icon="⚠️"
+              title="Could not load venues"
+              subtitle="Check your connection and try again"
+            />
+          ) : venues.length === 0 ? (
+            <EmptyState icon="🏟" title="No venues found" subtitle="Try a different sport or area" />
+          ) : (
+            venues.map((v) => (
+              <VenueCard
+                key={v.id}
+                venue={v}
+                onPress={() => navigation.navigate('VenueDetail', { venueId: v.id })}
+              />
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

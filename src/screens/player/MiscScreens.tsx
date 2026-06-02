@@ -1,30 +1,49 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import {
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  TouchableOpacity, Switch, Alert, ActivityIndicator,
+} from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, AppInput } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
-import { COUPONS } from '../../data/mockData';
+import { useCoupons } from '../../api/hooks/useCoupons';
+import { useAuth } from '../../store/AuthContext';
+import { useUpdateProfile } from '../../api/hooks/useUser';
+import { useCreateDispute } from '../../api/hooks/useDisputes';
+import { extractApiError } from '../../api/client';
+import { userService } from '../../api/services/userService';
+import type { UserRole } from '../../types';
 
 /* ───────────────── OffersScreen ───────────────── */
 export function OffersScreen({ navigation }: any) {
+  const { data: coupons = [], isLoading } = useCoupons();
+  const active = coupons.filter((c) => c.isActive);
+
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="Offers & Coupons" onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined} />
+      <AppHeader
+        title="Offers & Coupons"
+        onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
+      />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        {COUPONS.filter((c) => c.isActive).map((c) => (
-          <View key={c.id} style={[styles.couponCard, shadow.card]}>
-            <View style={styles.couponLeft}>
-              <Text style={styles.couponDiscount}>
-                {c.discountType === 'percent' ? `${c.discountValue}% OFF` : `₹${c.discountValue} OFF`}
-              </Text>
-              <Text style={styles.couponMin}>Min booking ₹{c.minBooking}</Text>
+        {isLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+        ) : (
+          active.map((c) => (
+            <View key={c.id} style={[styles.couponCard, shadow.card]}>
+              <View style={styles.couponLeft}>
+                <Text style={styles.couponDiscount}>
+                  {c.discountType === 'percent' ? `${c.discountValue}% OFF` : `₹${c.discountValue} OFF`}
+                </Text>
+                <Text style={styles.couponMin}>Min booking ₹{c.minBooking}</Text>
+              </View>
+              <View style={styles.couponRight}>
+                <Text style={styles.couponCode}>{c.code}</Text>
+                <Text style={styles.couponValid}>Valid till {c.validUntil}</Text>
+              </View>
             </View>
-            <View style={styles.couponRight}>
-              <Text style={styles.couponCode}>{c.code}</Text>
-              <Text style={styles.couponValid}>Valid till {c.validUntil}</Text>
-            </View>
-          </View>
-        ))}
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -38,22 +57,13 @@ export function WalletScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         <View style={styles.walletCard}>
           <Text style={styles.walletLabel}>Wallet Balance</Text>
-          <Text style={styles.walletAmount}>₹250</Text>
+          <Text style={styles.walletAmount}>₹0</Text>
           <AppButton label="Add Money" variant="secondary" onPress={() => {}} style={{ marginTop: spacing.lg }} />
         </View>
         <Text style={styles.sectionTitle}>Recent Transactions</Text>
-        {[
-          { label: 'Booking refund — Ace Tennis', amount: '+₹620', date: 'May 15' },
-          { label: 'Booking — Green Turf Arena', amount: '-₹1220', date: 'Jun 1' },
-        ].map((t, i) => (
-          <View key={i} style={styles.txnRow}>
-            <View>
-              <Text style={styles.txnLabel}>{t.label}</Text>
-              <Text style={styles.txnDate}>{t.date}</Text>
-            </View>
-            <Text style={[styles.txnAmount, { color: t.amount.startsWith('+') ? colors.success : colors.text }]}>{t.amount}</Text>
-          </View>
-        ))}
+        <Text style={{ color: colors.textMid, fontSize: fontSize.sm, textAlign: 'center', marginTop: spacing.xl }}>
+          No transactions yet
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -124,17 +134,37 @@ export function SettingsScreen({ navigation }: any) {
 
 /* ───────────────── EditProfileScreen ───────────────── */
 export function EditProfileScreen({ navigation }: any) {
-  const [name, setName] = useState('Rohan Sharma');
-  const [email, setEmail] = useState('rohan@example.com');
-  const [phone, setPhone] = useState('+91 98765 43210');
+  const { user } = useAuth();
+  const updateProfile = useUpdateProfile();
+  const [name, setName] = useState(user?.name ?? '');
+  const [phone, setPhone] = useState(user?.phone ?? '');
+  const [loading, setLoading] = useState(false);
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      await updateProfile.mutateAsync({ name: name.trim(), phone: phone.trim() });
+      navigation.goBack();
+    } catch (err) {
+      Alert.alert('Update Failed', extractApiError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Edit Profile" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         <AppInput label="Full Name" value={name} onChangeText={setName} />
-        <AppInput label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
+        <AppInput label="Email" value={user?.email ?? ''} onChangeText={() => {}} keyboardType="email-address" />
         <AppInput label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-        <AppButton label="Save Changes" onPress={() => navigation.goBack()} style={{ marginTop: spacing.md }} />
+        <AppButton
+          label={loading ? 'Saving…' : 'Save Changes'}
+          loading={loading}
+          onPress={handleSave}
+          style={{ marginTop: spacing.md }}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -155,14 +185,99 @@ export function RescheduleScreen({ navigation }: any) {
 }
 
 /* ───────────────── DisputeScreen ───────────────── */
-export function DisputeScreen({ navigation }: any) {
+export function DisputeScreen({ navigation, route }: any) {
+  const bookingId: string | undefined = route?.params?.bookingId;
+  const createDispute = useCreateDispute();
   const [issue, setIssue] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!issue.trim() || !bookingId) return;
+    setLoading(true);
+    try {
+      await createDispute.mutateAsync({ bookingId: Number(bookingId), issue: issue.trim() });
+      Alert.alert('Dispute Raised', 'Our team will review your dispute within 24 hours.');
+      navigation.goBack();
+    } catch (err) {
+      Alert.alert('Failed', extractApiError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Raise a Dispute" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        <AppInput label="Describe your issue" value={issue} onChangeText={setIssue} multiline placeholder="What went wrong?" />
-        <AppButton label="Submit Dispute" onPress={() => navigation.goBack()} disabled={!issue} />
+        <AppInput
+          label="Describe your issue"
+          value={issue}
+          onChangeText={setIssue}
+          multiline
+          placeholder="What went wrong?"
+        />
+        <AppButton
+          label={loading ? 'Submitting…' : 'Submit Dispute'}
+          onPress={handleSubmit}
+          loading={loading}
+          disabled={!issue.trim()}
+        />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+/* ───────────────── RoleChangeScreen ───────────────── */
+export function RoleChangeScreen({ navigation, route }: any) {
+  const targetRole: 'PLAYER' | 'OWNER' = route?.params?.targetRole ?? 'PLAYER';
+  const { updateSession } = useAuth();
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const label = targetRole === 'OWNER' ? 'Venue Owner' : 'Player';
+
+  const handleConfirm = async () => {
+    if (!password.trim()) return;
+    setLoading(true);
+    try {
+      const res = await userService.changeRole({ targetRole, password });
+      if (!res.token || !res.user) throw new Error('Invalid server response');
+      // updateSession saves new token + updates user; RootNavigator re-routes automatically
+      await updateSession(res.token, res.user);
+    } catch (err) {
+      Alert.alert('Role Change Failed', extractApiError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <AppHeader title={`Switch to ${label}`} onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+        <View style={styles.roleInfoBox}>
+          <Text style={styles.roleInfoIcon}>{targetRole === 'OWNER' ? '🏟' : '👤'}</Text>
+          <Text style={styles.roleInfoTitle}>Switch to {label}</Text>
+          <Text style={styles.roleInfoBody}>
+            {targetRole === 'OWNER'
+              ? 'You\'ll be able to list and manage sports venues, track bookings, and receive payouts.'
+              : 'You\'ll be able to browse and book venues. Your existing venue data will remain but you won\'t be able to manage it.'}
+          </Text>
+        </View>
+        <AppInput
+          label="Confirm your password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          placeholder="Enter current password"
+        />
+        <AppButton
+          label={loading ? 'Switching…' : `Switch to ${label}`}
+          loading={loading}
+          disabled={!password.trim()}
+          onPress={handleConfirm}
+          style={{ marginTop: spacing.md }}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -181,14 +296,14 @@ const styles = StyleSheet.create({
   walletCard: { backgroundColor: colors.primary, borderRadius: radius.lg, padding: spacing.xl, alignItems: 'center' },
   walletLabel: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.85)' },
   walletAmount: { fontSize: 40, fontWeight: fontWeight.bold, color: colors.white, marginTop: spacing.xs },
-  txnRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
-  txnLabel: { fontSize: fontSize.sm, color: colors.text },
-  txnDate: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 2 },
-  txnAmount: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
   faqRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   faqText: { fontSize: fontSize.sm, color: colors.text, flex: 1 },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   linkRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   toggleLabel: { fontSize: fontSize.md, color: colors.text },
   menuArrow: { fontSize: 22, color: colors.textDim },
+  roleInfoBox: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.xl, alignItems: 'center', marginBottom: spacing.lg, borderWidth: 1, borderColor: colors.border },
+  roleInfoIcon: { fontSize: 40, marginBottom: spacing.sm },
+  roleInfoTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.xs },
+  roleInfoBody: { fontSize: fontSize.sm, color: colors.textMid, textAlign: 'center', lineHeight: 20 },
 });

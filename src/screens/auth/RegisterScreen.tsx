@@ -1,15 +1,50 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import {
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  TouchableOpacity, Alert,
+} from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppInput, AppButton, AppHeader } from '../../components/common';
 import { UserRole } from '../../types';
+import { useAuth } from '../../store/AuthContext';
+import { extractApiError, extractFieldErrors } from '../../api/client';
 
 export default function RegisterScreen({ navigation }: any) {
+  const { registerUser } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('player');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+
+  const handleRegister = async () => {
+    setFieldErrors({});
+    const errors: Record<string, string> = {};
+    if (!name.trim() || name.trim().length < 2) errors.name = 'Name must be at least 2 characters';
+    if (!email.trim()) errors.email = 'Email is required';
+    if (!phone.trim() || phone.trim().length < 7) errors.phone = 'Enter a valid phone number';
+    if (!password || password.length < 6) errors.password = 'Password must be at least 6 characters';
+    if (Object.keys(errors).length) {
+      setFieldErrors(errors);
+      return;
+    }
+    setLoading(true);
+    try {
+      await registerUser({ name: name.trim(), email: email.trim(), phone: phone.trim(), password, role });
+      // RootNavigator picks up isLoggedIn change automatically
+    } catch (err) {
+      const fe = extractFieldErrors(err);
+      if (Object.keys(fe).length) {
+        setFieldErrors(fe);
+      } else {
+        Alert.alert('Registration Failed', extractApiError(err));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -32,15 +67,43 @@ export default function RegisterScreen({ navigation }: any) {
         </View>
 
         <View style={{ marginTop: spacing.lg }}>
-          <AppInput label="Full Name" value={name} onChangeText={setName} placeholder="Your name" />
-          <AppInput label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" placeholder="you@example.com" />
-          <AppInput label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+91 98765 43210" />
-          <AppInput label="Password" value={password} onChangeText={setPassword} secureTextEntry placeholder="Create a password" />
+          <AppInput
+            label="Full Name"
+            value={name}
+            onChangeText={setName}
+            placeholder="Your name"
+            error={fieldErrors.name}
+          />
+          <AppInput
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            placeholder="you@example.com"
+            error={fieldErrors.email}
+          />
+          <AppInput
+            label="Phone"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            placeholder="+91 98765 43210"
+            error={fieldErrors.phone}
+          />
+          <AppInput
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            placeholder="Create a password (min 6 chars)"
+            error={fieldErrors.password}
+          />
         </View>
 
         <AppButton
-          label="Register"
-          onPress={() => navigation.navigate('OTPVerification', { phone })}
+          label={loading ? 'Creating Account…' : 'Register'}
+          onPress={handleRegister}
+          loading={loading}
           style={{ marginTop: spacing.md }}
         />
 

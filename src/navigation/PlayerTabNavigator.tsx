@@ -18,7 +18,7 @@ import NotificationsScreen from '../screens/player/NotificationsScreen';
 import PlayerProfileScreen from '../screens/player/PlayerProfileScreen';
 import {
   OffersScreen, WalletScreen, HelpSupportScreen, SettingsScreen,
-  EditProfileScreen, RescheduleScreen, DisputeScreen,
+  EditProfileScreen, RescheduleScreen, DisputeScreen, RoleChangeScreen,
 } from '../screens/player/MiscScreens';
 
 // Screens reachable from anywhere in the player app. Registered in every tab's
@@ -40,6 +40,7 @@ const SHARED = [
   { name: 'Reschedule', component: RescheduleScreen },
   { name: 'Dispute', component: DisputeScreen },
   { name: 'Search', component: SearchScreen },
+  { name: 'RoleChange', component: RoleChangeScreen },
 ];
 
 function makeStack(initialName: string, initialComponent: any) {

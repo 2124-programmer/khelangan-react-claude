@@ -1,22 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
-import { ADMIN_KPIS } from '../../data/mockData';
+import { useAdminStats } from '../../api/hooks/useAdmin';
 
 export default function AdminDashboardScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const { data: stats } = useAdminStats();
+  const [showLogout, setShowLogout] = useState(false);
 
   const kpis = [
-    { label: 'Bookings Today', value: ADMIN_KPIS.bookingsToday, icon: '📅', accent: colors.admin },
-    { label: 'Revenue Today', value: `₹${ADMIN_KPIS.revenueToday.toLocaleString('en-IN')}`, icon: '💰', accent: colors.primary },
-    { label: 'New Users', value: ADMIN_KPIS.newUsers, icon: '👥', accent: colors.owner },
-    { label: 'Active Venues', value: ADMIN_KPIS.activeVenues, icon: '🏟', accent: colors.warning },
+    { label: 'Bookings Today', value: stats?.bookingsToday ?? 0, icon: '📅', accent: colors.admin },
+    { label: 'Revenue Today', value: `₹${(stats?.revenueToday ?? 0).toLocaleString('en-IN')}`, icon: '💰', accent: colors.primary },
+    { label: 'New Users', value: stats?.newUsers ?? 0, icon: '👥', accent: colors.owner },
+    { label: 'Active Venues', value: stats?.activeVenues ?? 0, icon: '🏟', accent: colors.warning },
   ];
 
   const alerts = [
-    { label: 'Pending Approvals', value: ADMIN_KPIS.pendingApprovals, route: 'VenueApproval', icon: '🕓' },
-    { label: 'Open Disputes', value: ADMIN_KPIS.openDisputes, route: 'DisputeManagement', icon: '⚠️' },
+    { label: 'Pending Approvals', value: stats?.pendingApprovals ?? 0, route: 'VenueApproval', icon: '🕓' },
+    { label: 'Open Disputes', value: stats?.openDisputes ?? 0, route: 'DisputeManagement', icon: '⚠️' },
   ];
 
   const modules = [
@@ -42,9 +45,14 @@ export default function AdminDashboardScreen({ navigation }: any) {
             <Text style={styles.hi}>Admin Panel</Text>
             <Text style={styles.name}>{user?.name}</Text>
           </View>
-          <TouchableOpacity onPress={() => navigation.navigate('AdminSettings')}>
-            <View style={styles.gear}><Text style={{ fontSize: 20 }}>⚙️</Text></View>
-          </TouchableOpacity>
+          <View style={styles.topBarActions}>
+            <TouchableOpacity onPress={() => navigation.navigate('AdminSettings')}>
+              <View style={styles.gear}><Text style={{ fontSize: 20 }}>⚙️</Text></View>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowLogout(true)}>
+              <View style={styles.gear}><Text style={{ fontSize: 20 }}>🚪</Text></View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* KPIs */}
@@ -61,10 +69,16 @@ export default function AdminDashboardScreen({ navigation }: any) {
         {/* Alerts */}
         <Text style={styles.sectionTitle}>Needs Attention</Text>
         {alerts.map((a) => (
-          <TouchableOpacity key={a.label} style={styles.alertRow} onPress={() => navigation.navigate(a.route)}>
+          <TouchableOpacity
+            key={a.label}
+            style={styles.alertRow}
+            onPress={() => navigation.navigate(a.route)}
+          >
             <Text style={{ fontSize: 22 }}>{a.icon}</Text>
             <Text style={styles.alertLabel}>{a.label}</Text>
-            <View style={styles.alertBadge}><Text style={styles.alertBadgeText}>{a.value}</Text></View>
+            <View style={styles.alertBadge}>
+              <Text style={styles.alertBadgeText}>{a.value}</Text>
+            </View>
             <Text style={styles.arrow}>›</Text>
           </TouchableOpacity>
         ))}
@@ -73,13 +87,27 @@ export default function AdminDashboardScreen({ navigation }: any) {
         <Text style={styles.sectionTitle}>Management</Text>
         <View style={styles.moduleGrid}>
           {modules.map((m) => (
-            <TouchableOpacity key={m.label} style={styles.module} onPress={() => navigation.navigate(m.route)}>
+            <TouchableOpacity
+              key={m.label}
+              style={styles.module}
+              onPress={() => navigation.navigate(m.route)}
+            >
               <Text style={{ fontSize: 26 }}>{m.icon}</Text>
               <Text style={styles.moduleLabel}>{m.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
+
+      <ConfirmActionModal
+        visible={showLogout}
+        title="Logout?"
+        message="You'll be signed out of the Admin panel."
+        confirmLabel="Logout"
+        danger
+        onConfirm={() => { setShowLogout(false); logout(); }}
+        onDismiss={() => setShowLogout(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -87,20 +115,21 @@ export default function AdminDashboardScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
+  topBarActions: { flexDirection: 'row', gap: spacing.sm },
   hi: { fontSize: fontSize.sm, color: colors.textMid },
   name: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
   gear: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', ...shadow.card },
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  kpiCard: { width: '47%', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg },
-  kpiValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, marginTop: spacing.sm },
-  kpiLabel: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 2 },
+  kpiCard: { width: '47%', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, alignItems: 'flex-start', gap: spacing.xs },
+  kpiValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold },
+  kpiLabel: { fontSize: fontSize.xs, color: colors.textMid },
   sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.xl, marginBottom: spacing.md },
   alertRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
-  alertLabel: { flex: 1, fontSize: fontSize.md, color: colors.text, fontWeight: fontWeight.semibold },
-  alertBadge: { backgroundColor: colors.danger, borderRadius: radius.pill, minWidth: 24, height: 24, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  alertBadgeText: { color: colors.white, fontSize: fontSize.xs, fontWeight: fontWeight.bold },
+  alertLabel: { flex: 1, fontSize: fontSize.md, color: colors.text },
+  alertBadge: { backgroundColor: colors.danger, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 2, minWidth: 28, alignItems: 'center' },
+  alertBadgeText: { fontSize: fontSize.xs, color: colors.white, fontWeight: fontWeight.bold },
   arrow: { fontSize: 22, color: colors.textDim },
   moduleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  module: { width: '22%', aspectRatio: 1, backgroundColor: colors.surface, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', gap: spacing.xs, ...shadow.card },
+  module: { width: '22%', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, paddingVertical: spacing.lg, gap: spacing.xs, ...shadow.card },
   moduleLabel: { fontSize: 10, color: colors.textMid, textAlign: 'center' },
 });

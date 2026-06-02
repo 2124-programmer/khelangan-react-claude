@@ -1,13 +1,47 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import {
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  TouchableOpacity, Alert, ActivityIndicator,
+} from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppInput, AppButton, AppHeader } from '../../components/common';
 import { useAuth } from '../../store/AuthContext';
+import { extractApiError, extractFieldErrors } from '../../api/client';
+import { authService } from '../../api/services/authService';
 
 export default function LoginScreen({ navigation }: any) {
-  const { login } = useAuth();
-  const [email, setEmail] = useState('rohan@example.com');
-  const [password, setPassword] = useState('demo1234');
+  const { loginWithCredentials, isLoading } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+
+  const handleLogin = async () => {
+    setFieldErrors({});
+    if (!email.trim()) {
+      setFieldErrors({ email: 'Email is required' });
+      return;
+    }
+    if (!password) {
+      setFieldErrors({ password: 'Password is required' });
+      return;
+    }
+    setLoading(true);
+    try {
+      await loginWithCredentials(email.trim(), password);
+      // Navigation handled automatically by RootNavigator on isLoggedIn change
+    } catch (err) {
+      const fe = extractFieldErrors(err);
+      if (Object.keys(fe).length) {
+        setFieldErrors(fe);
+      } else {
+        Alert.alert('Login Failed', extractApiError(err));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -17,19 +51,67 @@ export default function LoginScreen({ navigation }: any) {
         <Text style={styles.sub}>Login to book your next game</Text>
 
         <View style={{ marginTop: spacing.xl }}>
-          <AppInput label="Email or Phone" value={email} onChangeText={setEmail} keyboardType="email-address" />
-          <AppInput label="Password" value={password} onChangeText={setPassword} secureTextEntry />
-          <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={{ alignSelf: 'flex-end' }}>
+          <AppInput
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            placeholder="you@example.com"
+            error={fieldErrors.email}
+          />
+          <AppInput
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            error={fieldErrors.password}
+          />
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ForgotPassword')}
+            style={{ alignSelf: 'flex-end' }}
+          >
             <Text style={styles.link}>Forgot Password?</Text>
           </TouchableOpacity>
         </View>
 
         <View style={{ marginTop: spacing.xl }}>
-          <AppButton label="Login" onPress={() => login('player')} />
+          <AppButton
+            label={loading ? 'Logging in…' : 'Login'}
+            onPress={handleLogin}
+            loading={loading}
+          />
           <View style={styles.dividerRow}>
-            <View style={styles.line} /><Text style={styles.or}>OR</Text><View style={styles.line} />
+            <View style={styles.line} />
+            <Text style={styles.or}>OR</Text>
+            <View style={styles.line} />
           </View>
-          <AppButton label="Continue with Google" icon="🔵" variant="secondary" onPress={() => login('player')} />
+          <AppButton
+            label={otpLoading ? 'Sending OTP…' : 'Continue with OTP'}
+            icon="📱"
+            variant="secondary"
+            loading={otpLoading}
+            onPress={async () => {
+              const trimmed = email.trim();
+              if (!trimmed) {
+                setFieldErrors((prev) => ({ ...prev, email: 'Enter your email to receive an OTP' }));
+                return;
+              }
+              setFieldErrors({});
+              setOtpLoading(true);
+              try {
+                const res = await authService.sendOtp({ email: trimmed.toLowerCase() });
+                navigation.navigate('OTPVerification', {
+                  email: trimmed.toLowerCase(),
+                  maskedDestination: res.maskedDestination,
+                  resendAfterSec: res.resendAfterSec ?? 60,
+                });
+              } catch (err) {
+                Alert.alert('Could not send OTP', extractApiError(err));
+              } finally {
+                setOtpLoading(false);
+              }
+            }}
+          />
         </View>
 
         <View style={styles.footer}>

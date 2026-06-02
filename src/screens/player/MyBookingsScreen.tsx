@@ -1,22 +1,37 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import { View, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { colors, spacing } from '../../theme';
 import { AppHeader, SectionTabBar, EmptyState } from '../../components/common';
 import { BookingCard } from '../../components/venue';
 import { CancelBookingModal } from '../../modals';
-import { BOOKINGS } from '../../data/mockData';
-import { Booking, BookingStatus } from '../../types';
+import { useBookings, useCancelBooking } from '../../api/hooks/useBookings';
+import { Booking } from '../../types';
+import { extractApiError } from '../../api/client';
+
+const STATUS_MAP: Record<string, string> = {
+  upcoming: 'CONFIRMED',
+  completed: 'COMPLETED',
+  cancelled: 'CANCELLED',
+};
 
 export default function MyBookingsScreen({ navigation }: any) {
   const [tab, setTab] = useState<string>('upcoming');
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
+  const cancelBooking = useCancelBooking();
 
-  const myBookings = BOOKINGS.filter((b) => b.playerId === 'p1');
-  const filtered = myBookings.filter((b) => {
-    if (tab === 'upcoming') return b.status === 'confirmed';
-    if (tab === 'completed') return b.status === 'completed';
-    return b.status === 'cancelled';
-  });
+  const { data, isLoading } = useBookings({ status: STATUS_MAP[tab] });
+  const bookings = data?.bookings ?? [];
+
+  const handleCancel = async () => {
+    if (!cancelTarget) return;
+    try {
+      await cancelBooking.mutateAsync(Number(cancelTarget.id));
+    } catch (err) {
+      Alert.alert('Cancel Failed', extractApiError(err));
+    } finally {
+      setCancelTarget(null);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -31,10 +46,12 @@ export default function MyBookingsScreen({ navigation }: any) {
         onChange={setTab}
       />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
+        ) : bookings.length === 0 ? (
           <EmptyState icon="📅" title="No bookings here" subtitle="Your bookings will appear in this tab" />
         ) : (
-          filtered.map((b) => (
+          bookings.map((b) => (
             <BookingCard
               key={b.id}
               booking={b}
@@ -51,7 +68,7 @@ export default function MyBookingsScreen({ navigation }: any) {
         visible={!!cancelTarget}
         venueName={cancelTarget?.venueName ?? ''}
         refundAmount={cancelTarget ? Math.round(cancelTarget.amount * 0.5) : 0}
-        onConfirm={() => setCancelTarget(null)}
+        onConfirm={handleCancel}
         onDismiss={() => setCancelTarget(null)}
       />
     </SafeAreaView>

@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import {
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  TouchableOpacity, Alert,
+} from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton } from '../../components/common';
 import { PriceSummary } from '../../components/venue';
 import { CouponApplyModal } from '../../modals';
-import { VENUES, COUPONS } from '../../data/mockData';
+import { useVenueDetail } from '../../api/hooks/useVenues';
+import { useCoupons, useValidateCoupon } from '../../api/hooks/useCoupons';
+import { usePlatformSettings } from '../../api/hooks/useAdmin';
 
-const CONVENIENCE_FEE = 20;
 const PAYMENT_METHODS = [
   { id: 'upi', label: 'UPI (GPay, PhonePe)', icon: '📲' },
   { id: 'card', label: 'Credit / Debit Card', icon: '💳' },
@@ -14,15 +18,35 @@ const PAYMENT_METHODS = [
 ];
 
 export default function BookingConfirmScreen({ navigation, route }: any) {
-  const { venueId, sport, date, slotPrice, startTime, endTime } = route.params;
-  const venue = VENUES.find((v) => v.id === venueId)!;
-  const [coupon, setCoupon] = useState<string | null>(null);
-  const [showCoupon, setShowCoupon] = useState(false);
-  const [method, setMethod] = useState('upi');
+  const { venueId, sport, date, slotPrice, startTime, endTime, courtId, slotId } = route.params;
 
-  const discount = coupon === 'TURF20' ? Math.round(slotPrice * 0.2)
-    : coupon === 'FIRST100' ? 100 : 0;
-  const total = slotPrice + CONVENIENCE_FEE - discount;
+  const { data: venue } = useVenueDetail(venueId);
+  const { data: coupons = [] } = useCoupons();
+  const { data: settings } = usePlatformSettings();
+  const validateCoupon = useValidateCoupon();
+
+  const convenienceFee = settings?.convenienceFee ?? 20;
+  const [couponCode, setCouponCode] = useState<string | null>(null);
+  const [discount, setDiscount] = useState(0);
+  const [showCoupon, setShowCoupon] = useState(false);
+  const [method, setMethod] = useState('card');
+
+  const total = slotPrice + convenienceFee - discount;
+
+  const handleApplyCoupon = async (code: string) => {
+    try {
+      const res = await validateCoupon.mutateAsync({ code, bookingAmount: slotPrice });
+      if (res.valid) {
+        setCouponCode(code);
+        setDiscount(res.discount ?? 0);
+      } else {
+        Alert.alert('Invalid Coupon', res.message ?? 'Coupon is not valid.');
+      }
+    } catch {
+      Alert.alert('Error', 'Could not validate coupon. Please try again.');
+    }
+    setShowCoupon(false);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -30,18 +54,18 @@ export default function BookingConfirmScreen({ navigation, route }: any) {
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}>
         {/* Summary */}
         <View style={[styles.summary, shadow.card]}>
-          <Text style={styles.venueName}>{venue.name}</Text>
+          <Text style={styles.venueName}>{venue?.name ?? '—'}</Text>
           <Row label="Sport" value={sport} />
           <Row label="Date" value={date} />
           <Row label="Time" value={`${startTime} – ${endTime}`} />
-          <Row label="Address" value={venue.address} />
+          <Row label="Address" value={venue?.address ?? '—'} />
         </View>
 
         {/* Coupon */}
         <TouchableOpacity style={styles.couponBtn} onPress={() => setShowCoupon(true)}>
           <Text style={{ fontSize: 18 }}>🎟️</Text>
           <Text style={styles.couponText}>
-            {coupon ? `Coupon "${coupon}" applied` : 'Apply Coupon'}
+            {couponCode ? `Coupon "${couponCode}" applied` : 'Apply Coupon'}
           </Text>
           <Text style={styles.couponArrow}>›</Text>
         </TouchableOpacity>
@@ -49,7 +73,11 @@ export default function BookingConfirmScreen({ navigation, route }: any) {
         {/* Payment method */}
         <Text style={styles.sectionTitle}>Payment Method</Text>
         {PAYMENT_METHODS.map((m) => (
-          <TouchableOpacity key={m.id} onPress={() => setMethod(m.id)} style={[styles.methodRow, method === m.id && styles.methodRowActive]}>
+          <TouchableOpacity
+            key={m.id}
+            onPress={() => setMethod(m.id)}
+            style={[styles.methodRow, method === m.id && styles.methodRowActive]}
+          >
             <Text style={{ fontSize: 20 }}>{m.icon}</Text>
             <Text style={styles.methodLabel}>{m.label}</Text>
             <View style={[styles.radio, method === m.id && styles.radioActive]}>
@@ -60,7 +88,7 @@ export default function BookingConfirmScreen({ navigation, route }: any) {
 
         {/* Price */}
         <Text style={styles.sectionTitle}>Price Details</Text>
-        <PriceSummary base={slotPrice} fee={CONVENIENCE_FEE} discount={discount} total={total} />
+        <PriceSummary base={slotPrice} fee={convenienceFee} discount={discount} total={total} />
       </ScrollView>
 
       <View style={[styles.bottomBar, shadow.modal]}>
@@ -71,18 +99,38 @@ export default function BookingConfirmScreen({ navigation, route }: any) {
         <AppButton
           label="Pay & Confirm"
           fullWidth={false}
-          onPress={() => navigation.navigate('Payment', { ...route.params, total, method })}
+          onPress={() =>
+            navigation.navigate('Payment', {
+              venueId,
+              courtId,
+              slotId,
+              sport,
+              date,
+              startTime,
+              endTime,
+              slotPrice,
+              total,
+              method,
+              couponCode,
+              venueName: venue?.name,
+            })
+          }
           style={{ paddingHorizontal: 32 }}
         />
       </View>
 
       <CouponApplyModal
         visible={showCoupon}
-        coupons={COUPONS.filter((c) => c.isActive).map((c) => ({
-          code: c.code,
-          label: c.discountType === 'percent' ? `${c.discountValue}% off (min ₹${c.minBooking})` : `₹${c.discountValue} off (min ₹${c.minBooking})`,
-        }))}
-        onApply={(code) => { setCoupon(code); setShowCoupon(false); }}
+        coupons={coupons
+          .filter((c) => c.isActive)
+          .map((c) => ({
+            code: c.code,
+            label:
+              c.discountType === 'percent'
+                ? `${c.discountValue}% off (min ₹${c.minBooking})`
+                : `₹${c.discountValue} off (min ₹${c.minBooking})`,
+          }))}
+        onApply={handleApplyCoupon}
         onDismiss={() => setShowCoupon(false)}
       />
     </SafeAreaView>

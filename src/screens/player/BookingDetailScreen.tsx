@@ -1,14 +1,50 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image } from 'react-native';
+import {
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  ActivityIndicator, Alert,
+} from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton, StatusBadge } from '../../components/common';
+import { AppHeader, AppButton, StatusBadge, EmptyState } from '../../components/common';
 import { CancelBookingModal, ConfirmActionModal } from '../../modals';
-import { BOOKINGS } from '../../data/mockData';
+import { useBookingDetail, useCancelBooking } from '../../api/hooks/useBookings';
+import { extractApiError } from '../../api/client';
 
 export default function BookingDetailScreen({ navigation, route }: any) {
-  const booking = BOOKINGS.find((b) => b.id === route.params.bookingId)!;
+  const bookingId: string = route.params.bookingId;
+  const { data: booking, isLoading, isError } = useBookingDetail(bookingId);
+  const cancelBooking = useCancelBooking();
+
   const [showCancel, setShowCancel] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
+
+  const handleCancel = async () => {
+    try {
+      await cancelBooking.mutateAsync(Number(bookingId));
+      setShowCancel(false);
+      navigation.goBack();
+    } catch (err) {
+      setShowCancel(false);
+      Alert.alert('Cancel Failed', extractApiError(err));
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <AppHeader title="Booking Details" onBack={() => navigation.goBack()} />
+        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+      </SafeAreaView>
+    );
+  }
+
+  if (isError || !booking) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <AppHeader title="Booking Details" onBack={() => navigation.goBack()} />
+        <EmptyState icon="⚠️" title="Booking not found" subtitle="" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -23,12 +59,9 @@ export default function BookingDetailScreen({ navigation, route }: any) {
         </View>
 
         <View style={[styles.card, shadow.card, { marginTop: spacing.lg }]}>
-          <View style={{ flexDirection: 'row', gap: spacing.md }}>
-            <Image source={{ uri: booking.venuePhoto }} style={styles.venueImg} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.venueName}>{booking.venueName}</Text>
-              <Text style={styles.meta}>{booking.sport} · {booking.courtName}</Text>
-            </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.venueName}>{booking.venueName}</Text>
+            <Text style={styles.meta}>{booking.sport} · {booking.courtName}</Text>
           </View>
           <View style={styles.divider} />
           <Row label="Date" value={booking.date} />
@@ -44,9 +77,23 @@ export default function BookingDetailScreen({ navigation, route }: any) {
 
         <View style={{ marginTop: spacing.xl, gap: spacing.md }}>
           {booking.status === 'confirmed' && (
-            <AppButton label="Cancel Booking" variant="danger" onPress={() => setShowCancel(true)} />
+            <AppButton
+              label="Cancel Booking"
+              variant="danger"
+              onPress={() => setShowCancel(true)}
+            />
           )}
-          <AppButton label="Download Invoice" variant="secondary" onPress={() => setShowInvoice(true)} />
+          {booking.status === 'completed' && !booking.hasReview && (
+            <AppButton
+              label="Rate & Review"
+              onPress={() => navigation.navigate('RateReview', { bookingId: booking.id })}
+            />
+          )}
+          <AppButton
+            label="Download Invoice"
+            variant="secondary"
+            onPress={() => setShowInvoice(true)}
+          />
         </View>
       </ScrollView>
 
@@ -54,7 +101,7 @@ export default function BookingDetailScreen({ navigation, route }: any) {
         visible={showCancel}
         venueName={booking.venueName}
         refundAmount={Math.round(booking.amount * 0.5)}
-        onConfirm={() => { setShowCancel(false); navigation.goBack(); }}
+        onConfirm={handleCancel}
         onDismiss={() => setShowCancel(false)}
       />
       <ConfirmActionModal
@@ -83,7 +130,6 @@ const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg },
   qrBox: { alignItems: 'center', gap: spacing.sm },
   bookingId: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
-  venueImg: { width: 64, height: 64, borderRadius: radius.md, backgroundColor: colors.surfaceAlt },
   venueName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
   meta: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 4 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.md },

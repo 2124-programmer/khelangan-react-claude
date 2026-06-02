@@ -1,15 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AvatarImage } from '../../components/common';
 import { BookingCard } from '../../components/venue';
 import { useAuth } from '../../store/AuthContext';
-import { OWNER_STATS, BOOKINGS, VENUES } from '../../data/mockData';
+import { useOwnerStats } from '../../api/hooks/useAdmin';
+import { useBookings } from '../../api/hooks/useBookings';
 
 export default function OwnerDashboardScreen({ navigation }: any) {
   const { user } = useAuth();
-  const ownerVenueIds = VENUES.filter((v) => v.ownerId === 'o1').map((v) => v.id);
-  const recentBookings = BOOKINGS.filter((b) => ownerVenueIds.includes(b.venueId)).slice(0, 3);
+  const { data: stats } = useOwnerStats();
+  const { data: bookingsData } = useBookings({ page: 0, size: 3 });
+  const recentBookings = bookingsData?.bookings ?? [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -27,24 +28,36 @@ export default function OwnerDashboardScreen({ navigation }: any) {
         {/* Revenue card */}
         <View style={styles.revenueCard}>
           <Text style={styles.revLabel}>Today's Revenue</Text>
-          <Text style={styles.revAmount}>₹{OWNER_STATS.todayRevenue.toLocaleString('en-IN')}</Text>
+          <Text style={styles.revAmount}>
+            ₹{(stats?.todayRevenue ?? 0).toLocaleString('en-IN')}
+          </Text>
           <View style={styles.revRow}>
-            <Text style={styles.revSub}>{OWNER_STATS.todayBookings} bookings today</Text>
-            <Text style={styles.revSub}>Pending payout: ₹{OWNER_STATS.pendingPayout.toLocaleString('en-IN')}</Text>
+            <Text style={styles.revSub}>{stats?.todayBookings ?? 0} bookings today</Text>
+            <Text style={styles.revSub}>
+              Pending: ₹{(stats?.pendingPayout ?? 0).toLocaleString('en-IN')}
+            </Text>
           </View>
         </View>
 
         {/* Stats grid */}
         <View style={styles.grid}>
-          <Stat label="This Week" value={`₹${(OWNER_STATS.weekRevenue / 1000).toFixed(1)}k`} accent={colors.owner} />
-          <Stat label="This Month" value={`₹${(OWNER_STATS.monthRevenue / 1000).toFixed(0)}k`} accent={colors.primary} />
+          <Stat
+            label="This Week"
+            value={`₹${((stats?.weekRevenue ?? 0) / 1000).toFixed(1)}k`}
+            accent={colors.owner}
+          />
+          <Stat
+            label="This Month"
+            value={`₹${((stats?.monthRevenue ?? 0) / 1000).toFixed(0)}k`}
+            accent={colors.primary}
+          />
         </View>
 
         {/* Quick actions */}
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionsRow}>
           <Action icon="➕" label="Add Venue" onPress={() => navigation.navigate('AddVenue')} />
-          <Action icon="📅" label="Calendar" onPress={() => navigation.navigate('VenueCalendar', { venueId: 'v1' })} />
+          <Action icon="📅" label="Calendar" onPress={() => navigation.navigate('VenueCalendar', { venueId: '1' })} />
           <Action icon="💰" label="Earnings" onPress={() => navigation.navigate('EarningsTab')} />
           <Action icon="⭐" label="Reviews" onPress={() => navigation.navigate('ReviewsManagement')} />
         </View>

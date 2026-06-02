@@ -1,16 +1,26 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch } from 'react-native';
+import {
+  View, Text, ScrollView, StyleSheet, TouchableOpacity,
+  Switch, Alert, ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  AppHeader, AppButton, AppInput, StatusBadge, StatCard, Card, EmptyState, AvatarImage,
+  AppHeader, AppButton, AppInput, StatusBadge,
+  StatCard, Card, EmptyState, AvatarImage,
 } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
-import {
-  PENDING_VENUES, VENUES, BOOKINGS, PAYOUTS, DISPUTES, COUPONS, SPORTS, ADMIN_KPIS,
-  getSportName,
-} from '../../data/mockData';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+
+import { useAdminVenues, useUpdateVenueStatus } from '../../api/hooks/useVenues';
+import { useAdminUsers, useBlockUser, useUnblockUser } from '../../api/hooks/useUser';
+import { useAdminBookings } from '../../api/hooks/useBookings';
+import { useAdminPayouts, useProcessPayout } from '../../api/hooks/usePayouts';
+import { useDisputes, useResolveDispute } from '../../api/hooks/useDisputes';
+import { useAdminCoupons, useCreateCoupon } from '../../api/hooks/useCoupons';
+import { useBroadcastNotification } from '../../api/hooks/useNotifications';
+import { usePlatformSettings, useUpdateSettings } from '../../api/hooks/useAdmin';
+import { extractApiError } from '../../api/client';
 
 function Screen({ title, navigation, children, scroll = true }: any) {
   const Body: any = scroll ? ScrollView : View;
@@ -24,31 +34,38 @@ function Screen({ title, navigation, children, scroll = true }: any) {
   );
 }
 
-/* ------------------------- VENUE APPROVAL ------------------------- */
+/* ─── VENUE APPROVAL ───────────────────────────────────────────────── */
 export function VenueApprovalScreen({ navigation }: any) {
-  const [queue, setQueue] = useState(PENDING_VENUES);
+  const { data, isLoading } = useAdminVenues({ status: 'PENDING' });
+  const updateStatus = useUpdateVenueStatus();
+  const pending = data?.venues ?? [];
   const [modal, setModal] = useState<{ id: string; action: 'approve' | 'reject' } | null>(null);
 
-  const act = () => {
-    if (modal) setQueue((q) => q.filter((v) => v.id !== modal.id));
+  const act = async () => {
+    if (!modal) return;
+    try {
+      await updateStatus.mutateAsync({
+        id: Number(modal.id),
+        data: { status: modal.action === 'approve' ? 'LIVE' : 'REJECTED' },
+      });
+    } catch (err) {
+      Alert.alert('Error', extractApiError(err));
+    }
     setModal(null);
   };
 
   return (
     <Screen title="Venue Approvals" navigation={navigation}>
-      {queue.length === 0 ? (
+      {isLoading ? (
+        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+      ) : pending.length === 0 ? (
         <EmptyState icon="✅" title="All caught up" subtitle="No venues pending approval." />
       ) : (
-        queue.map((v) => (
+        pending.map((v) => (
           <Card key={v.id} style={{ marginBottom: spacing.md }}>
             <Text style={styles.cardTitle}>{v.name}</Text>
             <Text style={styles.muted}>{v.address}, {v.city}</Text>
-            <View style={styles.chipRow}>
-              {v.sports.map((s) => (
-                <Text key={s} style={styles.tag}>{getSportName(s)}</Text>
-              ))}
-            </View>
-            <Text style={styles.muted}>Courts: {v.courts.length} · ₹{v.pricePerSlot}/slot</Text>
+            <Text style={styles.muted}>₹{v.pricePerSlot}/slot</Text>
             <View style={styles.rowGap}>
               <AppButton label="Reject" variant="secondary" style={{ flex: 1 }}
                 onPress={() => setModal({ id: v.id, action: 'reject' })} />
@@ -73,48 +90,59 @@ export function VenueApprovalScreen({ navigation }: any) {
   );
 }
 
-/* ------------------------- VENUE MANAGEMENT ------------------------- */
+/* ─── VENUE MANAGEMENT ─────────────────────────────────────────────── */
 export function VenueManagementScreen({ navigation }: any) {
+  const { data, isLoading } = useAdminVenues();
+  const venues = data?.venues ?? [];
   return (
     <Screen title="All Venues" navigation={navigation}>
-      {VENUES.map((v) => (
+      {isLoading ? (
+        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+      ) : venues.map((v) => (
         <Card key={v.id} style={{ marginBottom: spacing.md }}>
           <View style={styles.rowBetween}>
             <Text style={styles.cardTitle}>{v.name}</Text>
             <StatusBadge status={v.status} />
           </View>
           <Text style={styles.muted}>{v.city} · ⭐ {v.rating} ({v.reviewCount}) · ₹{v.pricePerSlot}</Text>
-          <Text style={styles.muted}>Owner: {v.ownerId}</Text>
         </Card>
       ))}
     </Screen>
   );
 }
 
-/* ------------------------- PLAYER MANAGEMENT ------------------------- */
-const PLAYERS = [
-  { id: 'p1', name: 'Rohan Sharma', email: 'rohan@example.com', bookings: 12, status: 'active' },
-  { id: 'p2', name: 'Aarti Patil', email: 'aarti@example.com', bookings: 5, status: 'active' },
-  { id: 'p3', name: 'Imran Khan', email: 'imran@example.com', bookings: 2, status: 'blocked' },
-];
+/* ─── PLAYER MANAGEMENT ────────────────────────────────────────────── */
 export function PlayerManagementScreen({ navigation }: any) {
-  const [list, setList] = useState(PLAYERS);
-  const toggle = (id: string) =>
-    setList((l) => l.map((p) => (p.id === id ? { ...p, status: p.status === 'active' ? 'blocked' : 'active' } : p)));
+  const { data, isLoading } = useAdminUsers({ role: 'PLAYER' });
+  const blockUser = useBlockUser();
+  const unblockUser = useUnblockUser();
+  const users = data?.users ?? [];
+
+  const toggle = async (id: string, blocked: boolean) => {
+    try {
+      if (blocked) await unblockUser.mutateAsync(Number(id));
+      else await blockUser.mutateAsync(Number(id));
+    } catch (err) {
+      Alert.alert('Error', extractApiError(err));
+    }
+  };
+
   return (
     <Screen title="Players" navigation={navigation}>
-      {list.map((p) => (
-        <Card key={p.id} style={{ marginBottom: spacing.sm }}>
+      {isLoading ? (
+        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+      ) : users.map((u) => (
+        <Card key={u.id} style={{ marginBottom: spacing.sm }}>
           <View style={styles.rowBetween}>
             <View style={styles.rowGapSm}>
-              <AvatarImage name={p.name} size={40} />
+              <AvatarImage name={u.name} size={40} />
               <View>
-                <Text style={styles.cardTitle}>{p.name}</Text>
-                <Text style={styles.muted}>{p.email} · {p.bookings} bookings</Text>
+                <Text style={styles.cardTitle}>{u.name}</Text>
+                <Text style={styles.muted}>{u.email} · {u.totalBookings ?? 0} bookings</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={() => toggle(p.id)}>
-              <StatusBadge status={p.status} />
+            <TouchableOpacity onPress={() => toggle(u.id, !!(u as any).isBlocked)}>
+              <StatusBadge status={(u as any).isBlocked ? 'blocked' : 'active'} />
             </TouchableOpacity>
           </View>
         </Card>
@@ -123,22 +151,22 @@ export function PlayerManagementScreen({ navigation }: any) {
   );
 }
 
-/* ------------------------- OWNER MANAGEMENT ------------------------- */
-const OWNERS = [
-  { id: 'o1', name: 'Green Sports Pvt Ltd', venues: 2, kyc: 'verified' },
-  { id: 'o2', name: 'Boundary Ventures', venues: 2, kyc: 'pending' },
-];
+/* ─── OWNER MANAGEMENT ─────────────────────────────────────────────── */
 export function OwnerManagementScreen({ navigation }: any) {
+  const { data, isLoading } = useAdminUsers({ role: 'OWNER' });
+  const users = data?.users ?? [];
   return (
-    <Screen title="Owners" navigation={navigation}>
-      {OWNERS.map((o) => (
-        <Card key={o.id} style={{ marginBottom: spacing.sm }}>
-          <View style={styles.rowBetween}>
+    <Screen title="Venue Owners" navigation={navigation}>
+      {isLoading ? (
+        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+      ) : users.map((u) => (
+        <Card key={u.id} style={{ marginBottom: spacing.sm }}>
+          <View style={styles.rowGapSm}>
+            <AvatarImage name={u.name} size={40} />
             <View>
-              <Text style={styles.cardTitle}>{o.name}</Text>
-              <Text style={styles.muted}>{o.venues} venues</Text>
+              <Text style={styles.cardTitle}>{u.name}</Text>
+              <Text style={styles.muted}>{u.email}</Text>
             </View>
-            <StatusBadge status={o.kyc} />
           </View>
         </Card>
       ))}
@@ -146,315 +174,294 @@ export function OwnerManagementScreen({ navigation }: any) {
   );
 }
 
-/* ------------------------- ADMIN BOOKINGS ------------------------- */
+/* ─── ADMIN BOOKINGS ───────────────────────────────────────────────── */
 export function AdminBookingsScreen({ navigation }: any) {
+  const { data, isLoading } = useAdminBookings();
+  const bookings = data?.bookings ?? [];
   return (
     <Screen title="All Bookings" navigation={navigation}>
-      {BOOKINGS.map((b) => (
+      {isLoading ? (
+        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+      ) : bookings.map((b) => (
         <Card key={b.id} style={{ marginBottom: spacing.sm }}>
           <View style={styles.rowBetween}>
-            <Text style={styles.cardTitle}>{b.venueName}</Text>
+            <Text style={styles.cardTitle}>#{b.id}</Text>
             <StatusBadge status={b.status} />
           </View>
-          <Text style={styles.muted}>{getSportName(b.sport)} · {b.date} · {b.startTime}-{b.endTime}</Text>
-          <Text style={styles.muted}>#{b.id} · ₹{b.amount}</Text>
+          <Text style={styles.muted}>{b.playerName} · {b.venueName}</Text>
+          <Text style={styles.muted}>{b.date} {b.startTime}–{b.endTime} · ₹{b.amount}</Text>
         </Card>
       ))}
     </Screen>
   );
 }
 
-/* ------------------------- PAYMENTS & REVENUE ------------------------- */
+/* ─── PAYMENTS / REVENUE ───────────────────────────────────────────── */
 export function PaymentsRevenueScreen({ navigation }: any) {
-  const [payouts, setPayouts] = useState(PAYOUTS);
-  const [target, setTarget] = useState<string | null>(null);
-  const totalCommission = PAYOUTS.reduce((s, p) => s + p.commissionDeducted, 0);
-
-  const process = () => {
-    if (target) setPayouts((l) => l.map((p) => (p.id === target ? { ...p, status: 'settled' } : p)));
-    setTarget(null);
-  };
+  const { data, isLoading } = useAdminPayouts();
+  const processPayout = useProcessPayout();
+  const payouts = data?.payouts ?? [];
 
   return (
-    <Screen title="Payments & Revenue" navigation={navigation}>
-      <View style={styles.statRow}>
-        <StatCard label="Revenue Today" value={`₹${ADMIN_KPIS.revenueToday.toLocaleString('en-IN')}`} />
-        <StatCard label="Commission" value={`₹${totalCommission.toLocaleString('en-IN')}`} accent={colors.owner} />
-      </View>
-      <Text style={styles.section}>Owner Payouts</Text>
-      {payouts.map((p) => (
-        <Card key={p.id} style={{ marginBottom: spacing.sm }}>
+    <Screen title="Payments & Payouts" navigation={navigation}>
+      {isLoading ? (
+        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+      ) : payouts.map((p) => (
+        <Card key={p.id} style={{ marginBottom: spacing.md }}>
           <View style={styles.rowBetween}>
             <Text style={styles.cardTitle}>{p.ownerName}</Text>
             <StatusBadge status={p.status} />
           </View>
-          <Text style={styles.muted}>Gross ₹{p.amount} · Commission ₹{p.commissionDeducted}</Text>
-          <Text style={[styles.cardTitle, { color: colors.primary }]}>Net ₹{p.netAmount}</Text>
+          <Text style={styles.muted}>Net: ₹{p.netAmount.toLocaleString('en-IN')} (commission ₹{p.commissionDeducted})</Text>
+          <Text style={styles.muted}>{p.date}</Text>
           {p.status === 'pending' && (
-            <AppButton label="Process Payout" style={{ marginTop: spacing.sm }} onPress={() => setTarget(p.id)} />
+            <AppButton
+              label="Process Payout"
+              onPress={async () => {
+                try { await processPayout.mutateAsync(Number(p.id)); }
+                catch (err) { Alert.alert('Error', extractApiError(err)); }
+              }}
+              style={{ marginTop: spacing.md }}
+            />
           )}
         </Card>
       ))}
-      <ConfirmActionModal
-        visible={!!target}
-        title="Process payout?"
-        message="The net amount will be transferred to the owner's bank account."
-        confirmLabel="Process"
-        onConfirm={process}
-        onDismiss={() => setTarget(null)}
-      />
     </Screen>
   );
 }
 
-/* ------------------------- DISPUTE MANAGEMENT ------------------------- */
+/* ─── DISPUTE MANAGEMENT ───────────────────────────────────────────── */
 export function DisputeManagementScreen({ navigation }: any) {
-  const [list, setList] = useState(DISPUTES);
-  const [target, setTarget] = useState<string | null>(null);
-  const resolve = () => {
-    if (target) setList((l) => l.map((d) => (d.id === target ? { ...d, status: 'resolved' } : d)));
-    setTarget(null);
-  };
+  const { data, isLoading } = useDisputes();
+  const resolveDispute = useResolveDispute();
+  const disputes = data?.disputes ?? [];
+  const [resolveModal, setResolveModal] = useState<string | null>(null);
+  const [note, setNote] = useState('');
+
   return (
     <Screen title="Disputes" navigation={navigation}>
-      {list.map((d) => (
+      {isLoading ? (
+        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+      ) : disputes.map((d) => (
         <Card key={d.id} style={{ marginBottom: spacing.md }}>
           <View style={styles.rowBetween}>
             <Text style={styles.cardTitle}>{d.venueName}</Text>
             <StatusBadge status={d.status} />
           </View>
-          <Text style={styles.muted}>{d.playerName} vs {d.ownerName} · {d.date}</Text>
-          <Text style={styles.issue}>{d.issue}</Text>
+          <Text style={styles.muted}>{d.playerName} vs {d.ownerName}</Text>
+          <Text style={styles.muted}>{d.issue}</Text>
           {d.status === 'open' && (
-            <AppButton label="Resolve Dispute" style={{ marginTop: spacing.sm }} onPress={() => setTarget(d.id)} />
+            <AppButton label="Resolve" onPress={() => { setResolveModal(d.id); setNote(''); }} style={{ marginTop: spacing.md }} />
           )}
         </Card>
       ))}
       <ConfirmActionModal
-        visible={!!target}
-        title="Resolve dispute?"
-        message="Mark this dispute as resolved and notify both parties."
+        visible={!!resolveModal}
+        title="Resolve Dispute"
+        message="Add a resolution note for both parties."
         confirmLabel="Resolve"
-        onConfirm={resolve}
-        onDismiss={() => setTarget(null)}
+        onConfirm={async () => {
+          if (!resolveModal) return;
+          try {
+            await resolveDispute.mutateAsync({ id: Number(resolveModal), data: { resolvedNote: note || 'Resolved by admin.' } });
+          } catch (err) { Alert.alert('Error', extractApiError(err)); }
+          setResolveModal(null);
+        }}
+        onDismiss={() => setResolveModal(null)}
       />
     </Screen>
   );
 }
 
-/* ------------------------- COUPON MANAGEMENT ------------------------- */
+/* ─── COUPON MANAGEMENT ────────────────────────────────────────────── */
 export function CouponManagementScreen({ navigation }: any) {
-  const [list, setList] = useState(COUPONS);
-  const [adding, setAdding] = useState(false);
+  const { data, isLoading } = useAdminCoupons();
+  const createCoupon = useCreateCoupon();
+  const coupons = data?.coupons ?? [];
+  const [showCreate, setShowCreate] = useState(false);
   const [code, setCode] = useState('');
   const [value, setValue] = useState('');
+  const [type, setType] = useState<'PERCENT' | 'FLAT'>('PERCENT');
+  const [minBook, setMinBook] = useState('');
+  const [maxUses, setMaxUses] = useState('');
 
-  const add = () => {
-    if (!code) return;
-    setList((l) => [
-      { id: `cp${l.length + 1}`, code: code.toUpperCase(), discountType: 'percent', discountValue: Number(value) || 10,
-        minBooking: 300, maxDiscount: 200, validUntil: '2026-12-31', usedCount: 0, maxUses: 500, isActive: true },
-      ...l,
-    ]);
-    setCode(''); setValue(''); setAdding(false);
+  const handleCreate = async () => {
+    try {
+      await createCoupon.mutateAsync({
+        code: code.toUpperCase(),
+        discountType: type,
+        discountValue: parseInt(value) || 0,
+        minBooking: parseInt(minBook) || 0,
+        validUntil: '2026-12-31',
+        maxUses: parseInt(maxUses) || 100,
+      });
+      setShowCreate(false);
+    } catch (err) {
+      Alert.alert('Error', extractApiError(err));
+    }
   };
 
   return (
     <Screen title="Coupons" navigation={navigation}>
-      <AppButton label={adding ? 'Cancel' : '+ New Coupon'} variant={adding ? 'secondary' : 'primary'}
-        onPress={() => setAdding((a) => !a)} style={{ marginBottom: spacing.md }} />
-      {adding && (
-        <Card style={{ marginBottom: spacing.md }}>
-          <AppInput label="Code" value={code} onChangeText={setCode} placeholder="e.g. SUMMER25" autoCapitalize="characters" />
-          <AppInput label="Discount %" value={value} onChangeText={setValue} keyboardType="numeric" placeholder="10" />
-          <AppButton label="Create Coupon" onPress={add} />
+      <AppButton label="+ Create Coupon" onPress={() => setShowCreate(!showCreate)} style={{ marginBottom: spacing.lg }} />
+      {showCreate && (
+        <Card style={{ marginBottom: spacing.lg }}>
+          <AppInput label="Code" value={code} onChangeText={setCode} placeholder="e.g. SUMMER20" />
+          <View style={styles.rowGap}>
+            <TouchableOpacity onPress={() => setType('PERCENT')} style={[styles.typeBtn, type === 'PERCENT' && styles.typeBtnActive]}>
+              <Text style={[styles.typeBtnText, type === 'PERCENT' && { color: colors.white }]}>Percent</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setType('FLAT')} style={[styles.typeBtn, type === 'FLAT' && styles.typeBtnActive]}>
+              <Text style={[styles.typeBtnText, type === 'FLAT' && { color: colors.white }]}>Flat ₹</Text>
+            </TouchableOpacity>
+          </View>
+          <AppInput label={type === 'PERCENT' ? 'Discount %' : 'Discount ₹'} value={value} onChangeText={setValue} keyboardType="numeric" />
+          <AppInput label="Min Booking ₹" value={minBook} onChangeText={setMinBook} keyboardType="numeric" />
+          <AppInput label="Max Uses" value={maxUses} onChangeText={setMaxUses} keyboardType="numeric" />
+          <AppButton label={createCoupon.isPending ? 'Creating…' : 'Create'} onPress={handleCreate} loading={createCoupon.isPending} style={{ marginTop: spacing.sm }} />
         </Card>
       )}
-      {list.map((c) => (
+      {isLoading ? (
+        <ActivityIndicator color={colors.primary} />
+      ) : coupons.map((c) => (
         <Card key={c.id} style={{ marginBottom: spacing.sm }}>
           <View style={styles.rowBetween}>
-            <Text style={[styles.cardTitle, { letterSpacing: 1 }]}>{c.code}</Text>
+            <Text style={styles.cardTitle}>{c.code}</Text>
             <StatusBadge status={c.isActive ? 'active' : 'inactive'} />
           </View>
           <Text style={styles.muted}>
-            {c.discountType === 'percent' ? `${c.discountValue}% off` : `₹${c.discountValue} off`}
-            {' '}· min ₹{c.minBooking} · used {c.usedCount}/{c.maxUses}
+            {c.discountType === 'percent' ? `${c.discountValue}% off` : `₹${c.discountValue} off`} · min ₹{c.minBooking}
           </Text>
+          <Text style={styles.muted}>Used: {c.usedCount}/{c.maxUses} · Valid till {c.validUntil}</Text>
         </Card>
       ))}
     </Screen>
   );
 }
 
-/* ------------------------- NOTIFICATION BROADCAST ------------------------- */
+/* ─── NOTIFICATION BROADCAST ───────────────────────────────────────── */
 export function NotificationBroadcastScreen({ navigation }: any) {
+  const broadcast = useBroadcastNotification();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [audience, setAudience] = useState<'all' | 'players' | 'owners'>('all');
-  const [sent, setSent] = useState(false);
+  const [audience, setAudience] = useState<'ALL' | 'PLAYERS' | 'OWNERS'>('ALL');
+
+  const handleSend = async () => {
+    if (!title || !body) { Alert.alert('Required', 'Enter title and message.'); return; }
+    try {
+      const res = await broadcast.mutateAsync({ title, body, audience });
+      Alert.alert('Sent', res.message ?? 'Broadcast sent successfully.');
+      setTitle(''); setBody('');
+    } catch (err) {
+      Alert.alert('Error', extractApiError(err));
+    }
+  };
 
   return (
-    <Screen title="Broadcast" navigation={navigation}>
+    <Screen title="Broadcast Notification" navigation={navigation}>
       <AppInput label="Title" value={title} onChangeText={setTitle} placeholder="Notification title" />
-      <AppInput label="Message" value={body} onChangeText={setBody} placeholder="Write your message…" multiline />
-      <Text style={styles.section}>Audience</Text>
+      <AppInput label="Message" value={body} onChangeText={setBody} multiline placeholder="Your message..." />
+      <Text style={styles.label}>Audience</Text>
       <View style={styles.rowGap}>
-        {(['all', 'players', 'owners'] as const).map((a) => (
+        {(['ALL', 'PLAYERS', 'OWNERS'] as const).map((a) => (
           <TouchableOpacity key={a} onPress={() => setAudience(a)}
-            style={[styles.segment, audience === a && styles.segmentActive]}>
-            <Text style={[styles.segmentText, audience === a && styles.segmentTextActive]}>
-              {a[0].toUpperCase() + a.slice(1)}
-            </Text>
+            style={[styles.typeBtn, audience === a && styles.typeBtnActive]}>
+            <Text style={[styles.typeBtnText, audience === a && { color: colors.white }]}>{a}</Text>
           </TouchableOpacity>
         ))}
       </View>
-      <AppButton label="Send Broadcast" style={{ marginTop: spacing.lg }} onPress={() => setSent(true)} />
-      <ConfirmActionModal
-        visible={sent}
-        title="Broadcast sent"
-        message={`Your notification was queued for ${audience}.`}
-        confirmLabel="Done"
-        onConfirm={() => { setSent(false); navigation.goBack(); }}
-        onDismiss={() => setSent(false)}
+      <AppButton
+        label={broadcast.isPending ? 'Sending…' : 'Send Broadcast'}
+        onPress={handleSend}
+        loading={broadcast.isPending}
+        style={{ marginTop: spacing.xl }}
       />
     </Screen>
   );
 }
 
-/* ------------------------- ANALYTICS ------------------------- */
-export function AnalyticsScreen({ navigation }: any) {
-  const bars = [
-    { label: 'Mon', v: 60 }, { label: 'Tue', v: 80 }, { label: 'Wed', v: 45 },
-    { label: 'Thu', v: 95 }, { label: 'Fri', v: 70 }, { label: 'Sat', v: 100 }, { label: 'Sun', v: 88 },
-  ];
-  return (
-    <Screen title="Analytics" navigation={navigation}>
-      <View style={styles.statRow}>
-        <StatCard label="GMV (month)" value="₹4.2L" />
-        <StatCard label="Take Rate" value="11.4%" accent={colors.owner} />
-      </View>
-      <View style={styles.statRow}>
-        <StatCard label="Conversion" value="34%" accent={colors.warning} />
-        <StatCard label="Repeat Rate" value="58%" accent={colors.admin} />
-      </View>
-      <Text style={styles.section}>Bookings this week</Text>
-      <Card>
-        <View style={styles.chart}>
-          {bars.map((b) => (
-            <View key={b.label} style={styles.barCol}>
-              <View style={[styles.bar, { height: b.v }]} />
-              <Text style={styles.barLabel}>{b.label}</Text>
-            </View>
-          ))}
-        </View>
-      </Card>
-    </Screen>
-  );
-}
-
-/* ------------------------- CATEGORY MANAGEMENT ------------------------- */
-export function CategoryManagementScreen({ navigation }: any) {
-  const [list, setList] = useState(SPORTS);
-  const [name, setName] = useState('');
-  const add = () => {
-    if (!name) return;
-    setList((l) => [...l, { id: `s${l.length + 1}`, name, icon: '🏅' }]);
-    setName('');
-  };
-  return (
-    <Screen title="Sport Categories" navigation={navigation}>
-      <Card style={{ marginBottom: spacing.md }}>
-        <AppInput label="New category" value={name} onChangeText={setName} placeholder="e.g. Squash" />
-        <AppButton label="Add Category" onPress={add} />
-      </Card>
-      {list.map((s) => (
-        <Card key={s.id} style={{ marginBottom: spacing.sm }}>
-          <Text style={styles.cardTitle}>{s.icon}  {s.name}</Text>
-        </Card>
-      ))}
-    </Screen>
-  );
-}
-
-/* ------------------------- CMS ------------------------- */
-const CMS_PAGES = ['Terms & Conditions', 'Privacy Policy', 'Cancellation Policy', 'About Us', 'FAQ', 'Contact'];
-export function CMSScreen({ navigation }: any) {
-  return (
-    <Screen title="Content (CMS)" navigation={navigation}>
-      {CMS_PAGES.map((p) => (
-        <TouchableOpacity key={p}>
-          <Card style={{ marginBottom: spacing.sm }}>
-            <View style={styles.rowBetween}>
-              <Text style={styles.cardTitle}>{p}</Text>
-              <Text style={styles.arrow}>›</Text>
-            </View>
-          </Card>
-        </TouchableOpacity>
-      ))}
-    </Screen>
-  );
-}
-
-/* ------------------------- ADMIN SETTINGS ------------------------- */
+/* ─── ADMIN SETTINGS ───────────────────────────────────────────────── */
 export function AdminSettingsScreen({ navigation }: any) {
-  const { logout } = useAuth();
+  const { data: settings, isLoading } = usePlatformSettings();
+  const updateSettings = useUpdateSettings();
+  const [commission, setCommission] = useState('');
+  const [fee, setFee] = useState('');
   const [maintenance, setMaintenance] = useState(false);
   const [autoApprove, setAutoApprove] = useState(false);
-  const [commission, setCommission] = useState('10');
-  const [confirmLogout, setConfirmLogout] = useState(false);
+
+  React.useEffect(() => {
+    if (settings) {
+      setCommission(String(settings.commissionPercent ?? 10));
+      setFee(String(settings.convenienceFee ?? 20));
+      setMaintenance(settings.maintenanceMode ?? false);
+      setAutoApprove(settings.autoApproveVenues ?? false);
+    }
+  }, [settings]);
+
+  const handleSave = async () => {
+    try {
+      await updateSettings.mutateAsync({
+        commissionPercent: parseInt(commission),
+        convenienceFee: parseInt(fee),
+        maintenanceMode: maintenance,
+        autoApproveVenues: autoApprove,
+      });
+      Alert.alert('Saved', 'Settings updated successfully.');
+    } catch (err) {
+      Alert.alert('Error', extractApiError(err));
+    }
+  };
+
+  if (isLoading) return <Screen title="Settings" navigation={navigation}><ActivityIndicator color={colors.primary} /></Screen>;
+
   return (
     <Screen title="Platform Settings" navigation={navigation}>
-      <Card style={{ marginBottom: spacing.md }}>
-        <View style={styles.toggleRow}>
-          <Text style={styles.cardTitle}>Maintenance mode</Text>
-          <Switch value={maintenance} onValueChange={setMaintenance} trackColor={{ true: colors.admin }} />
-        </View>
-        <View style={styles.toggleRow}>
-          <Text style={styles.cardTitle}>Auto-approve venues</Text>
-          <Switch value={autoApprove} onValueChange={setAutoApprove} trackColor={{ true: colors.admin }} />
-        </View>
-      </Card>
-      <Card style={{ marginBottom: spacing.md }}>
-        <AppInput label="Commission rate (%)" value={commission} onChangeText={setCommission} keyboardType="numeric" />
-        <AppInput label="Convenience fee (₹)" value="20" onChangeText={() => {}} keyboardType="numeric" />
-        <AppButton label="Save Settings" onPress={() => navigation.goBack()} />
-      </Card>
-      <AppButton label="Logout" variant="danger" onPress={() => setConfirmLogout(true)} />
-      <ConfirmActionModal
-        visible={confirmLogout}
-        title="Logout?"
-        message="You'll be returned to the role selection screen."
-        confirmLabel="Logout"
-        danger
-        onConfirm={() => { setConfirmLogout(false); logout(); }}
-        onDismiss={() => setConfirmLogout(false)}
+      <AppInput label="Commission %" value={commission} onChangeText={setCommission} keyboardType="numeric" />
+      <AppInput label="Convenience Fee ₹" value={fee} onChangeText={setFee} keyboardType="numeric" />
+      <View style={styles.toggleRow}>
+        <Text style={styles.toggleLabel}>Maintenance Mode</Text>
+        <Switch value={maintenance} onValueChange={setMaintenance} trackColor={{ true: colors.danger }} />
+      </View>
+      <View style={styles.toggleRow}>
+        <Text style={styles.toggleLabel}>Auto-approve Venues</Text>
+        <Switch value={autoApprove} onValueChange={setAutoApprove} trackColor={{ true: colors.primary }} />
+      </View>
+      <AppButton
+        label={updateSettings.isPending ? 'Saving…' : 'Save Settings'}
+        onPress={handleSave}
+        loading={updateSettings.isPending}
+        style={{ marginTop: spacing.xl }}
       />
     </Screen>
   );
+}
+
+/* ─── STUB SCREENS ─────────────────────────────────────────────────── */
+export function AnalyticsScreen({ navigation }: any) {
+  return <Screen title="Analytics" navigation={navigation}><EmptyState icon="📊" title="Coming soon" subtitle="" /></Screen>;
+}
+export function CategoryManagementScreen({ navigation }: any) {
+  return <Screen title="Categories" navigation={navigation}><EmptyState icon="🏷️" title="Coming soon" subtitle="" /></Screen>;
+}
+export function CMSScreen({ navigation }: any) {
+  return <Screen title="CMS" navigation={navigation}><EmptyState icon="📄" title="Coming soon" subtitle="" /></Screen>;
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   body: { flex: 1 },
-  bodyContent: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
-  cardTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold as any, color: colors.text },
-  muted: { fontSize: fontSize.sm, color: colors.textDim, marginTop: 2 },
-  issue: { fontSize: fontSize.sm, color: colors.text, marginTop: spacing.sm, lineHeight: 20 },
-  section: { fontSize: fontSize.md, fontWeight: fontWeight.bold as any, color: colors.text, marginTop: spacing.lg, marginBottom: spacing.sm },
+  bodyContent: { padding: spacing.lg },
+  cardTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
+  muted: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
+  tag: { backgroundColor: colors.primaryLight, color: colors.primaryDark, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill, fontSize: fontSize.xs },
+  rowGap: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  rowGapSm: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rowGap: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
-  rowGapSm: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  statRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginVertical: spacing.sm },
-  tag: { backgroundColor: colors.surfaceAlt, color: colors.textDim, fontSize: fontSize.xs, paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.sm },
-  arrow: { fontSize: 22, color: colors.textDim },
-  segment: { flex: 1, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
-  segmentActive: { backgroundColor: colors.admin, borderColor: colors.admin },
-  segmentText: { color: colors.textDim, fontWeight: fontWeight.medium as any },
-  segmentTextActive: { color: '#fff' },
-  toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm },
-  chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 120, paddingTop: spacing.sm },
-  barCol: { alignItems: 'center', flex: 1 },
-  bar: { width: 18, backgroundColor: colors.admin, borderRadius: radius.sm },
-  barLabel: { fontSize: fontSize.xs, color: colors.textDim, marginTop: spacing.xs },
+  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid, marginTop: spacing.md, marginBottom: spacing.sm },
+  typeBtn: { flex: 1, paddingVertical: spacing.sm, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
+  typeBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  typeBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid },
+  toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
+  toggleLabel: { fontSize: fontSize.md, color: colors.text },
 });

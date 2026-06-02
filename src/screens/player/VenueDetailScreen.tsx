@@ -1,21 +1,55 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, TouchableOpacity } from 'react-native';
+import {
+  View, Text, StyleSheet, SafeAreaView, ScrollView, Image,
+  TouchableOpacity, ActivityIndicator,
+} from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppButton, StarRating } from '../../components/common';
+import { AppButton, StarRating, EmptyState } from '../../components/common';
 import { RatingDetailModal } from '../../modals';
-import { VENUES, REVIEWS, getSportIcon, getSportName } from '../../data/mockData';
+import { useVenueDetail } from '../../api/hooks/useVenues';
+import { useVenueReviews } from '../../api/hooks/useReviews';
+import { useSports } from '../../api/hooks/useSports';
 
 export default function VenueDetailScreen({ navigation, route }: any) {
-  const venue = VENUES.find((v) => v.id === route.params.venueId)!;
-  const reviews = REVIEWS.filter((r) => r.venueId === venue.id);
+  const venueId: string = route.params.venueId;
   const [showRating, setShowRating] = useState(false);
+
+  const { data: venue, isLoading, isError } = useVenueDetail(venueId);
+  const { data: reviewsData } = useVenueReviews(venueId);
+  const { data: sports = [] } = useSports();
+
+  const reviews = reviewsData?.reviews ?? [];
+
+  const getSportLabel = (sportId: string) => {
+    const s = sports.find((sp) => sp.id === sportId);
+    return s ? `${s.icon} ${s.name}` : sportId;
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+      </SafeAreaView>
+    );
+  }
+
+  if (isError || !venue) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Text style={{ fontSize: 24, color: colors.text }}>‹</Text>
+        </TouchableOpacity>
+        <EmptyState icon="⚠️" title="Venue not found" subtitle="It may have been removed or is unavailable" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Photo */}
         <View>
-          <Image source={{ uri: venue.coverPhoto }} style={styles.cover} />
+          <Image source={{ uri: venue.coverPhoto || undefined }} style={styles.cover} />
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Text style={{ fontSize: 24, color: colors.white }}>‹</Text>
           </TouchableOpacity>
@@ -30,28 +64,40 @@ export default function VenueDetailScreen({ navigation, route }: any) {
           </TouchableOpacity>
 
           {/* Sports */}
-          <Text style={styles.sectionTitle}>Sports Available</Text>
-          <View style={styles.chipWrap}>
-            {venue.sports.map((s) => (
-              <View key={s} style={styles.chip}>
-                <Text style={styles.chipText}>{getSportIcon(s)} {getSportName(s)}</Text>
+          {venue.sports.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Sports Available</Text>
+              <View style={styles.chipWrap}>
+                {venue.sports.map((s) => (
+                  <View key={s} style={styles.chip}>
+                    <Text style={styles.chipText}>{getSportLabel(s)}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
+            </>
+          )}
 
           {/* Amenities */}
-          <Text style={styles.sectionTitle}>Amenities</Text>
-          <View style={styles.chipWrap}>
-            {venue.amenities.map((a) => (
-              <View key={a} style={styles.amenityChip}>
-                <Text style={styles.amenityText}>✓ {a}</Text>
+          {venue.amenities.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Amenities</Text>
+              <View style={styles.chipWrap}>
+                {venue.amenities.map((a) => (
+                  <View key={a} style={styles.amenityChip}>
+                    <Text style={styles.amenityText}>✓ {a}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
+            </>
+          )}
 
           {/* About */}
-          <Text style={styles.sectionTitle}>About</Text>
-          <Text style={styles.desc}>{venue.description}</Text>
+          {!!venue.description && (
+            <>
+              <Text style={styles.sectionTitle}>About</Text>
+              <Text style={styles.desc}>{venue.description}</Text>
+            </>
+          )}
 
           {/* Map placeholder */}
           <Text style={styles.sectionTitle}>Location</Text>
@@ -84,7 +130,10 @@ export default function VenueDetailScreen({ navigation, route }: any) {
       <View style={[styles.bottomBar, shadow.modal]}>
         <View>
           <Text style={styles.priceLabel}>Starting from</Text>
-          <Text style={styles.price}>₹{venue.pricePerSlot}<Text style={styles.perSlot}>/slot</Text></Text>
+          <Text style={styles.price}>
+            ₹{venue.pricePerSlot}
+            <Text style={styles.perSlot}>/slot</Text>
+          </Text>
         </View>
         <AppButton
           label="Book Now"

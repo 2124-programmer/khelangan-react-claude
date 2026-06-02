@@ -1,29 +1,79 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import {
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  TouchableOpacity, ActivityIndicator,
+} from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton } from '../../components/common';
+import { AppHeader, AppButton, EmptyState } from '../../components/common';
 import { SlotGrid } from '../../components/venue';
 import { SlotLockExpiredModal } from '../../modals';
-import { VENUES, SLOTS, getSportIcon, getSportName } from '../../data/mockData';
+import { useVenueDetail } from '../../api/hooks/useVenues';
+import { useSlots } from '../../api/hooks/useSlots';
+import { useSports } from '../../api/hooks/useSports';
 import { Slot } from '../../types';
 
-const DATES = [
-  { label: 'Today', date: '2026-06-02', day: 'Mon' },
-  { label: 'Tue', date: '2026-06-03', day: '03' },
-  { label: 'Wed', date: '2026-06-04', day: '04' },
-  { label: 'Thu', date: '2026-06-05', day: '05' },
-  { label: 'Fri', date: '2026-06-06', day: '06' },
-];
+function buildDateOptions() {
+  const opts = [];
+  const now = new Date();
+  const labels = ['Today', 'Tomorrow'];
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const dayName = d.toLocaleDateString('en-IN', { weekday: 'short' });
+    opts.push({
+      label: labels[i] ?? dayName,
+      date: `${yyyy}-${mm}-${dd}`,
+      day: String(d.getDate()),
+    });
+  }
+  return opts;
+}
+
+const DATES = buildDateOptions();
 
 export default function SlotSelectionScreen({ navigation, route }: any) {
-  const venue = VENUES.find((v) => v.id === route.params.venueId)!;
-  const [activeSport, setActiveSport] = useState(venue.sports[0]);
+  const venueId: string = route.params.venueId;
+  const { data: venue, isLoading: venueLoading } = useVenueDetail(venueId);
+  const { data: sports = [] } = useSports();
+
+  const [activeSportId, setActiveSportId] = useState<string | null>(null);
   const [activeDate, setActiveDate] = useState(DATES[0].date);
   const [selected, setSelected] = useState<Slot | null>(null);
   const [lockExpired, setLockExpired] = useState(false);
 
-  const court = venue.courts.find((c) => c.sportId === activeSport) ?? venue.courts[0];
-  const slots = SLOTS[court.id] ?? [];
+  const currentSportId = activeSportId ?? venue?.sports?.[0] ?? null;
+  const court = venue?.courts?.find((c) => c.sportId === currentSportId) ?? venue?.courts?.[0];
+
+  const { data: slots = [], isLoading: slotsLoading } = useSlots(
+    court ? Number(court.id) : undefined,
+    activeDate
+  );
+
+  const getSportLabel = (sportId: string) => {
+    const s = sports.find((sp) => sp.id === sportId);
+    return s ? `${s.icon} ${s.name}` : sportId;
+  };
+
+  if (venueLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <AppHeader title="Select Slot" onBack={() => navigation.goBack()} />
+        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!venue) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <AppHeader title="Select Slot" onBack={() => navigation.goBack()} />
+        <EmptyState icon="⚠️" title="Venue not found" subtitle="" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -35,9 +85,13 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
         <Text style={styles.label}>Sport</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {venue.sports.map((s) => (
-            <TouchableOpacity key={s} onPress={() => setActiveSport(s)} style={[styles.sportTab, activeSport === s && styles.sportTabActive]}>
-              <Text style={[styles.sportTabText, activeSport === s && { color: colors.white }]}>
-                {getSportIcon(s)} {getSportName(s)}
+            <TouchableOpacity
+              key={s}
+              onPress={() => { setActiveSportId(s); setSelected(null); }}
+              style={[styles.sportTab, currentSportId === s && styles.sportTabActive]}
+            >
+              <Text style={[styles.sportTabText, currentSportId === s && { color: colors.white }]}>
+                {getSportLabel(s)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -47,32 +101,55 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
         <Text style={styles.label}>Date</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {DATES.map((d) => (
-            <TouchableOpacity key={d.date} onPress={() => setActiveDate(d.date)} style={[styles.dateCard, activeDate === d.date && styles.dateCardActive]}>
-              <Text style={[styles.dateLabel, activeDate === d.date && { color: colors.white }]}>{d.label}</Text>
-              <Text style={[styles.dateDay, activeDate === d.date && { color: colors.white }]}>{d.day}</Text>
+            <TouchableOpacity
+              key={d.date}
+              onPress={() => { setActiveDate(d.date); setSelected(null); }}
+              style={[styles.dateCard, activeDate === d.date && styles.dateCardActive]}
+            >
+              <Text style={[styles.dateLabel, activeDate === d.date && { color: colors.white }]}>
+                {d.label}
+              </Text>
+              <Text style={[styles.dateDay, activeDate === d.date && { color: colors.white }]}>
+                {d.day}
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
         {/* Slots */}
         <Text style={styles.label}>Available Slots</Text>
-        <SlotGrid slots={slots} selectedId={selected?.id} onSelect={setSelected} />
+        {slotsLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+        ) : slots.length === 0 ? (
+          <EmptyState icon="📅" title="No slots available" subtitle="Try another date or court" />
+        ) : (
+          <SlotGrid slots={slots} selectedId={selected?.id} onSelect={setSelected} />
+        )}
       </ScrollView>
 
       {selected && (
         <View style={[styles.bottomBar, shadow.modal]}>
           <View>
-            <Text style={styles.selLabel}>Selected: {selected.startTime}–{selected.endTime}</Text>
+            <Text style={styles.selLabel}>
+              Selected: {selected.startTime}–{selected.endTime}
+            </Text>
             <Text style={styles.selPrice}>₹{selected.price}</Text>
           </View>
           <AppButton
             label="Proceed to Book"
             fullWidth={false}
-            onPress={() => navigation.navigate('BookingConfirm', {
-              venueId: venue.id, courtId: court.id, slotId: selected.id,
-              sport: getSportName(activeSport), date: activeDate, slotPrice: selected.price,
-              startTime: selected.startTime, endTime: selected.endTime,
-            })}
+            onPress={() =>
+              navigation.navigate('BookingConfirm', {
+                venueId: venue.id,
+                courtId: court?.id,
+                slotId: selected.id,
+                sport: getSportLabel(currentSportId ?? ''),
+                date: activeDate,
+                slotPrice: selected.price,
+                startTime: selected.startTime,
+                endTime: selected.endTime,
+              })
+            }
             style={{ paddingHorizontal: 24 }}
           />
         </View>

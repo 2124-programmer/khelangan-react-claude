@@ -1,39 +1,65 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, TouchableOpacity } from 'react-native';
+import {
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  Image, TouchableOpacity, ActivityIndicator,
+} from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton, StatusBadge, StarRating } from '../../components/common';
-import { VENUES } from '../../data/mockData';
+import { AppHeader, AppButton, StatusBadge, StarRating, EmptyState } from '../../components/common';
+import { useOwnerVenues } from '../../api/hooks/useVenues';
 
 export default function MyVenuesScreen({ navigation }: any) {
-  const myVenues = VENUES.filter((v) => v.ownerId === 'o1');
+  const { data, isLoading } = useOwnerVenues();
+  const venues = data?.venues ?? [];
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="My Venues" rightLabel="+ Add" onRightPress={() => navigation.navigate('AddVenue')} />
+      <AppHeader
+        title="My Venues"
+        rightLabel="+ Add"
+        onRightPress={() => navigation.navigate('AddVenue')}
+      />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        {myVenues.map((v) => (
-          <View key={v.id} style={[styles.card, shadow.card]}>
-            <Image source={{ uri: v.coverPhoto }} style={styles.img} />
-            <View style={styles.body}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Text style={styles.name}>{v.name}</Text>
-                <StatusBadge status={v.status} />
-              </View>
-              <Text style={styles.addr}>📍 {v.address}</Text>
-              <View style={styles.metaRow}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <StarRating value={Math.round(v.rating)} size={13} />
-                  <Text style={styles.meta}>{v.rating} ({v.reviewCount})</Text>
+        {isLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+        ) : venues.length === 0 ? (
+          <EmptyState icon="🏟" title="No venues yet" subtitle="Add your first venue to start accepting bookings" />
+        ) : (
+          venues.map((v) => (
+            <View key={v.id} style={[styles.card, shadow.card]}>
+              <Image source={{ uri: v.coverPhoto || undefined }} style={styles.img} />
+              <View style={styles.body}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Text style={styles.name}>{v.name}</Text>
+                  <StatusBadge status={v.status} />
                 </View>
-                <Text style={styles.meta}>{v.courts.length} courts</Text>
-              </View>
-              <View style={styles.actions}>
-                <AppButton label="Calendar" variant="secondary" fullWidth={false} onPress={() => navigation.navigate('VenueCalendar', { venueId: v.id })} style={{ flex: 1, height: 40 }} />
-                <AppButton label="Edit" variant="ghost" fullWidth={false} onPress={() => navigation.navigate('EditVenue', { venueId: v.id })} style={{ flex: 1, height: 40 }} />
+                <Text style={styles.addr}>📍 {v.address}</Text>
+                <View style={styles.metaRow}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <StarRating value={Math.round(v.rating)} size={13} />
+                    <Text style={styles.meta}>{v.rating} ({v.reviewCount})</Text>
+                  </View>
+                  <Text style={styles.meta}>{v.courts.length} courts</Text>
+                </View>
+                <View style={styles.actions}>
+                  <AppButton
+                    label="Calendar"
+                    variant="secondary"
+                    fullWidth={false}
+                    onPress={() => navigation.navigate('VenueCalendar', { venueId: v.id })}
+                    style={{ flex: 1, height: 40 }}
+                  />
+                  <AppButton
+                    label="Edit"
+                    variant="ghost"
+                    fullWidth={false}
+                    onPress={() => navigation.navigate('EditVenue', { venueId: v.id })}
+                    style={{ flex: 1, height: 40 }}
+                  />
+                </View>
               </View>
             </View>
-          </View>
-        ))}
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
