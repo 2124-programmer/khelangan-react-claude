@@ -9,13 +9,14 @@ import { Booking } from '../../types';
 import { extractApiError } from '../../api/client';
 
 const STATUS_MAP: Record<string, string> = {
+  pending: 'PENDING',
   upcoming: 'CONFIRMED',
   completed: 'COMPLETED',
   cancelled: 'CANCELLED',
 };
 
 export default function MyBookingsScreen({ navigation }: any) {
-  const [tab, setTab] = useState<string>('upcoming');
+  const [tab, setTab] = useState<string>('pending');
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
   const cancelBooking = useCancelBooking();
 
@@ -38,6 +39,7 @@ export default function MyBookingsScreen({ navigation }: any) {
       <AppHeader title="My Bookings" />
       <SectionTabBar
         tabs={[
+          { label: 'Pending', value: 'pending' },
           { label: 'Upcoming', value: 'upcoming' },
           { label: 'Completed', value: 'completed' },
           { label: 'Cancelled', value: 'cancelled' },

@@ -5,12 +5,12 @@
 import type {
   UserDto, SportDto, VenueSummaryDto, VenueDetailDto, CourtDto,
   SlotDto, BookingDto, ReviewDto, CouponDto, PayoutDto, DisputeDto,
-  NotificationDto, AdminStatsDto, OwnerStatsDto,
+  NotificationDto, AdminStatsDto, OwnerStatsDto, OwnerSettingsDto,
 } from './types';
 import type {
   User, Sport, Venue, Court, Slot, Booking, Review, Coupon,
   Payout, Dispute, AppNotification, UserRole, VenueStatus,
-  SlotStatus, BookingStatus, PaymentStatus,
+  SlotStatus, BookingStatus, PaymentStatus, OwnerSettings,
 } from '../types';
 
 export function adaptUser(dto: UserDto): User {
@@ -207,6 +207,13 @@ export function adaptAdminStats(dto: AdminStatsDto) {
     activeVenues: dto.activeVenues ?? 0,
     pendingApprovals: dto.pendingApprovals ?? 0,
     openDisputes: dto.openDisputes ?? 0,
+  };
+}
+
+export function adaptOwnerSettings(dto: OwnerSettingsDto): OwnerSettings {
+  return {
+    autoAcceptBookings: dto.autoAcceptBookings ?? false,
+    pushNotificationsEnabled: dto.pushNotificationsEnabled ?? true,
   };
 }
 

@@ -11,7 +11,8 @@ import {
 import { BookingCard } from '../../components/venue';
 import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
-import { useBookings, useBookingDetail } from '../../api/hooks/useBookings';
+import { useBookings, useBookingDetail, useAcceptBooking, useRejectBooking } from '../../api/hooks/useBookings';
+import { useOwnerSettings, useUpdateOwnerSettings } from '../../api/hooks/useSettings';
 import { useOwnerStats } from '../../api/hooks/useAdmin';
 import { useOwnerPayouts } from '../../api/hooks/usePayouts';
 import { useOwnerReviews } from '../../api/hooks/useReviews';
@@ -21,8 +22,13 @@ import { extractApiError } from '../../api/client';
 
 /* ───────────────── BookingManagementScreen ───────────────── */
 export function BookingManagementScreen({ navigation }: any) {
-  const [tab, setTab] = useState('today');
-  const statusMap: Record<string, string> = { today: 'CONFIRMED', upcoming: 'CONFIRMED', past: 'COMPLETED' };
+  const [tab, setTab] = useState('requests');
+  const statusMap: Record<string, string> = {
+    requests: 'PENDING',
+    today: 'CONFIRMED',
+    upcoming: 'CONFIRMED',
+    past: 'COMPLETED',
+  };
   const { data, isLoading } = useBookings({ status: statusMap[tab] });
   const bookings = data?.bookings ?? [];
 
@@ -30,7 +36,12 @@ export function BookingManagementScreen({ navigation }: any) {
     <SafeAreaView style={styles.container}>
       <AppHeader title="Bookings" />
       <SectionTabBar
-        tabs={[{ label: 'Today', value: 'today' }, { label: 'Upcoming', value: 'upcoming' }, { label: 'Past', value: 'past' }]}
+        tabs={[
+          { label: 'Requests', value: 'requests' },
+          { label: 'Today', value: 'today' },
+          { label: 'Upcoming', value: 'upcoming' },
+          { label: 'Past', value: 'past' },
+        ]}
         activeTab={tab}
         onChange={setTab}
       />
@@ -53,6 +64,9 @@ export function BookingManagementScreen({ navigation }: any) {
 export function OwnerBookingDetailScreen({ navigation, route }: any) {
   const { data: booking, isLoading } = useBookingDetail(route.params.bookingId);
   const [showCheckIn, setShowCheckIn] = useState(false);
+  const [showReject, setShowReject] = useState(false);
+  const acceptBooking = useAcceptBooking();
+  const rejectBooking = useRejectBooking();
 
   if (isLoading || !booking) {
     return (
@@ -62,6 +76,19 @@ export function OwnerBookingDetailScreen({ navigation, route }: any) {
       </SafeAreaView>
     );
   }
+
+  const handleAccept = async () => {
+    await acceptBooking.mutateAsync(Number(booking.id));
+    navigation.goBack();
+  };
+
+  const handleReject = async () => {
+    await rejectBooking.mutateAsync(Number(booking.id));
+    setShowReject(false);
+    navigation.goBack();
+  };
+
+  const actionInFlight = acceptBooking.isPending || rejectBooking.isPending;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -83,10 +110,31 @@ export function OwnerBookingDetailScreen({ navigation, route }: any) {
           <DRow label="Platform Commission" value={`- ₹${booking.commission}`} />
           <DRow label="Your Earning" value={`₹${booking.amount - booking.commission}`} bold />
         </View>
+
+        {booking.status === 'pending' && (
+          <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl }}>
+            <AppButton
+              label={acceptBooking.isPending ? 'Accepting…' : 'Accept'}
+              loading={acceptBooking.isPending}
+              disabled={actionInFlight}
+              onPress={handleAccept}
+              style={{ flex: 1 }}
+            />
+            <AppButton
+              label="Reject"
+              variant="danger"
+              disabled={actionInFlight}
+              onPress={() => setShowReject(true)}
+              style={{ flex: 1 }}
+            />
+          </View>
+        )}
+
         {booking.status === 'confirmed' && (
           <AppButton label="Mark as Checked-In" onPress={() => setShowCheckIn(true)} style={{ marginTop: spacing.xl }} />
         )}
       </ScrollView>
+
       <ConfirmActionModal
         visible={showCheckIn}
         title="Check-in Player?"
@@ -94,6 +142,15 @@ export function OwnerBookingDetailScreen({ navigation, route }: any) {
         confirmLabel="Check In"
         onConfirm={() => { setShowCheckIn(false); navigation.goBack(); }}
         onDismiss={() => setShowCheckIn(false)}
+      />
+
+      <ConfirmActionModal
+        visible={showReject}
+        title="Reject Booking?"
+        message={`Reject ${booking.playerName}'s booking request for ${booking.date}? The slot will be released.`}
+        confirmLabel="Reject"
+        onConfirm={handleReject}
+        onDismiss={() => setShowReject(false)}
       />
     </SafeAreaView>
   );
@@ -282,23 +339,45 @@ export function OwnerNotificationsScreen({ navigation }: any) {
 
 /* ───────────────── OwnerSettingsScreen ───────────────── */
 export function OwnerSettingsScreen({ navigation }: any) {
-  const [autoAccept, setAutoAccept] = useState(false);
-  const [push, setPush] = useState(true);
+  const { data: settings, isLoading } = useOwnerSettings();
+  const updateSettings = useUpdateOwnerSettings();
+
+  const autoAccept = settings?.autoAcceptBookings ?? false;
+  const push = settings?.pushNotificationsEnabled ?? true;
+
+  const toggle = (field: 'autoAcceptBookings' | 'pushNotificationsEnabled', current: boolean) => {
+    updateSettings.mutate({ [field]: !current });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Settings" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        <Text style={styles.sectionTitle}>Bookings</Text>
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Auto-accept bookings</Text>
-          <Switch value={autoAccept} onValueChange={setAutoAccept} trackColor={{ true: colors.primary }} />
-        </View>
-        <Text style={styles.sectionTitle}>Notifications</Text>
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Push Notifications</Text>
-          <Switch value={push} onValueChange={setPush} trackColor={{ true: colors.primary }} />
-        </View>
-      </ScrollView>
+      {isLoading ? (
+        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+      ) : (
+        <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+          <Text style={styles.sectionTitle}>Bookings</Text>
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>Auto-accept bookings</Text>
+            <Switch
+              value={autoAccept}
+              onValueChange={() => toggle('autoAcceptBookings', autoAccept)}
+              trackColor={{ true: colors.primary }}
+              disabled={updateSettings.isPending}
+            />
+          </View>
+          <Text style={styles.sectionTitle}>Notifications</Text>
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>Push Notifications</Text>
+            <Switch
+              value={push}
+              onValueChange={() => toggle('pushNotificationsEnabled', push)}
+              trackColor={{ true: colors.primary }}
+              disabled={updateSettings.isPending}
+            />
+          </View>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }

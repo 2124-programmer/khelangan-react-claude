@@ -256,6 +256,18 @@ export interface CreateBookingRequest {
   paymentMethod?: string;
 }
 
+// ─── Owner Settings ───────────────────────────────────────────────────────────
+
+export interface OwnerSettingsDto {
+  autoAcceptBookings?: boolean;
+  pushNotificationsEnabled?: boolean;
+}
+
+export interface UpdateOwnerSettingsRequest {
+  autoAcceptBookings?: boolean;
+  pushNotificationsEnabled?: boolean;
+}
+
 // ─── Review ──────────────────────────────────────────────────────────────────
 
 export interface ReviewDto {

@@ -6,11 +6,13 @@ export type BookingStatus =
   | 'confirmed'
   | 'pending'
   | 'completed'
-  | 'cancelled';
+  | 'cancelled'
+  | 'rejected'
+  | 'expired';
 
 export type VenueStatus = 'live' | 'pending' | 'rejected' | 'suspended';
 
-export type SlotStatus = 'available' | 'booked' | 'blocked';
+export type SlotStatus = 'available' | 'booked' | 'blocked' | 'held';
 
 export type PaymentStatus = 'success' | 'pending' | 'failed' | 'refunded';
 
@@ -147,6 +149,11 @@ export interface Dispute {
   issue: string;
   status: DisputeStatus;
   date: string;
+}
+
+export interface OwnerSettings {
+  autoAcceptBookings: boolean;
+  pushNotificationsEnabled: boolean;
 }
 
 export interface AppNotification {
