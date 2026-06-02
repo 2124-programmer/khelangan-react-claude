@@ -74,6 +74,12 @@ export interface Slot {
   price: number;
 }
 
+export interface CourtSlotsGroup {
+  courtId: string;
+  courtName: string;
+  slots: Slot[];
+}
+
 export interface Booking {
   id: string;
   playerId: string;

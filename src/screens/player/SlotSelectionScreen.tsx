@@ -8,7 +8,7 @@ import { AppHeader, AppButton, EmptyState } from '../../components/common';
 import { SlotGrid } from '../../components/venue';
 import { SlotLockExpiredModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
-import { useSlots } from '../../api/hooks/useSlots';
+import { useVenueSlots } from '../../api/hooks/useSlots';
 import { useSports } from '../../api/hooks/useSports';
 import { Slot } from '../../types';
 
@@ -45,12 +45,14 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
   const [lockExpired, setLockExpired] = useState(false);
 
   const currentSportId = activeSportId ?? venue?.sports?.[0] ?? null;
-  const court = venue?.courts?.find((c) => c.sportId === currentSportId) ?? venue?.courts?.[0];
 
-  const { data: slots = [], isLoading: slotsLoading } = useSlots(
-    court ? Number(court.id) : undefined,
-    activeDate
+  const { data: courtGroups = [], isLoading: slotsLoading } = useVenueSlots(
+    Number(venueId),
+    activeDate,
+    currentSportId ? Number(currentSportId) : undefined,
   );
+
+  const hasSlots = courtGroups.some((g) => g.slots.length > 0);
 
   const getSportLabel = (sportId: string) => {
     const s = sports.find((sp) => sp.id === sportId);
@@ -116,14 +118,25 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
           ))}
         </ScrollView>
 
-        {/* Slots */}
+        {/* Slots grouped by court */}
         <Text style={styles.label}>Available Slots</Text>
         {slotsLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
-        ) : slots.length === 0 ? (
-          <EmptyState icon="📅" title="No slots available" subtitle="Try another date or court" />
+        ) : !hasSlots ? (
+          <EmptyState icon="📅" title="No slots available" subtitle="Try another date or sport" />
         ) : (
-          <SlotGrid slots={slots} selectedId={selected?.id} onSelect={setSelected} />
+          courtGroups.map((group) =>
+            group.slots.length === 0 ? null : (
+              <View key={group.courtId} style={styles.courtSection}>
+                <Text style={styles.courtLabel}>{group.courtName}</Text>
+                <SlotGrid
+                  slots={group.slots}
+                  selectedId={selected?.id}
+                  onSelect={setSelected}
+                />
+              </View>
+            )
+          )
         )}
       </ScrollView>
 
@@ -141,7 +154,7 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
             onPress={() =>
               navigation.navigate('BookingConfirm', {
                 venueId: venue.id,
-                courtId: court?.id,
+                courtId: selected.courtId,
                 slotId: selected.id,
                 sport: getSportLabel(currentSportId ?? ''),
                 date: activeDate,
@@ -171,6 +184,8 @@ const styles = StyleSheet.create({
   dateCardActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   dateLabel: { fontSize: fontSize.xs, color: colors.textMid },
   dateDay: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: 2 },
+  courtSection: { marginBottom: spacing.xl },
+  courtLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.sm, paddingHorizontal: spacing.xs },
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border },
   selLabel: { fontSize: fontSize.xs, color: colors.textDim },
   selPrice: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },

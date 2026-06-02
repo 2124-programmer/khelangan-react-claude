@@ -215,6 +215,12 @@ export interface BulkBlockRequest {
   date: string;
 }
 
+export interface CourtSlotsDto {
+  courtId?: number;
+  courtName?: string;
+  slots?: SlotDto[];
+}
+
 // ─── Booking ─────────────────────────────────────────────────────────────────
 
 export interface BookingDto {

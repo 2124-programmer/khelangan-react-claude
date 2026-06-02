@@ -42,6 +42,13 @@ export default function MyVenuesScreen({ navigation }: any) {
                 </View>
                 <View style={styles.actions}>
                   <AppButton
+                    label="Courts"
+                    variant="secondary"
+                    fullWidth={false}
+                    onPress={() => navigation.navigate('CourtManagement', { venueId: v.id })}
+                    style={{ flex: 1, height: 40 }}
+                  />
+                  <AppButton
                     label="Calendar"
                     variant="secondary"
                     fullWidth={false}
