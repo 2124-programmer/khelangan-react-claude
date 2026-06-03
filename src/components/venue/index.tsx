@@ -8,6 +8,7 @@ import { getSportIcon, getSportName } from '../../utils/sportUtils';
 
 export { VenueImagePicker } from './VenueImagePicker';
 export type { PickedImage } from './VenueImagePicker';
+export { VenueImageCarousel } from './VenueImageCarousel';
 
 /* ───────────────── VenueCard ───────────────── */
 export function VenueCard({ venue, onPress }: { venue: Venue; onPress: () => void }) {

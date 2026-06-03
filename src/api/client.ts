@@ -9,7 +9,7 @@ import { getToken, getRefreshToken, saveToken, saveRefreshToken, clearTokens } f
  *   physical device (any platform) → set EXPO_PUBLIC_API_URL env var
  *                                    or change DEVICE_LAN_IP below
  */
-const DEVICE_LAN_IP = 'localhost'; // PC's LAN IP — update if it changes
+const DEVICE_LAN_IP = '192.168.1.4'; // PC's LAN IP — update if it changes
 
 function resolveBaseUrl(): string {
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;

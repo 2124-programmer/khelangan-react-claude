@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView, Image,
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, StarRating, EmptyState } from '../../components/common';
+import { VenueImageCarousel } from '../../components/venue';
 import { RatingDetailModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useVenueReviews } from '../../api/hooks/useReviews';
@@ -48,16 +49,8 @@ export default function VenueDetailScreen({ navigation, route }: any) {
     <SafeAreaView style={styles.container}>
       <AppHeader title={venue.name} onBack={() => navigation.goBack()} />
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Photo */}
-        <View>
-          <Image
-            source={{ uri: venue.coverPhoto || venue.images?.find(i => i.isPrimary)?.url || venue.images?.[0]?.url || undefined }}
-            style={styles.cover}
-          />
-          {/* <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Text style={{ fontSize: 24, color: colors.white }}>‹</Text>
-          </TouchableOpacity> */}
-        </View>
+        {/* Photo carousel */}
+        <VenueImageCarousel images={venue.images ?? []} />
 
         <View style={styles.body}>
           <Text style={styles.name}>{venue.name}</Text>
@@ -164,7 +157,6 @@ export default function VenueDetailScreen({ navigation, route }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  cover: { width: '100%', height: 240, backgroundColor: colors.surfaceAlt },
   backBtn: { position: 'absolute', top: spacing.lg, left: spacing.lg, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
   body: { padding: spacing.lg, paddingBottom: 120 },
   name: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
