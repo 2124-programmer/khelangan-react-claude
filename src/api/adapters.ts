@@ -8,7 +8,7 @@ import type {
   NotificationDto, AdminStatsDto, OwnerStatsDto, OwnerSettingsDto,
 } from './types';
 import type {
-  User, Sport, Venue, Court, Slot, Booking, Review, Coupon,
+  User, Sport, Venue, VenueImage, Court, Slot, Booking, Review, Coupon,
   Payout, Dispute, AppNotification, UserRole, VenueStatus,
   SlotStatus, BookingStatus, PaymentStatus, OwnerSettings,
 } from '../types';
@@ -53,7 +53,17 @@ export function adaptCourt(dto: CourtDto): Court {
   };
 }
 
+function buildImages(photos: string[] | undefined, coverPhoto: string | undefined): VenueImage[] {
+  const allPhotos = photos?.length ? photos : (coverPhoto ? [coverPhoto] : []);
+  return allPhotos.slice(0, 3).map((url, i) => ({
+    url,
+    order: i,
+    isPrimary: i === 0,
+  }));
+}
+
 export function adaptVenueSummary(dto: VenueSummaryDto): Venue {
+  const photos = dto.coverPhoto ? [dto.coverPhoto] : [];
   return {
     id: String(dto.id ?? 0),
     ownerId: String(dto.ownerId ?? 0),
@@ -72,7 +82,8 @@ export function adaptVenueSummary(dto: VenueSummaryDto): Venue {
     reviewCount: dto.reviewCount ?? 0,
     distanceKm: 0,
     pricePerHour: dto.pricePerHour ?? 0,
-    photos: dto.coverPhoto ? [dto.coverPhoto] : [],
+    images: buildImages(photos, dto.coverPhoto),
+    photos,
     coverPhoto: dto.coverPhoto ?? '',
     sports: [],   // not in summary; available in VenueDetailDto
     amenities: [],
@@ -84,6 +95,7 @@ export function adaptVenueSummary(dto: VenueSummaryDto): Venue {
 }
 
 export function adaptVenueDetail(dto: VenueDetailDto): Venue {
+  const photos = dto.photos?.length ? dto.photos : (dto.coverPhoto ? [dto.coverPhoto] : []);
   return {
     id: String(dto.id ?? 0),
     ownerId: String(dto.ownerId ?? 0),
@@ -102,7 +114,8 @@ export function adaptVenueDetail(dto: VenueDetailDto): Venue {
     reviewCount: dto.reviewCount ?? 0,
     distanceKm: 0,
     pricePerHour: dto.pricePerHour ?? 0,
-    photos: dto.photos?.length ? dto.photos : (dto.coverPhoto ? [dto.coverPhoto] : []),
+    images: buildImages(photos, dto.coverPhoto),
+    photos,
     coverPhoto: dto.coverPhoto ?? '',
     sports: (dto.sports ?? []).map((s) => String(s.id ?? 0)),
     amenities: dto.amenities ?? [],

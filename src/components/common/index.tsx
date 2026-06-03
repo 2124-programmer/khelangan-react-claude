@@ -64,9 +64,12 @@ interface AppInputProps {
   secureTextEntry?: boolean;
   keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'numeric';
   multiline?: boolean;
+  maxLength?: number;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
 }
 export function AppInput({
-  label, value, onChangeText, placeholder, error, secureTextEntry, keyboardType, multiline,
+  label, value, onChangeText, placeholder, error, secureTextEntry,
+  keyboardType, multiline, maxLength, autoCapitalize = 'none',
 }: AppInputProps) {
   return (
     <View style={{ marginBottom: spacing.lg }}>
@@ -84,7 +87,8 @@ export function AppInput({
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
         multiline={multiline}
-        autoCapitalize="none"
+        maxLength={maxLength}
+        autoCapitalize={autoCapitalize}
       />
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>

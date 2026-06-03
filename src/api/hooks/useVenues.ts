@@ -81,6 +81,12 @@ export function useUpdateVenue() {
   });
 }
 
+export function useUploadVenueImage() {
+  return useMutation({
+    mutationFn: (localUri: string) => venueService.uploadImage(localUri),
+  });
+}
+
 export function useUpdateVenueStatus() {
   const qc = useQueryClient();
   return useMutation({

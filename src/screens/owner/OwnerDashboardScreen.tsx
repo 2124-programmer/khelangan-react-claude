@@ -9,7 +9,7 @@ import { useBookings } from '../../api/hooks/useBookings';
 export default function OwnerDashboardScreen({ navigation }: any) {
   const { user } = useAuth();
   const { data: stats } = useOwnerStats();
-  const { data: bookingsData } = useBookings({ page: 0, size: 3 });
+  const { data: bookingsData } = useBookings({ page: 0 });
   const recentBookings = bookingsData?.bookings ?? [];
 
   return (

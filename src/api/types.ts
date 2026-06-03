@@ -179,10 +179,15 @@ export interface CreateVenueRequest {
 export interface UpdateVenueRequest {
   name?: string;
   description?: string;
+  address?: string;
+  city?: string;
   contactPhone?: string;
   contactEmail?: string;
   state?: string;
   pincode?: string;
+  sportIds?: number[];
+  lat?: number;
+  lng?: number;
   openTime?: string;
   closeTime?: string;
   pricePerHour?: number;
@@ -190,6 +195,10 @@ export interface UpdateVenueRequest {
   coverPhoto?: string;
   photos?: string[];
   isActive?: boolean;
+}
+
+export interface ImageUploadResponse {
+  url: string;
 }
 
 export interface VenueStatusRequest {

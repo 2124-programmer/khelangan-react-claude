@@ -6,11 +6,17 @@ import { Venue, Slot, Booking } from '../../types';
 import { StarRating, StatusBadge, AppButton } from '../common';
 import { getSportIcon, getSportName } from '../../utils/sportUtils';
 
+export { VenueImagePicker } from './VenueImagePicker';
+export type { PickedImage } from './VenueImagePicker';
+
 /* ───────────────── VenueCard ───────────────── */
 export function VenueCard({ venue, onPress }: { venue: Venue; onPress: () => void }) {
+  const coverUri = venue.images?.find((i) => i.isPrimary)?.url
+    ?? venue.images?.[0]?.url
+    ?? venue.coverPhoto;
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={[styles.venueCard, shadow.card]}>
-      <Image source={{ uri: venue.coverPhoto }} style={styles.venueImg} />
+      <Image source={{ uri: coverUri }} style={styles.venueImg} resizeMode="cover" />
       <View style={styles.venueBody}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <Text style={styles.venueName} numberOfLines={1}>{venue.name}</Text>
@@ -162,7 +168,7 @@ function PriceRow({ label, value, bold, highlight }: { label: string; value: num
 
 const styles = StyleSheet.create({
   venueCard: { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden', marginBottom: spacing.lg },
-  venueImg: { width: '100%', height: 150, backgroundColor: colors.surfaceAlt },
+  venueImg: { width: '100%', aspectRatio: 16 / 9, backgroundColor: colors.surfaceAlt },
   venueBody: { padding: spacing.lg },
   venueName: { flex: 1, fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
   venuePrice: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.primary },
