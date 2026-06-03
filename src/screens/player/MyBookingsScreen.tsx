@@ -36,7 +36,7 @@ export default function MyBookingsScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="My Bookings" />
+      <AppHeader title="My Bookings" onBack={() => navigation.goBack()} />
       <SectionTabBar
         tabs={[
           { label: 'Pending', value: 'pending' },
