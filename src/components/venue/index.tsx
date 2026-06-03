@@ -1,47 +1,297 @@
 // Venue and booking related reusable components.
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { haversineKm, formatDistance } from '../../utils/locationUtils';
+import type { LatLng } from '../../hooks/useCurrentLocation';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { Venue, Slot, Booking } from '../../types';
-import { StarRating, StatusBadge, AppButton } from '../common';
+import { StatusBadge, AppButton } from '../common';
 import { getSportIcon, getSportName } from '../../utils/sportUtils';
 
 export { VenueImagePicker } from './VenueImagePicker';
 export type { PickedImage } from './VenueImagePicker';
 export { VenueImageCarousel } from './VenueImageCarousel';
 
-/* ───────────────── VenueCard ───────────────── */
-export function VenueCard({ venue, onPress }: { venue: Venue; onPress: () => void }) {
-  const coverUri = venue.images?.find((i) => i.isPrimary)?.url
-    ?? venue.images?.[0]?.url
-    ?? venue.coverPhoto;
+/* ───────────────── VenueCard helpers ───────────────── */
+
+type AmenityKey =
+  | 'PARKING' | 'FLOODLIGHTS' | 'WASHROOM' | 'SHOWER'
+  | 'CHANGING_ROOM' | 'CAFETERIA' | 'WIFI' | 'AC';
+
+const AMENITY_META: Record<AmenityKey, { icon: string; label: string }> = {
+  PARKING:      { icon: '🚗', label: 'Parking' },
+  FLOODLIGHTS:  { icon: '💡', label: 'Floodlights' },
+  WASHROOM:     { icon: '🚻', label: 'Washroom' },
+  SHOWER:       { icon: '🚿', label: 'Shower' },
+  CHANGING_ROOM:{ icon: '👕', label: 'Changing Room' },
+  CAFETERIA:    { icon: '☕', label: 'Cafeteria' },
+  WIFI:         { icon: '📶', label: 'Wi-Fi' },
+  AC:           { icon: '❄️', label: 'AC' },
+};
+
+function getAmenityMeta(key: string): { icon: string; label: string } {
+  return AMENITY_META[key as AmenityKey] ?? { icon: '✓', label: key };
+}
+
+function RatingBadge({ rating }: { rating: number }) {
   return (
-    <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={[styles.venueCard, shadow.card]}>
-      <Image source={{ uri: coverUri }} style={styles.venueImg} resizeMode="cover" />
-      <View style={styles.venueBody}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Text style={styles.venueName} numberOfLines={1}>{venue.name}</Text>
-          <Text style={styles.venuePrice}>₹{venue.pricePerHour}<Text style={styles.perSlot}>/hr</Text></Text>
+    <View style={vc.ratingBadge}>
+      <Text style={vc.ratingText}>⭐ {rating.toFixed(1)}</Text>
+    </View>
+  );
+}
+
+function MostBookedBadge() {
+  return (
+    <View style={vc.mostBookedBadge}>
+      <Text style={vc.mostBookedText}>🔥 Most Booked</Text>
+    </View>
+  );
+}
+
+function SportChip({ sportId }: { sportId: string }) {
+  return (
+    <View style={vc.sportChip}>
+      <Text style={vc.sportChipText}>
+        {getSportIcon(sportId)} {getSportName(sportId)}
+      </Text>
+    </View>
+  );
+}
+
+function AmenityItem({ amenityKey }: { amenityKey: string }) {
+  const { icon, label } = getAmenityMeta(amenityKey);
+  return (
+    <View style={vc.amenityItem}>
+      <Text style={vc.amenityIcon}>{icon}</Text>
+      <Text style={vc.amenityLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function BookNowButton({ onPress }: { onPress: () => void }) {
+  return (
+    <TouchableOpacity style={vc.bookNowBtn} onPress={onPress} activeOpacity={0.82}>
+      <Text style={vc.bookNowText}>Book Now</Text>
+    </TouchableOpacity>
+  );
+}
+
+/* ───────────────── VenueCard ───────────────── */
+interface VenueCardProps {
+  venue: Venue;
+  onPress: () => void;
+  userLocation?: LatLng;
+}
+
+export function VenueCard({ venue, onPress, userLocation }: VenueCardProps) {
+  const coverUri =
+    venue.images?.find((i) => i.isPrimary)?.url ??
+    venue.images?.[0]?.url ??
+    venue.coverPhoto;
+
+  const visibleAmenities = (venue.amenities ?? []).slice(0, 4);
+
+  const distanceLabel = useMemo(() => {
+    if (userLocation && venue.lat && venue.lng) {
+      return formatDistance(haversineKm(userLocation.lat, userLocation.lng, venue.lat, venue.lng));
+    }
+    if (venue.distanceKm > 0) return `${venue.distanceKm} km away`;
+    return null;
+  }, [userLocation, venue.lat, venue.lng, venue.distanceKm]);
+
+  return (
+    <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={[vc.card, shadow.card]}>
+
+      {/* ── Image ── */}
+      <View style={vc.imageWrap}>
+        <Image source={{ uri: coverUri }} style={vc.image} resizeMode="cover" />
+        <View style={vc.imageOverlay} />
+        <View style={vc.imageBadgeRow}>
+          <RatingBadge rating={venue.rating} />
+          {venue.isMostBooked && <MostBookedBadge />}
         </View>
-        <Text style={styles.venueAddr} numberOfLines={1}>📍 {venue.address}</Text>
-        <View style={styles.venueMeta}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <StarRating value={Math.round(venue.rating)} size={13} />
-            <Text style={styles.metaText}>{venue.rating} ({venue.reviewCount})</Text>
+      </View>
+
+      {/* ── Body ── */}
+      <View style={vc.body}>
+
+        <Text style={vc.venueName} numberOfLines={1}>{venue.name}</Text>
+        <Text style={vc.venueAddr} numberOfLines={1}>
+          📍 {venue.address}{distanceLabel ? ` • ${distanceLabel}` : ''}
+        </Text>
+
+        {venue.sports?.length > 0 && (
+          <View style={vc.sportRow}>
+            {venue.sports.map((s) => <SportChip key={s} sportId={s} />)}
           </View>
-          <Text style={styles.metaText}>{venue.distanceKm} km away</Text>
-        </View>
-        <View style={styles.sportRow}>
-          {venue.sports.map((s) => (
-            <View key={s} style={styles.miniChip}>
-              <Text style={{ fontSize: 11 }}>{getSportIcon(s)} {getSportName(s)}</Text>
+        )}
+
+        {visibleAmenities.length > 0 && (
+          <>
+            <View style={vc.divider} />
+            <View style={vc.amenityRow}>
+              {visibleAmenities.map((a) => <AmenityItem key={a} amenityKey={a} />)}
             </View>
-          ))}
+          </>
+        )}
+
+        <View style={vc.footer}>
+          <View>
+            <Text style={vc.priceLabel}>Starting from</Text>
+            <Text style={vc.price}>
+              ₹{venue.pricePerHour}
+              <Text style={vc.priceUnit}>/hr</Text>
+            </Text>
+          </View>
+          <BookNowButton onPress={onPress} />
         </View>
+
       </View>
     </TouchableOpacity>
   );
 }
+
+const vc = StyleSheet.create({
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  imageWrap: {
+    height: 200,
+    position: 'relative',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.20)',
+  },
+  imageBadgeRow: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    right: spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  ratingBadge: {
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+  },
+  ratingText: {
+    color: colors.white,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+  },
+  mostBookedBadge: {
+    backgroundColor: '#FF6B00',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+  },
+  mostBookedText: {
+    color: colors.white,
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.bold,
+  },
+  body: {
+    padding: spacing.lg,
+  },
+  venueName: {
+    fontSize: 18,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
+    marginBottom: 4,
+  },
+  venueAddr: {
+    fontSize: fontSize.sm,
+    color: colors.textMid,
+    marginBottom: spacing.md,
+  },
+  sportRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  sportChip: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: colors.primary + '40',
+  },
+  sportChipText: {
+    fontSize: fontSize.xs,
+    color: colors.primaryDark,
+    fontWeight: fontWeight.medium,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
+  },
+  amenityRow: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+    flexWrap: 'wrap',
+  },
+  amenityItem: {
+    alignItems: 'center',
+    gap: 3,
+  },
+  amenityIcon: {
+    fontSize: 17,
+  },
+  amenityLabel: {
+    fontSize: 10,
+    color: colors.textMid,
+    fontWeight: fontWeight.medium,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.lg,
+  },
+  priceLabel: {
+    fontSize: 10,
+    color: colors.textDim,
+    fontWeight: fontWeight.medium,
+    marginBottom: 2,
+  },
+  price: {
+    fontSize: 20,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
+  },
+  priceUnit: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.regular,
+    color: colors.textMid,
+  },
+  bookNowBtn: {
+    backgroundColor: '#6BCB2C',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+  },
+  bookNowText: {
+    color: colors.white,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
+  },
+});
 
 /* ───────────────── SlotGrid ───────────────── */
 interface SlotGridProps {

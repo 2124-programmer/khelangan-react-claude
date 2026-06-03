@@ -10,6 +10,7 @@ import { ConfirmActionModal } from '../../modals';
 import { useSports } from '../../api/hooks/useSports';
 import { useCreateVenue, useUploadVenueImage } from '../../api/hooks/useVenues';
 import { extractApiError } from '../../api/client';
+import { parseLatLng } from '../../utils/locationUtils';
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
@@ -93,6 +94,7 @@ export default function AddVenueScreen({ navigation }: any) {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [pincode, setPincode] = useState('');
+  const [latlong, setLatlong] = useState('');
 
   // Step 2 — Contact
   const [phone, setPhone] = useState('');
@@ -133,6 +135,8 @@ export default function AddVenueScreen({ navigation }: any) {
       if (!address.trim()) errs.address = 'Address is required';
       if (!city.trim()) errs.city = 'City is required';
       if (pincode && !/^\d{6}$/.test(pincode)) errs.pincode = 'Pincode must be exactly 6 digits';
+      if (latlong.trim() && !parseLatLng(latlong.trim()))
+        errs.latlong = 'Enter valid coordinates like "20.015164, 73.84228"';
     }
     if (s === 2) {
       if (!phone.trim()) errs.phone = 'Contact phone is required';
@@ -190,6 +194,8 @@ export default function AddVenueScreen({ navigation }: any) {
       const primaryIdx = primaryImg ? images.indexOf(primaryImg) : 0;
       const coverPhoto = uploadedUrls[primaryIdx] ?? uploadedUrls[0];
 
+      const coords = latlong.trim() ? parseLatLng(latlong.trim()) : null;
+
       const result = await createVenue.mutateAsync({
         name: name.trim(),
         address: address.trim(),
@@ -205,8 +211,8 @@ export default function AddVenueScreen({ navigation }: any) {
         amenities: selectedAmenities,
         sportIds: selectedSports.map((id) => Number(id)),
         isActive,
-        lat: 0,
-        lng: 0,
+        lat: coords?.lat ?? 0,
+        lng: coords?.lng ?? 0,
         coverPhoto,
         photos: uploadedUrls,
       });
@@ -292,6 +298,15 @@ export default function AddVenueScreen({ navigation }: any) {
               maxLength={6}
             />
             <FieldError msg={errors.pincode} />
+            <AppInput
+              label="Location Coordinates (optional)"
+              value={latlong}
+              onChangeText={(v) => { setLatlong(v); setErrors((e) => ({ ...e, latlong: '' })); }}
+              placeholder="e.g. 20.015164, 73.84228"
+              keyboardType="default"
+              autoCapitalize="none"
+            />
+            <FieldError msg={errors.latlong} />
           </>
         )}
 

@@ -9,11 +9,13 @@ import { VenueCard } from '../../components/venue';
 import { useSports } from '../../api/hooks/useSports';
 import { useVenues } from '../../api/hooks/useVenues';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 
 export default function SearchScreen({ navigation }: any) {
   const [query, setQuery] = useState('');
   const [activeSport, setActiveSport] = useState<string | null>(null);
   const debouncedQuery = useDebounce(query, 400);
+  const userLocation = useCurrentLocation();
 
   const { data: sports = [] } = useSports();
   const { data, isLoading } = useVenues(
@@ -76,6 +78,7 @@ export default function SearchScreen({ navigation }: any) {
                 <VenueCard
                   key={v.id}
                   venue={v}
+                  userLocation={userLocation ?? undefined}
                   onPress={() => navigation.navigate('VenueDetail', { venueId: v.id })}
                 />
               ))

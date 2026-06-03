@@ -9,10 +9,12 @@ import { VenueCard } from '../../components/venue';
 import { useAuth } from '../../store/AuthContext';
 import { useSports } from '../../api/hooks/useSports';
 import { useVenues } from '../../api/hooks/useVenues';
+import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 
 export default function PlayerHomeScreen({ navigation }: any) {
   const { user, isLoggedIn } = useAuth();
   const [activeSport, setActiveSport] = useState<string | null>(null);
+  const userLocation = useCurrentLocation();
 
   const requireAuth = (action: () => void) => {
     if (isLoggedIn) { action(); } else { navigation.navigate('Login'); }
@@ -99,6 +101,7 @@ export default function PlayerHomeScreen({ navigation }: any) {
               <VenueCard
                 key={v.id}
                 venue={v}
+                userLocation={userLocation ?? undefined}
                 onPress={() => navigation.navigate('VenueDetail', { venueId: v.id })}
               />
             ))

@@ -89,6 +89,7 @@ export interface Venue {
   isActive: boolean;
   lat: number;
   lng: number;
+  isMostBooked?: boolean;
 }
 
 export interface Slot {

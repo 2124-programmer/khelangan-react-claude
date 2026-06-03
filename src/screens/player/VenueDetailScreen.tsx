@@ -10,6 +10,8 @@ import { RatingDetailModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useVenueReviews } from '../../api/hooks/useReviews';
 import { useSports } from '../../api/hooks/useSports';
+import { useCurrentLocation } from '../../hooks/useCurrentLocation';
+import { haversineKm, formatDistance } from '../../utils/locationUtils';
 
 export default function VenueDetailScreen({ navigation, route }: any) {
   const venueId: string = route.params.venueId;
@@ -18,6 +20,7 @@ export default function VenueDetailScreen({ navigation, route }: any) {
   const { data: venue, isLoading, isError } = useVenueDetail(venueId);
   const { data: reviewsData } = useVenueReviews(venueId);
   const { data: sports = [] } = useSports();
+  const userLocation = useCurrentLocation();
 
   const reviews = reviewsData?.reviews ?? [];
 
@@ -54,7 +57,12 @@ export default function VenueDetailScreen({ navigation, route }: any) {
 
         <View style={styles.body}>
           <Text style={styles.name}>{venue.name}</Text>
-          <Text style={styles.addr}>📍 {venue.address}</Text>
+          <Text style={styles.addr}>
+            📍 {venue.address}
+            {userLocation && venue.lat && venue.lng
+              ? `  •  ${formatDistance(haversineKm(userLocation.lat, userLocation.lng, venue.lat, venue.lng))}`
+              : ''}
+          </Text>
           <TouchableOpacity style={styles.ratingRow} onPress={() => setShowRating(true)}>
             <StarRating value={Math.round(venue.rating)} size={16} />
             <Text style={styles.ratingText}>{venue.rating} · {venue.reviewCount} reviews ›</Text>

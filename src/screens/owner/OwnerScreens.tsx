@@ -20,6 +20,7 @@ import { useVenueDetail, useUpdateVenue, useUploadVenueImage } from '../../api/h
 import { useSports } from '../../api/hooks/useSports';
 import { useNotifications } from '../../api/hooks/useNotifications';
 import { extractApiError } from '../../api/client';
+import { parseLatLng, formatLatLng } from '../../utils/locationUtils';
 
 // ─── Edit-venue constants (mirror AddVenueScreen) ───────────────────────────
 
@@ -342,6 +343,7 @@ export function EditVenueScreen({ navigation, route }: any) {
   const [closeTime, setCloseTime]     = useState('23:00');
   const [price, setPrice]             = useState('');
   const [isActive, setIsActive]       = useState(true);
+  const [latlong, setLatlong]         = useState('');
   const [images, setImages]           = useState<PickedImage[]>([]);
   const [errors, setErrors]           = useState<Record<string, string>>({});
   const [loading, setLoading]         = useState(false);
@@ -364,6 +366,7 @@ export function EditVenueScreen({ navigation, route }: any) {
       setCloseTime(venue.closeTime);
       setPrice(String(venue.pricePerHour));
       setIsActive(venue.isActive);
+      setLatlong(venue.lat && venue.lng ? formatLatLng(venue.lat, venue.lng) : '');
       setImages((venue.images ?? []).map((img) => ({ uri: img.url, isPrimary: img.isPrimary })));
       setPrefilled(true);
     }
@@ -385,6 +388,8 @@ export function EditVenueScreen({ navigation, route }: any) {
     if (close <= open) errs.hours = 'Closing time must be after opening time';
     if (!price.trim()) errs.price = 'Price per hour is required';
     else if (isNaN(Number(price)) || Number(price) < 0) errs.price = 'Enter a valid price';
+    if (latlong.trim() && !parseLatLng(latlong.trim()))
+      errs.latlong = 'Enter valid coordinates like "20.015164, 73.84228"';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -408,6 +413,8 @@ export function EditVenueScreen({ navigation, route }: any) {
       const primaryIdx = images.findIndex((i) => i.isPrimary);
       const coverPhoto  = uploadedUrls[primaryIdx >= 0 ? primaryIdx : 0];
 
+      const coords = latlong.trim() ? parseLatLng(latlong.trim()) : null;
+
       await updateVenue.mutateAsync({
         id: Number(venueId),
         data: {
@@ -425,6 +432,8 @@ export function EditVenueScreen({ navigation, route }: any) {
           closeTime,
           pricePerHour: parseInt(price, 10),
           isActive,
+          lat:          coords?.lat ?? venue?.lat ?? 0,
+          lng:          coords?.lng ?? venue?.lng ?? 0,
           coverPhoto,
           photos:       uploadedUrls,
         },
@@ -479,6 +488,14 @@ export function EditVenueScreen({ navigation, route }: any) {
           onChangeText={(v) => { setPincode(v); setErrors((e) => ({ ...e, pincode: '' })); }}
           placeholder="e.g. 422001" />
         <FieldErr msg={errors.pincode} />
+        <AppInput
+          label="Location Coordinates (optional)"
+          value={latlong}
+          onChangeText={(v) => { setLatlong(v); setErrors((e) => ({ ...e, latlong: '' })); }}
+          placeholder="e.g. 20.015164, 73.84228"
+          autoCapitalize="none"
+        />
+        <FieldErr msg={errors.latlong} />
 
         {/* ── Contact ── */}
         <Text style={styles.eSectionTitle}>Contact</Text>
