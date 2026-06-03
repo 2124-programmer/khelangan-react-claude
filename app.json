@@ -12,6 +12,15 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "TurfBook uses your location to show nearby venues and distance.",
+          "locationWhenInUsePermission": "TurfBook uses your location to show nearby venues and distance."
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.turfbook.app"
@@ -19,7 +28,11 @@
     "android": {
       "package": "com.turfbook.app",
       "versionCode": 1,
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "bundler": "metro"

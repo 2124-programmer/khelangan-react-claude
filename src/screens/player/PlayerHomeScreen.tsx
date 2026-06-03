@@ -9,12 +9,12 @@ import { VenueCard } from '../../components/venue';
 import { useAuth } from '../../store/AuthContext';
 import { useSports } from '../../api/hooks/useSports';
 import { useVenues } from '../../api/hooks/useVenues';
-import { useCurrentLocation } from '../../hooks/useCurrentLocation';
+import { useLocation } from '../../store/LocationContext';
 
 export default function PlayerHomeScreen({ navigation }: any) {
   const { user, isLoggedIn } = useAuth();
   const [activeSport, setActiveSport] = useState<string | null>(null);
-  const userLocation = useCurrentLocation();
+  const { location: userLocation, permission, isResolving } = useLocation();
 
   const requireAuth = (action: () => void) => {
     if (isLoggedIn) { action(); } else { navigation.navigate('Login'); }
@@ -85,6 +85,17 @@ export default function PlayerHomeScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
+        {/* Location status — visible indicator for debugging */}
+        <Text style={styles.locationStatus}>
+          {isResolving
+            ? '📍 Getting your location...'
+            : permission === 'denied'
+            ? '📍 Location access denied — enable in browser/device settings'
+            : userLocation
+            ? `📍 ${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`
+            : '📍 Location unavailable'}
+        </Text>
+
         <View style={{ paddingHorizontal: spacing.lg }}>
           {venuesQuery.isLoading ? (
             <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
@@ -122,4 +133,5 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, paddingHorizontal: spacing.lg, marginTop: spacing.md, marginBottom: spacing.md },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md },
   seeAll: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.sm, paddingHorizontal: spacing.lg },
+  locationStatus: { fontSize: fontSize.xs, color: colors.textDim, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
 });

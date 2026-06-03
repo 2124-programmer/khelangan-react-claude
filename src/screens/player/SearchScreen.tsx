@@ -9,13 +9,13 @@ import { VenueCard } from '../../components/venue';
 import { useSports } from '../../api/hooks/useSports';
 import { useVenues } from '../../api/hooks/useVenues';
 import { useDebounce } from '../../hooks/useDebounce';
-import { useCurrentLocation } from '../../hooks/useCurrentLocation';
+import { useLocation } from '../../store/LocationContext';
 
 export default function SearchScreen({ navigation }: any) {
   const [query, setQuery] = useState('');
   const [activeSport, setActiveSport] = useState<string | null>(null);
   const debouncedQuery = useDebounce(query, 400);
-  const userLocation = useCurrentLocation();
+  const { location: userLocation } = useLocation();
 
   const { data: sports = [] } = useSports();
   const { data, isLoading } = useVenues(

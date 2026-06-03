@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { haversineKm, formatDistance } from '../../utils/locationUtils';
-import type { LatLng } from '../../hooks/useCurrentLocation';
+import type { LatLng } from '../../store/LocationContext';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { Venue, Slot, Booking } from '../../types';
 import { StatusBadge, AppButton } from '../common';

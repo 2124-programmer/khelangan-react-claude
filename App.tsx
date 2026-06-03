@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './src/store/AuthContext';
+import { LocationProvider } from './src/store/LocationContext';
 import { queryClient } from './src/api/queryClient';
 import { sportService } from './src/api/services/sportService';
 import { adaptSport } from './src/api/adapters';
@@ -24,11 +25,13 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <AuthProvider>
-          <SportsBootstrap />
-          <NavigationContainer>
-            <StatusBar style="dark" />
-            <RootNavigator />
-          </NavigationContainer>
+          <LocationProvider>
+            <SportsBootstrap />
+            <NavigationContainer>
+              <StatusBar style="dark" />
+              <RootNavigator />
+            </NavigationContainer>
+          </LocationProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </QueryClientProvider>
