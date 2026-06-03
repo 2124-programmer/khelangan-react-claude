@@ -124,6 +124,8 @@ export interface VenueSummaryDto {
   lat?: number;
   lng?: number;
   ownerId?: number;
+  sports?: SportDto[];
+  amenities?: string[];
 }
 
 export interface VenueDetailDto {

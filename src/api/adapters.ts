@@ -104,8 +104,8 @@ export function adaptVenueSummary(dto: VenueSummaryDto): Venue {
     images: buildImages(photos, coverPhoto),
     photos,
     coverPhoto,
-    sports: [],   // not in summary; available in VenueDetailDto
-    amenities: [],
+    sports: (dto.sports ?? []).map((s) => String(s.id ?? 0)),
+    amenities: dto.amenities ?? [],
     courts: [],
     isActive: dto.isActive ?? true,
     lat: dto.lat ?? 0,
