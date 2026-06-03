@@ -4,7 +4,7 @@ import {
   TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { SportChip, AvatarImage, EmptyState } from '../../components/common';
+import { SportChip, EmptyState, AppHeader } from '../../components/common';
 import { VenueCard } from '../../components/venue';
 import { useAuth } from '../../store/AuthContext';
 import { useSports } from '../../api/hooks/useSports';
@@ -28,19 +28,11 @@ export default function PlayerHomeScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <AppHeader
+        userName={user ? `Hi, ${user.name.split(' ')[0]} !!` : 'Welcome.!'}
+        onBellPress={() => requireAuth(() => navigation.navigate('Notifications'))}
+      />
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Top bar */}
-        <View style={styles.topBar}>
-          <View>
-            <Text style={styles.greeting}>
-              {user ? `Hi, ${user.name.split(' ')[0]} 👋` : 'Welcome 👋'}
-            </Text>
-            <Text style={styles.location}>📍 Nashik, Maharashtra</Text>
-          </View>
-          <TouchableOpacity onPress={() => requireAuth(() => navigation.navigate('Notifications'))}>
-            <View style={styles.bell}><Text style={{ fontSize: 20 }}>🔔</Text></View>
-          </TouchableOpacity>
-        </View>
 
         {/* Search bar */}
         <TouchableOpacity
@@ -119,10 +111,6 @@ export default function PlayerHomeScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg },
-  greeting: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  location: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2 },
-  bell: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', ...shadow.card },
   searchBar: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, marginHorizontal: spacing.lg, borderRadius: radius.md, paddingHorizontal: spacing.lg, height: 50 },
   searchPlaceholder: { color: colors.textDim, fontSize: fontSize.md },
   banner: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, margin: spacing.lg, borderRadius: radius.lg, padding: spacing.lg },
