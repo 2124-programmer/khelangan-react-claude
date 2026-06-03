@@ -111,10 +111,15 @@ export interface VenueSummaryDto {
   name?: string;
   address?: string;
   city?: string;
+  state?: string;
+  pincode?: string;
   status?: string;         // "PENDING" | "LIVE" | "REJECTED" | "SUSPENDED"
   rating?: number;
   reviewCount?: number;
-  pricePerSlot?: number;
+  pricePerHour?: number;
+  openTime?: string;       // "HH:00" format
+  closeTime?: string;      // "HH:00" format
+  isActive?: boolean;
   coverPhoto?: string;
   lat?: number;
   lng?: number;
@@ -126,11 +131,18 @@ export interface VenueDetailDto {
   name?: string;
   address?: string;
   city?: string;
+  state?: string;
+  pincode?: string;
   description?: string;
+  contactPhone?: string;
+  contactEmail?: string;
   status?: string;
   rating?: number;
   reviewCount?: number;
-  pricePerSlot?: number;
+  pricePerHour?: number;
+  openTime?: string;       // "HH:00" format
+  closeTime?: string;      // "HH:00" format
+  isActive?: boolean;
   coverPhoto?: string;
   photos?: string[];
   amenities?: string[];
@@ -146,24 +158,38 @@ export interface CreateVenueRequest {
   name: string;
   address: string;
   city: string;
+  state?: string;
+  pincode?: string;
   description?: string;
-  pricePerSlot: number;
+  contactPhone: string;
+  contactEmail?: string;
+  openTime: string;        // "HH:00" format, minutes must be :00
+  closeTime: string;       // "HH:00" format, must be after openTime
+  pricePerHour: number;
   amenities?: string[];
-  lat: number;
-  lng: number;
-  sportIds?: number[];
+  lat?: number;
+  lng?: number;
+  sportIds: number[];
   coverPhoto?: string;
   photos?: string[];
+  isActive?: boolean;
   courts?: CreateCourtRequest[];
 }
 
 export interface UpdateVenueRequest {
   name?: string;
   description?: string;
-  pricePerSlot?: number;
+  contactPhone?: string;
+  contactEmail?: string;
+  state?: string;
+  pincode?: string;
+  openTime?: string;
+  closeTime?: string;
+  pricePerHour?: number;
   amenities?: string[];
   coverPhoto?: string;
   photos?: string[];
+  isActive?: boolean;
 }
 
 export interface VenueStatusRequest {
@@ -179,24 +205,48 @@ export interface CourtDto {
   name?: string;
   sportId?: number;
   type?: string;
-  pricePerSlot?: number;
+  /** null = inherits venue price */
+  pricePerHour?: number | null;
   peakPrice?: number;
+  /** null = inherits venue openTime */
+  openTime?: string | null;
+  /** null = inherits venue closeTime */
+  closeTime?: string | null;
+  slotDurationMins?: number;
+  isActive?: boolean;
+  /** Server-resolved effective values (read-only) */
+  effectivePricePerHour?: number;
+  effectiveOpenTime?: string;
+  effectiveCloseTime?: string;
 }
 
 export interface CreateCourtRequest {
   name: string;
   sportId: number;
-  type: string;
-  pricePerSlot: number;
+  type?: string;
+  /** null or omit = inherit venue price */
+  pricePerHour?: number | null;
   peakPrice?: number;
+  /** null or omit = inherit venue openTime */
+  openTime?: string | null;
+  /** null or omit = inherit venue closeTime */
+  closeTime?: string | null;
+  slotDurationMins?: number;
+  isActive?: boolean;
 }
 
 export interface UpdateCourtRequest {
   name?: string;
   sportId?: number;
   type?: string;
-  pricePerSlot?: number;
+  /** null = revert to inherit */
+  pricePerHour?: number | null;
   peakPrice?: number;
+  /** null = revert to inherit */
+  openTime?: string | null;
+  closeTime?: string | null;
+  slotDurationMins?: number;
+  isActive?: boolean;
 }
 
 // ─── Slot ────────────────────────────────────────────────────────────────────
@@ -213,6 +263,12 @@ export interface SlotDto {
 
 export interface BulkBlockRequest {
   date: string;
+}
+
+export interface CourtSlotsDto {
+  courtId?: number;
+  courtName?: string;
+  slots?: SlotDto[];
 }
 
 // ─── Booking ─────────────────────────────────────────────────────────────────
@@ -248,6 +304,18 @@ export interface CreateBookingRequest {
   sport: string;
   couponCode?: string;
   paymentMethod?: string;
+}
+
+// ─── Owner Settings ───────────────────────────────────────────────────────────
+
+export interface OwnerSettingsDto {
+  autoAcceptBookings?: boolean;
+  pushNotificationsEnabled?: boolean;
+}
+
+export interface UpdateOwnerSettingsRequest {
+  autoAcceptBookings?: boolean;
+  pushNotificationsEnabled?: boolean;
 }
 
 // ─── Review ──────────────────────────────────────────────────────────────────

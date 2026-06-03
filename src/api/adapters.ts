@@ -5,12 +5,12 @@
 import type {
   UserDto, SportDto, VenueSummaryDto, VenueDetailDto, CourtDto,
   SlotDto, BookingDto, ReviewDto, CouponDto, PayoutDto, DisputeDto,
-  NotificationDto, AdminStatsDto, OwnerStatsDto,
+  NotificationDto, AdminStatsDto, OwnerStatsDto, OwnerSettingsDto,
 } from './types';
 import type {
   User, Sport, Venue, Court, Slot, Booking, Review, Coupon,
   Payout, Dispute, AppNotification, UserRole, VenueStatus,
-  SlotStatus, BookingStatus, PaymentStatus,
+  SlotStatus, BookingStatus, PaymentStatus, OwnerSettings,
 } from '../types';
 
 export function adaptUser(dto: UserDto): User {
@@ -41,8 +41,15 @@ export function adaptCourt(dto: CourtDto): Court {
     name: dto.name ?? '',
     sportId: String(dto.sportId ?? 0),
     type: dto.type ?? '',
-    pricePerSlot: dto.pricePerSlot ?? 0,
+    pricePerHour: dto.pricePerHour ?? null,
     peakPrice: dto.peakPrice ?? 0,
+    openTime: dto.openTime ?? null,
+    closeTime: dto.closeTime ?? null,
+    slotDurationMins: dto.slotDurationMins ?? 60,
+    isActive: dto.isActive ?? true,
+    effectivePricePerHour: dto.effectivePricePerHour ?? dto.pricePerHour ?? 0,
+    effectiveOpenTime: dto.effectiveOpenTime ?? dto.openTime ?? '05:00',
+    effectiveCloseTime: dto.effectiveCloseTime ?? dto.closeTime ?? '23:00',
   };
 }
 
@@ -53,17 +60,24 @@ export function adaptVenueSummary(dto: VenueSummaryDto): Venue {
     name: dto.name ?? '',
     address: dto.address ?? '',
     city: dto.city ?? '',
+    state: dto.state ?? '',
+    pincode: dto.pincode ?? '',
     description: '',
+    contactPhone: '',
+    contactEmail: '',
+    openTime: dto.openTime ?? '05:00',
+    closeTime: dto.closeTime ?? '23:00',
     status: (dto.status?.toLowerCase() as VenueStatus) ?? 'live',
     rating: dto.rating ?? 0,
     reviewCount: dto.reviewCount ?? 0,
     distanceKm: 0,
-    pricePerSlot: dto.pricePerSlot ?? 0,
+    pricePerHour: dto.pricePerHour ?? 0,
     photos: dto.coverPhoto ? [dto.coverPhoto] : [],
     coverPhoto: dto.coverPhoto ?? '',
     sports: [],   // not in summary; available in VenueDetailDto
     amenities: [],
     courts: [],
+    isActive: dto.isActive ?? true,
     lat: dto.lat ?? 0,
     lng: dto.lng ?? 0,
   };
@@ -76,17 +90,24 @@ export function adaptVenueDetail(dto: VenueDetailDto): Venue {
     name: dto.name ?? '',
     address: dto.address ?? '',
     city: dto.city ?? '',
+    state: dto.state ?? '',
+    pincode: dto.pincode ?? '',
     description: dto.description ?? '',
+    contactPhone: dto.contactPhone ?? '',
+    contactEmail: dto.contactEmail ?? '',
+    openTime: dto.openTime ?? '05:00',
+    closeTime: dto.closeTime ?? '23:00',
     status: (dto.status?.toLowerCase() as VenueStatus) ?? 'live',
     rating: dto.rating ?? 0,
     reviewCount: dto.reviewCount ?? 0,
     distanceKm: 0,
-    pricePerSlot: dto.pricePerSlot ?? 0,
+    pricePerHour: dto.pricePerHour ?? 0,
     photos: dto.photos?.length ? dto.photos : (dto.coverPhoto ? [dto.coverPhoto] : []),
     coverPhoto: dto.coverPhoto ?? '',
     sports: (dto.sports ?? []).map((s) => String(s.id ?? 0)),
     amenities: dto.amenities ?? [],
     courts: (dto.courts ?? []).map(adaptCourt),
+    isActive: dto.isActive ?? true,
     lat: dto.lat ?? 0,
     lng: dto.lng ?? 0,
   };
@@ -207,6 +228,13 @@ export function adaptAdminStats(dto: AdminStatsDto) {
     activeVenues: dto.activeVenues ?? 0,
     pendingApprovals: dto.pendingApprovals ?? 0,
     openDisputes: dto.openDisputes ?? 0,
+  };
+}
+
+export function adaptOwnerSettings(dto: OwnerSettingsDto): OwnerSettings {
+  return {
+    autoAcceptBookings: dto.autoAcceptBookings ?? false,
+    pushNotificationsEnabled: dto.pushNotificationsEnabled ?? true,
   };
 }
 

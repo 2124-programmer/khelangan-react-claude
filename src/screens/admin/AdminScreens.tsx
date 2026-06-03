@@ -20,6 +20,7 @@ import { useDisputes, useResolveDispute } from '../../api/hooks/useDisputes';
 import { useAdminCoupons, useCreateCoupon } from '../../api/hooks/useCoupons';
 import { useBroadcastNotification } from '../../api/hooks/useNotifications';
 import { usePlatformSettings, useUpdateSettings } from '../../api/hooks/useAdmin';
+import { useSports, useCreateSport, useUpdateSport, useDeleteSport } from '../../api/hooks/useSports';
 import { extractApiError } from '../../api/client';
 
 function Screen({ title, navigation, children, scroll = true }: any) {
@@ -65,7 +66,7 @@ export function VenueApprovalScreen({ navigation }: any) {
           <Card key={v.id} style={{ marginBottom: spacing.md }}>
             <Text style={styles.cardTitle}>{v.name}</Text>
             <Text style={styles.muted}>{v.address}, {v.city}</Text>
-            <Text style={styles.muted}>₹{v.pricePerSlot}/slot</Text>
+            <Text style={styles.muted}>₹{v.pricePerHour}/hr</Text>
             <View style={styles.rowGap}>
               <AppButton label="Reject" variant="secondary" style={{ flex: 1 }}
                 onPress={() => setModal({ id: v.id, action: 'reject' })} />
@@ -104,7 +105,7 @@ export function VenueManagementScreen({ navigation }: any) {
             <Text style={styles.cardTitle}>{v.name}</Text>
             <StatusBadge status={v.status} />
           </View>
-          <Text style={styles.muted}>{v.city} · ⭐ {v.rating} ({v.reviewCount}) · ₹{v.pricePerSlot}</Text>
+          <Text style={styles.muted}>{v.city} · ⭐ {v.rating} ({v.reviewCount}) · ₹{v.pricePerHour}/hr</Text>
         </Card>
       ))}
     </Screen>
@@ -441,7 +442,142 @@ export function AnalyticsScreen({ navigation }: any) {
   return <Screen title="Analytics" navigation={navigation}><EmptyState icon="📊" title="Coming soon" subtitle="" /></Screen>;
 }
 export function CategoryManagementScreen({ navigation }: any) {
-  return <Screen title="Categories" navigation={navigation}><EmptyState icon="🏷️" title="Coming soon" subtitle="" /></Screen>;
+  const { data, isLoading } = useSports();
+  const createSport = useCreateSport();
+  const updateSport = useUpdateSport();
+  const deleteSport = useDeleteSport();
+
+  const sports = data ?? [];
+
+  const [showForm, setShowForm] = useState(false);
+  const [editTarget, setEditTarget] = useState<{ id: string; name: string; icon: string } | null>(null);
+  const [name, setName] = useState('');
+  const [icon, setIcon] = useState('');
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const isEdit = editTarget !== null;
+  const isPending = createSport.isPending || updateSport.isPending;
+
+  const openCreate = () => {
+    setEditTarget(null);
+    setName('');
+    setIcon('');
+    setShowForm(true);
+  };
+
+  const openEdit = (s: { id: string; name: string; icon: string }) => {
+    setEditTarget(s);
+    setName(s.name);
+    setIcon(s.icon);
+    setShowForm(true);
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditTarget(null);
+    setName('');
+    setIcon('');
+  };
+
+  const handleSubmit = async () => {
+    if (!name.trim() || !icon.trim()) {
+      Alert.alert('Required', 'Please enter both a name and an icon emoji.');
+      return;
+    }
+    try {
+      if (isEdit) {
+        await updateSport.mutateAsync({ id: Number(editTarget.id), data: { name: name.trim(), icon: icon.trim() } });
+      } else {
+        await createSport.mutateAsync({ name: name.trim(), icon: icon.trim() });
+      }
+      closeForm();
+    } catch (err) {
+      Alert.alert('Error', extractApiError(err));
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await deleteSport.mutateAsync(Number(deleteId));
+    } catch (err) {
+      Alert.alert('Error', extractApiError(err));
+    }
+    setDeleteId(null);
+  };
+
+  return (
+    <Screen title="Sports" navigation={navigation}>
+      <AppButton
+        label={showForm && !isEdit ? 'Cancel' : '+ Add Sport'}
+        variant={showForm && !isEdit ? 'secondary' : 'primary'}
+        onPress={showForm && !isEdit ? closeForm : openCreate}
+        style={{ marginBottom: spacing.lg }}
+      />
+
+      {showForm && (
+        <Card style={{ marginBottom: spacing.lg }}>
+          <AppInput label="Sport Name" value={name} onChangeText={setName} placeholder="e.g. Football" />
+          <AppInput label="Icon (emoji)" value={icon} onChangeText={setIcon} placeholder="e.g. ⚽" />
+          <View style={styles.rowGap}>
+            {isEdit && (
+              <AppButton label="Cancel" variant="secondary" onPress={closeForm} style={{ flex: 1 }} />
+            )}
+            <AppButton
+              label={isPending ? (isEdit ? 'Updating…' : 'Creating…') : (isEdit ? 'Update Sport' : 'Create Sport')}
+              onPress={handleSubmit}
+              loading={isPending}
+              disabled={isPending}
+              style={{ flex: 1 }}
+            />
+          </View>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+      ) : sports.length === 0 ? (
+        <EmptyState icon="⚽" title="No sports yet" subtitle="Add your first sport to get started." />
+      ) : (
+        sports.map((s) => (
+          <Card key={s.id} style={{ marginBottom: spacing.sm }}>
+            <View style={styles.rowBetween}>
+              <View style={styles.rowGapSm}>
+                <Text style={{ fontSize: 26 }}>{s.icon}</Text>
+                <Text style={styles.cardTitle}>{s.name}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <AppButton
+                  label="Edit"
+                  variant="secondary"
+                  fullWidth={false}
+                  onPress={() => openEdit(s)}
+                  style={{ height: 36, paddingHorizontal: spacing.md }}
+                />
+                <AppButton
+                  label="Delete"
+                  variant="danger"
+                  fullWidth={false}
+                  onPress={() => setDeleteId(s.id)}
+                  style={{ height: 36, paddingHorizontal: spacing.md }}
+                />
+              </View>
+            </View>
+          </Card>
+        ))
+      )}
+
+      <ConfirmActionModal
+        visible={!!deleteId}
+        title="Delete Sport?"
+        message="This will remove the sport from the platform. Venues using this sport may be affected."
+        confirmLabel="Delete"
+        danger
+        onConfirm={handleDelete}
+        onDismiss={() => setDeleteId(null)}
+      />
+    </Screen>
+  );
 }
 export function CMSScreen({ navigation }: any) {
   return <Screen title="CMS" navigation={navigation}><EmptyState icon="📄" title="Coming soon" subtitle="" /></Screen>;

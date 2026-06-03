@@ -93,12 +93,38 @@ export function AppInput({
 
 /* ───────────────── AppHeader ───────────────── */
 interface AppHeaderProps {
-  title: string;
+  title?: string;
   onBack?: () => void;
   rightLabel?: string;
   onRightPress?: () => void;
+  // Home screen variant
+  userName?: string;
+  onBellPress?: () => void;
 }
-export function AppHeader({ title, onBack, rightLabel, onRightPress }: AppHeaderProps) {
+export function AppHeader({ title, onBack, rightLabel, onRightPress, userName, onBellPress }: AppHeaderProps) {
+  if (userName !== undefined) {
+    return (
+      <View style={styles.homeHeader}>
+        {/* Left: logo */}
+        <View style={styles.homeLogoWrap}>
+          <Image
+            source={require('../../../assets/logo/score-adda-logo.png')}
+            style={styles.homeLogo}
+            resizeMode="contain"
+          />
+        </View>
+        {/* Right: user name then bell */}
+        <View style={styles.homeRight}>
+          <Text style={styles.homeUserName} numberOfLines={1}>{userName}</Text>
+          {onBellPress ? (
+            <TouchableOpacity onPress={onBellPress} activeOpacity={0.7} style={styles.bellBtn}>
+              <Text style={styles.bellIcon}>🔔</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
   return (
     <View style={styles.header}>
       {onBack ? (
@@ -106,7 +132,7 @@ export function AppHeader({ title, onBack, rightLabel, onRightPress }: AppHeader
           <Text style={styles.headerBackIcon}>‹</Text>
         </TouchableOpacity>
       ) : <View style={styles.headerBtn} />}
-      <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
+      <Text style={styles.headerTitle} numberOfLines={1}>{title ?? ''}</Text>
       {rightLabel ? (
         <TouchableOpacity onPress={onRightPress} style={styles.headerBtn}>
           <Text style={styles.headerRight}>{rightLabel}</Text>
@@ -278,6 +304,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm, backgroundColor: colors.surface,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
+  homeHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
+  homeLogoWrap: {
+    width: 120, height: 55, borderRadius: radius.md, overflow: 'hidden',
+    backgroundColor: '#111',
+  },
+  homeLogo: { width: '100%', height: '100%' },
+  homeRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  bellBtn: {
+    width: 38, height: 38, borderRadius: radius.md,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  bellIcon: { fontSize: 17 },
+  homeUserInfo: { alignItems: 'flex-end' },
+  homeUserName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
+  homeLocation: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 1 },
   headerBtn: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
   headerBackIcon: { fontSize: 34, color: colors.text, marginTop: -4 },
   headerTitle: {

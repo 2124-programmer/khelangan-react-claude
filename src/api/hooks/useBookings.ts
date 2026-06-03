@@ -61,3 +61,19 @@ export function useCancelBooking() {
     onSuccess: () => qc.invalidateQueries({ queryKey: BOOKINGS_KEY }),
   });
 }
+
+export function useAcceptBooking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => bookingService.accept(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: BOOKINGS_KEY }),
+  });
+}
+
+export function useRejectBooking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => bookingService.reject(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: BOOKINGS_KEY }),
+  });
+}

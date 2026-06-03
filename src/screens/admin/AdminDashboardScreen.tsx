@@ -33,7 +33,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
     { label: 'Coupons', icon: '🎟️', route: 'CouponManagement' },
     { label: 'Broadcast', icon: '📢', route: 'NotificationBroadcast' },
     { label: 'Analytics', icon: '📊', route: 'Analytics' },
-    { label: 'Categories', icon: '🏷️', route: 'CategoryManagement' },
+    { label: 'Sports', icon: '⚽', route: 'CategoryManagement' },
     { label: 'CMS', icon: '📄', route: 'CMS' },
   ];
 

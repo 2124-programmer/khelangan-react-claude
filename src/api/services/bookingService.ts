@@ -15,6 +15,12 @@ export const bookingService = {
   cancel: (id: number) =>
     apiClient.patch<BookingDto>(`/api/v1/bookings/${id}/cancel`).then((r) => r.data),
 
+  accept: (id: number) =>
+    apiClient.patch<BookingDto>(`/api/v1/bookings/${id}/accept`).then((r) => r.data),
+
+  reject: (id: number) =>
+    apiClient.patch<BookingDto>(`/api/v1/bookings/${id}/reject`).then((r) => r.data),
+
   // Admin only
   listAdmin: (params?: { status?: string; page?: number; size?: number }) =>
     apiClient.get<Page<BookingDto>>('/api/v1/admin/bookings', { params }).then((r) => r.data),

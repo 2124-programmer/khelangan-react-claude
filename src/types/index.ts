@@ -6,11 +6,13 @@ export type BookingStatus =
   | 'confirmed'
   | 'pending'
   | 'completed'
-  | 'cancelled';
+  | 'cancelled'
+  | 'rejected'
+  | 'expired';
 
 export type VenueStatus = 'live' | 'pending' | 'rejected' | 'suspended';
 
-export type SlotStatus = 'available' | 'booked' | 'blocked';
+export type SlotStatus = 'available' | 'booked' | 'blocked' | 'held';
 
 export type PaymentStatus = 'success' | 'pending' | 'failed' | 'refunded';
 
@@ -39,8 +41,19 @@ export interface Court {
   name: string;
   sportId: string;
   type: string;
-  pricePerSlot: number;
+  /** null = inherits venue pricePerHour */
+  pricePerHour: number | null;
   peakPrice: number;
+  /** null = inherits venue openTime */
+  openTime: string | null;
+  /** null = inherits venue closeTime */
+  closeTime: string | null;
+  slotDurationMins: number;
+  isActive: boolean;
+  /** Server-resolved effective values */
+  effectivePricePerHour: number;
+  effectiveOpenTime: string;
+  effectiveCloseTime: string;
 }
 
 export interface Venue {
@@ -49,17 +62,24 @@ export interface Venue {
   name: string;
   address: string;
   city: string;
+  state: string;
+  pincode: string;
   description: string;
+  contactPhone: string;
+  contactEmail: string;
+  openTime: string;    // "HH:00"
+  closeTime: string;   // "HH:00"
   status: VenueStatus;
   rating: number;
   reviewCount: number;
   distanceKm: number;
-  pricePerSlot: number;
+  pricePerHour: number;
   photos: string[];
   coverPhoto: string;
   sports: string[]; // sport ids
   amenities: string[];
   courts: Court[];
+  isActive: boolean;
   lat: number;
   lng: number;
 }
@@ -72,6 +92,12 @@ export interface Slot {
   endTime: string;
   status: SlotStatus;
   price: number;
+}
+
+export interface CourtSlotsGroup {
+  courtId: string;
+  courtName: string;
+  slots: Slot[];
 }
 
 export interface Booking {
@@ -141,6 +167,11 @@ export interface Dispute {
   issue: string;
   status: DisputeStatus;
   date: string;
+}
+
+export interface OwnerSettings {
+  autoAcceptBookings: boolean;
+  pushNotificationsEnabled: boolean;
 }
 
 export interface AppNotification {

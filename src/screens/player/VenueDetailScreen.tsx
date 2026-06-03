@@ -4,7 +4,7 @@ import {
   TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppButton, StarRating, EmptyState } from '../../components/common';
+import { AppHeader, AppButton, StarRating, EmptyState } from '../../components/common';
 import { RatingDetailModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useVenueReviews } from '../../api/hooks/useReviews';
@@ -46,13 +46,14 @@ export default function VenueDetailScreen({ navigation, route }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <AppHeader title={venue.name} onBack={() => navigation.goBack()} />
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Photo */}
         <View>
           <Image source={{ uri: venue.coverPhoto || undefined }} style={styles.cover} />
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          {/* <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Text style={{ fontSize: 24, color: colors.white }}>‹</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         <View style={styles.body}>
@@ -131,8 +132,8 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         <View>
           <Text style={styles.priceLabel}>Starting from</Text>
           <Text style={styles.price}>
-            ₹{venue.pricePerSlot}
-            <Text style={styles.perSlot}>/slot</Text>
+            ₹{venue.pricePerHour}
+            <Text style={styles.perSlot}>/hr</Text>
           </Text>
         </View>
         <AppButton

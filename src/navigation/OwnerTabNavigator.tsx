@@ -8,6 +8,7 @@ import OwnerDashboardScreen from '../screens/owner/OwnerDashboardScreen';
 import MyVenuesScreen from '../screens/owner/MyVenuesScreen';
 import AddVenueScreen from '../screens/owner/AddVenueScreen';
 import VenueCalendarScreen from '../screens/owner/VenueCalendarScreen';
+import CourtManagementScreen from '../screens/owner/CourtManagementScreen';
 import {
   BookingManagementScreen, OwnerBookingDetailScreen, EarningsScreen,
   ReviewsManagementScreen, OwnerProfileScreen, EditVenueScreen,
@@ -19,6 +20,7 @@ const SHARED = [
   { name: 'AddVenue', component: AddVenueScreen },
   { name: 'EditVenue', component: EditVenueScreen },
   { name: 'VenueCalendar', component: VenueCalendarScreen },
+  { name: 'CourtManagement', component: CourtManagementScreen },
   { name: 'OwnerBookingDetail', component: OwnerBookingDetailScreen },
   { name: 'ReviewsManagement', component: ReviewsManagementScreen },
   { name: 'OwnerNotifications', component: OwnerNotificationsScreen },
