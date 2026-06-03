@@ -131,8 +131,8 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         <View>
           <Text style={styles.priceLabel}>Starting from</Text>
           <Text style={styles.price}>
-            ₹{venue.pricePerSlot}
-            <Text style={styles.perSlot}>/slot</Text>
+            ₹{venue.pricePerHour}
+            <Text style={styles.perSlot}>/hr</Text>
           </Text>
         </View>
         <AppButton

@@ -284,7 +284,7 @@ export function EditVenueScreen({ navigation, route }: any) {
     try {
       await updateVenue.mutateAsync({
         id: Number(venueId),
-        data: { name: name || undefined, description: desc || undefined, pricePerSlot: price ? parseInt(price) : undefined },
+        data: { name: name || undefined, description: desc || undefined, pricePerHour: price ? parseInt(price) : undefined },
       });
       navigation.goBack();
     } catch (err) {

@@ -66,7 +66,7 @@ export function VenueApprovalScreen({ navigation }: any) {
           <Card key={v.id} style={{ marginBottom: spacing.md }}>
             <Text style={styles.cardTitle}>{v.name}</Text>
             <Text style={styles.muted}>{v.address}, {v.city}</Text>
-            <Text style={styles.muted}>₹{v.pricePerSlot}/slot</Text>
+            <Text style={styles.muted}>₹{v.pricePerHour}/hr</Text>
             <View style={styles.rowGap}>
               <AppButton label="Reject" variant="secondary" style={{ flex: 1 }}
                 onPress={() => setModal({ id: v.id, action: 'reject' })} />
@@ -105,7 +105,7 @@ export function VenueManagementScreen({ navigation }: any) {
             <Text style={styles.cardTitle}>{v.name}</Text>
             <StatusBadge status={v.status} />
           </View>
-          <Text style={styles.muted}>{v.city} · ⭐ {v.rating} ({v.reviewCount}) · ₹{v.pricePerSlot}</Text>
+          <Text style={styles.muted}>{v.city} · ⭐ {v.rating} ({v.reviewCount}) · ₹{v.pricePerHour}/hr</Text>
         </Card>
       ))}
     </Screen>

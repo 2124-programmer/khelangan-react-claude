@@ -14,7 +14,7 @@ export function VenueCard({ venue, onPress }: { venue: Venue; onPress: () => voi
       <View style={styles.venueBody}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <Text style={styles.venueName} numberOfLines={1}>{venue.name}</Text>
-          <Text style={styles.venuePrice}>₹{venue.pricePerSlot}<Text style={styles.perSlot}>/slot</Text></Text>
+          <Text style={styles.venuePrice}>₹{venue.pricePerHour}<Text style={styles.perSlot}>/hr</Text></Text>
         </View>
         <Text style={styles.venueAddr} numberOfLines={1}>📍 {venue.address}</Text>
         <View style={styles.venueMeta}>
