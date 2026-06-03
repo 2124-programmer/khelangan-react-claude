@@ -50,7 +50,10 @@ export default function VenueDetailScreen({ navigation, route }: any) {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Photo */}
         <View>
-          <Image source={{ uri: venue.coverPhoto || undefined }} style={styles.cover} />
+          <Image
+            source={{ uri: venue.coverPhoto || venue.images?.find(i => i.isPrimary)?.url || venue.images?.[0]?.url || undefined }}
+            style={styles.cover}
+          />
           {/* <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Text style={{ fontSize: 24, color: colors.white }}>‹</Text>
           </TouchableOpacity> */}

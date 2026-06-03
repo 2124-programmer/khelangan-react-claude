@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { apiClient } from '../client';
 import type {
   VenueSummaryDto, VenueDetailDto, CreateVenueRequest,
@@ -23,13 +24,23 @@ export const venueService = {
     apiClient.get<Page<VenueSummaryDto>>('/api/v1/owner/venues', { params }).then((r) => r.data),
 
   // Image upload (Owner) — sends multipart/form-data, returns { url }
-  uploadImage: (localUri: string) => {
+  uploadImage: async (localUri: string) => {
     const formData = new FormData();
-    const filename = localUri.split('/').pop() ?? 'photo.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
-    // React Native FormData accepts { uri, name, type } as a file part
-    formData.append('file', { uri: localUri, name: filename, type } as any);
+
+    if (Platform.OS === 'web') {
+      // On web, expo-image-manipulator returns a data: URI (base64).
+      // Browsers require a real Blob — fetch() converts it for us.
+      const response = await fetch(localUri);
+      const blob = await response.blob();
+      formData.append('file', blob, 'photo.jpg');
+    } else {
+      // React Native native: FormData accepts { uri, name, type } directly.
+      const filename = localUri.split('/').pop() ?? 'photo.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      formData.append('file', { uri: localUri, name: filename, type } as any);
+    }
+
     return apiClient
       .post<ImageUploadResponse>('/api/v1/venues/images/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
