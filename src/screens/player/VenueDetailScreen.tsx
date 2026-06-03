@@ -12,9 +12,11 @@ import { useVenueReviews } from '../../api/hooks/useReviews';
 import { useSports } from '../../api/hooks/useSports';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 import { haversineKm, formatDistance } from '../../utils/locationUtils';
+import { useAuth } from '../../store/AuthContext';
 
 export default function VenueDetailScreen({ navigation, route }: any) {
   const venueId: string = route.params.venueId;
+  const { isLoggedIn } = useAuth();
   const [showRating, setShowRating] = useState(false);
 
   const { data: venue, isLoading, isError } = useVenueDetail(venueId);
@@ -143,7 +145,9 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         <AppButton
           label="Book Now"
           fullWidth={false}
-          onPress={() => navigation.navigate('SlotSelection', { venueId: venue.id })}
+          onPress={() => isLoggedIn
+            ? navigation.navigate('SlotSelection', { venueId: venue.id })
+            : navigation.navigate('Login')}
           style={{ paddingHorizontal: 40 }}
         />
       </View>
