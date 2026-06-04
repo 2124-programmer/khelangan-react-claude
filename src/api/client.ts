@@ -2,14 +2,9 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { getToken, getRefreshToken, saveToken, saveRefreshToken, clearTokens } from './tokenStorage';
 
-/**
- * BASE URL — resolved by platform at runtime:
- *   android  → 10.0.2.2  (emulator loopback to host machine)
- *   ios/web  → localhost  (simulator / browser both reach host directly)
- *   physical device (any platform) → set EXPO_PUBLIC_API_URL env var
- *                                    or change DEVICE_LAN_IP below
- */
-const DEVICE_LAN_IP = '192.168.1.4'; // PC's LAN IP — update if it changes
+// Priority 1: EXPO_PUBLIC_API_URL in .env  (preferred — update .env when IP changes)
+// Priority 2: DEVICE_LAN_IP below         (fallback — run `ipconfig` to get current IP)
+const DEVICE_LAN_IP = '192.168.1.4';
 
 function resolveBaseUrl(): string {
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
