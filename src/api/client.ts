@@ -4,7 +4,7 @@ import { getToken, getRefreshToken, saveToken, saveRefreshToken, clearTokens } f
 
 // Priority 1: EXPO_PUBLIC_API_URL in .env  (preferred — update .env when IP changes)
 // Priority 2: DEVICE_LAN_IP below         (fallback — run `ipconfig` to get current IP)
-const DEVICE_LAN_IP = '192.168.1.5';
+const DEVICE_LAN_IP = '192.168.1.2';
 
 function resolveBaseUrl(): string {
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
@@ -139,4 +139,9 @@ export function extractFieldErrors(error: unknown): Record<string, string> {
     }
   }
   return {};
+}
+
+export function getHttpStatus(error: unknown): number | null {
+  if (axios.isAxiosError(error)) return error.response?.status ?? null;
+  return null;
 }

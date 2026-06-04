@@ -1,5 +1,5 @@
 // Reusable shared UI components used across all roles.
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
   ActivityIndicator, Image, ScrollView, ViewStyle, Modal,
@@ -66,15 +66,19 @@ interface AppInputProps {
   multiline?: boolean;
   maxLength?: number;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  returnKeyType?: 'done' | 'go' | 'next' | 'search' | 'send';
+  onSubmitEditing?: () => void;
 }
-export function AppInput({
+export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
   label, value, onChangeText, placeholder, error, secureTextEntry,
   keyboardType, multiline, maxLength, autoCapitalize = 'none',
-}: AppInputProps) {
+  returnKeyType, onSubmitEditing,
+}, ref) {
   return (
     <View style={{ marginBottom: spacing.lg }}>
       {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
       <TextInput
+        ref={ref}
         style={[
           styles.input,
           multiline && { height: 96, textAlignVertical: 'top', paddingTop: spacing.md },
@@ -89,11 +93,14 @@ export function AppInput({
         multiline={multiline}
         maxLength={maxLength}
         autoCapitalize={autoCapitalize}
+        returnKeyType={returnKeyType}
+        onSubmitEditing={onSubmitEditing}
+        blurOnSubmit={returnKeyType === 'done' || returnKeyType === undefined}
       />
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
-}
+});
 
 /* ───────────────── AppHeader ───────────────── */
 interface AppHeaderProps {
