@@ -25,6 +25,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.turfbook.app"
     },
+    "androidStatusBar": {
+      "backgroundColor": "#ffffff",
+      "translucent": false,
+      "barStyle": "dark-content"
+    },
     "android": {
       "package": "com.turfbook.app",
       "versionCode": 1,
