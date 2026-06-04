@@ -21,15 +21,16 @@ export default function LoginScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
 
+  const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
-  const clearFieldError = (field: string) =>
-    setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: '' } : prev));
+  // Sets or clears a single field's inline error.
+  const setFieldError = (field: string, err: string | null) =>
+    setFieldErrors((prev) => ({ ...prev, [field]: err ?? '' }));
 
-  const clearAllErrors = () => {
-    setFieldErrors({});
-    setFormError(null);
-  };
+  // Gates the Login button — OTP button only needs a valid email.
+  const isFormValid = !validateEmail(email) && !validateLoginPassword(password);
+  const isEmailValid = !validateEmail(email);
 
   const handleLogin = async () => {
     const errors = collectErrors([
@@ -39,12 +40,15 @@ export default function LoginScreen({ navigation }: any) {
     if (Object.keys(errors).length) {
       setFieldErrors(errors);
       setFormError(null);
+      if (errors.email) emailRef.current?.focus();
+      else if (errors.password) passwordRef.current?.focus();
       return;
     }
-    clearAllErrors();
+    setFieldErrors({});
+    setFormError(null);
     setLoading(true);
     try {
-      await loginWithCredentials(email.trim(), password);
+      await loginWithCredentials(email.trim().toLowerCase(), password);
       // Success: RootNavigator watches isLoggedIn and navigates automatically.
     } catch (err) {
       const status = getHttpStatus(err);
@@ -70,10 +74,12 @@ export default function LoginScreen({ navigation }: any) {
   const handleSendOtp = async () => {
     const emailError = validateEmail(email);
     if (emailError) {
-      setFieldErrors((prev) => ({ ...prev, email: emailError }));
+      setFieldError('email', emailError);
+      emailRef.current?.focus();
       return;
     }
-    clearAllErrors();
+    setFieldErrors({});
+    setFormError(null);
     setOtpLoading(true);
     try {
       const trimmed = email.trim().toLowerCase();
@@ -86,7 +92,7 @@ export default function LoginScreen({ navigation }: any) {
     } catch (err) {
       const status = getHttpStatus(err);
       if (status === 404) {
-        setFieldErrors((prev) => ({ ...prev, email: 'No account found with this email.' }));
+        setFieldError('email', 'No account found with this email.');
       } else {
         Alert.alert('Could not send OTP', extractApiError(err));
       }
@@ -104,9 +110,15 @@ export default function LoginScreen({ navigation }: any) {
 
         <View style={{ marginTop: spacing.xl }}>
           <AppInput
+            ref={emailRef}
             label="Email"
             value={email}
-            onChangeText={(v) => { setEmail(v); clearFieldError('email'); setFormError(null); }}
+            onChangeText={(v) => {
+              setEmail(v);
+              setFieldError('email', validateEmail(v));
+              setFormError(null);
+            }}
+            onBlur={() => setFieldError('email', validateEmail(email))}
             keyboardType="email-address"
             autoCapitalize="none"
             placeholder="you@example.com"
@@ -118,7 +130,12 @@ export default function LoginScreen({ navigation }: any) {
             ref={passwordRef}
             label="Password"
             value={password}
-            onChangeText={(v) => { setPassword(v); clearFieldError('password'); setFormError(null); }}
+            onChangeText={(v) => {
+              setPassword(v);
+              setFieldError('password', validateLoginPassword(v));
+              setFormError(null);
+            }}
+            onBlur={() => setFieldError('password', validateLoginPassword(password))}
             secureTextEntry
             error={fieldErrors.password}
             returnKeyType="done"
@@ -143,6 +160,7 @@ export default function LoginScreen({ navigation }: any) {
             label="Login"
             onPress={handleLogin}
             loading={loading}
+            disabled={!isFormValid || loading}
           />
           <View style={styles.dividerRow}>
             <View style={styles.line} />
@@ -154,6 +172,7 @@ export default function LoginScreen({ navigation }: any) {
             icon="📱"
             variant="secondary"
             loading={otpLoading}
+            disabled={!isEmailValid || otpLoading || loading}
             onPress={handleSendOtp}
           />
         </View>

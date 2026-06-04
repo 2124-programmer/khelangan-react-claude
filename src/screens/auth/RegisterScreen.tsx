@@ -23,17 +23,21 @@ export default function RegisterScreen({ navigation }: any) {
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const nameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
-  const clearFieldError = (field: string) =>
-    setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: '' } : prev));
+  // Sets or clears a single field's inline error.
+  const setFieldError = (field: string, err: string | null) =>
+    setFieldErrors((prev) => ({ ...prev, [field]: err ?? '' }));
 
-  const clearAllErrors = () => {
-    setFieldErrors({});
-    setFormError(null);
-  };
+  // True only when every field passes its validator — gates the submit button.
+  const isFormValid =
+    !validateName(name) &&
+    !validateEmail(email) &&
+    !validatePhone(phone) &&
+    !validatePassword(password);
 
   const handleRegister = async () => {
     const errors = collectErrors([
@@ -45,12 +49,24 @@ export default function RegisterScreen({ navigation }: any) {
     if (Object.keys(errors).length) {
       setFieldErrors(errors);
       setFormError(null);
+      // Focus the first invalid field so the user sees it immediately.
+      if (errors.name) nameRef.current?.focus();
+      else if (errors.email) emailRef.current?.focus();
+      else if (errors.phone) phoneRef.current?.focus();
+      else if (errors.password) passwordRef.current?.focus();
       return;
     }
-    clearAllErrors();
+    setFieldErrors({});
+    setFormError(null);
     setLoading(true);
     try {
-      await registerUser({ name: name.trim(), email: email.trim(), phone: phone.trim(), password, role });
+      await registerUser({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+        password,
+        role,
+      });
       // Success: RootNavigator watches isLoggedIn and navigates automatically.
     } catch (err) {
       const status = getHttpStatus(err);
@@ -96,9 +112,14 @@ export default function RegisterScreen({ navigation }: any) {
 
         <View style={{ marginTop: spacing.lg }}>
           <AppInput
+            ref={nameRef}
             label="Full Name"
             value={name}
-            onChangeText={(v) => { setName(v); clearFieldError('name'); }}
+            onChangeText={(v) => {
+              setName(v);
+              setFieldError('name', validateName(v));
+            }}
+            onBlur={() => setFieldError('name', validateName(name))}
             placeholder="Your name"
             autoCapitalize="words"
             error={fieldErrors.name}
@@ -109,7 +130,11 @@ export default function RegisterScreen({ navigation }: any) {
             ref={emailRef}
             label="Email"
             value={email}
-            onChangeText={(v) => { setEmail(v); clearFieldError('email'); }}
+            onChangeText={(v) => {
+              setEmail(v);
+              setFieldError('email', validateEmail(v));
+            }}
+            onBlur={() => setFieldError('email', validateEmail(email))}
             keyboardType="email-address"
             autoCapitalize="none"
             placeholder="you@example.com"
@@ -121,9 +146,13 @@ export default function RegisterScreen({ navigation }: any) {
             ref={phoneRef}
             label="Phone"
             value={phone}
-            onChangeText={(v) => { setPhone(v); clearFieldError('phone'); }}
+            onChangeText={(v) => {
+              setPhone(v);
+              setFieldError('phone', validatePhone(v));
+            }}
+            onBlur={() => setFieldError('phone', validatePhone(phone))}
             keyboardType="phone-pad"
-            placeholder="+91 98765 43210"
+            placeholder="9876543210"
             error={fieldErrors.phone}
             returnKeyType="next"
             onSubmitEditing={() => passwordRef.current?.focus()}
@@ -132,13 +161,22 @@ export default function RegisterScreen({ navigation }: any) {
             ref={passwordRef}
             label="Password"
             value={password}
-            onChangeText={(v) => { setPassword(v); clearFieldError('password'); }}
+            onChangeText={(v) => {
+              setPassword(v);
+              setFieldError('password', validatePassword(v));
+            }}
+            onBlur={() => setFieldError('password', validatePassword(password))}
             secureTextEntry
             placeholder="Min 6 characters"
             error={fieldErrors.password}
             returnKeyType="done"
             onSubmitEditing={handleRegister}
           />
+          <View style={styles.passwordRules}>
+            <Text style={styles.passwordRuleItem}>• At least 6 characters</Text>
+            <Text style={styles.passwordRuleItem}>• At least one letter (a–z or A–Z)</Text>
+            <Text style={styles.passwordRuleItem}>• At least one number (0–9)</Text>
+          </View>
         </View>
 
         {formError ? (
@@ -151,6 +189,7 @@ export default function RegisterScreen({ navigation }: any) {
           label="Register"
           onPress={handleRegister}
           loading={loading}
+          disabled={!isFormValid || loading}
           style={{ marginTop: spacing.md }}
         />
 
@@ -185,4 +224,6 @@ const styles = StyleSheet.create({
   link: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.xl },
   footerText: { color: colors.textMid, fontSize: fontSize.sm },
+  passwordRules: { marginTop: spacing.xs, gap: 2 },
+  passwordRuleItem: { fontSize: fontSize.xs, color: colors.textMid },
 });

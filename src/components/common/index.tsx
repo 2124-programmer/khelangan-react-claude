@@ -68,11 +68,12 @@ interface AppInputProps {
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   returnKeyType?: 'done' | 'go' | 'next' | 'search' | 'send';
   onSubmitEditing?: () => void;
+  onBlur?: () => void;
 }
 export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
   label, value, onChangeText, placeholder, error, secureTextEntry,
   keyboardType, multiline, maxLength, autoCapitalize = 'none',
-  returnKeyType, onSubmitEditing,
+  returnKeyType, onSubmitEditing, onBlur,
 }, ref) {
   return (
     <View style={{ marginBottom: spacing.lg }}>
@@ -86,6 +87,7 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
         ]}
         value={value}
         onChangeText={onChangeText}
+        onBlur={onBlur}
         placeholder={placeholder}
         placeholderTextColor={colors.textDim}
         secureTextEntry={secureTextEntry}
