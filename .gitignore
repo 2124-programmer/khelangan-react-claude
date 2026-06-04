@@ -3,6 +3,10 @@
 dist/
 .DS_Store
 
+# Generated native folders (created by expo prebuild / expo run:android)
+android/
+ios/
+
 # Logs
 logs
 *.log

@@ -31,19 +31,19 @@
       "usesCleartextTraffic": true,
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
       "bundler": "metro"
     },
     "extra": {
-      "apiBaseUrlAndroid": "http://10.0.2.2:8080",
-      "apiBaseUrlIos": "http://localhost:8080",
-      "apiBaseUrlWeb": "http://localhost:8080",
       "eas": {
-        "projectId": "2bcdd95d-6e74-4e06-9ad5-0c9f0e64de32"
+        "projectId": "d0109049-7875-444d-a5ce-eadddd586e79"
       }
-    }
+    },
+    "owner": "2124.programmer"
   }
 }
