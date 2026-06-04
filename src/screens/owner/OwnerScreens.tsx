@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Switch, ActivityIndicator,
+  TouchableOpacity, Switch, ActivityIndicator, Alert,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import {
   AppHeader, AppButton, AppInput, SectionTabBar,
-  StatusBadge, StarRating, EmptyState,
+  StatusBadge, StarRating, EmptyState, SportChip,
 } from '../../components/common';
-import { BookingCard } from '../../components/venue';
+import { BookingCard, VenueImagePicker, PickedImage } from '../../components/venue';
 import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
 import { useBookings, useBookingDetail, useAcceptBooking, useRejectBooking } from '../../api/hooks/useBookings';
@@ -16,9 +16,59 @@ import { useOwnerSettings, useUpdateOwnerSettings } from '../../api/hooks/useSet
 import { useOwnerStats } from '../../api/hooks/useAdmin';
 import { useOwnerPayouts } from '../../api/hooks/usePayouts';
 import { useOwnerReviews } from '../../api/hooks/useReviews';
-import { useUpdateVenue } from '../../api/hooks/useVenues';
+import { useVenueDetail, useUpdateVenue, useUploadVenueImage } from '../../api/hooks/useVenues';
+import { useSports } from '../../api/hooks/useSports';
 import { useNotifications } from '../../api/hooks/useNotifications';
 import { extractApiError } from '../../api/client';
+import { parseLatLng, formatLatLng } from '../../utils/locationUtils';
+
+// ─── Edit-venue constants (mirror AddVenueScreen) ───────────────────────────
+
+const AMENITIES_LIST = [
+  'Parking', 'Floodlights', 'Washroom', 'Drinking Water',
+  'AC', 'Cafeteria', 'First Aid', 'Equipment Rental', 'Locker Room',
+];
+
+const ALL_HOURS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}:00`);
+
+function formatHour(h24: string): string {
+  const h = parseInt(h24.split(':')[0], 10);
+  const period = h < 12 ? 'AM' : 'PM';
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${String(h12).padStart(2, '0')}:00 ${period}`;
+}
+
+function HourPickerInline({
+  label, value, onChange, minHour = 0, maxHour = 23,
+}: { label: string; value: string; onChange: (v: string) => void; minHour?: number; maxHour?: number }) {
+  const sel = parseInt(value.split(':')[0], 10);
+  const hours = ALL_HOURS.slice(minHour, maxHour + 1);
+  return (
+    <View style={{ marginBottom: spacing.lg }}>
+      <Text style={styles.eFieldLabel}>{label}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {hours.map((h) => {
+          const hNum = parseInt(h.split(':')[0], 10);
+          const active = hNum === sel;
+          return (
+            <TouchableOpacity
+              key={h}
+              onPress={() => onChange(h)}
+              style={[styles.eHourChip, active && styles.eHourChipActive]}
+            >
+              <Text style={[styles.eHourChipText, active && { color: colors.white }]}>{formatHour(h)}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+function FieldErr({ msg }: { msg?: string }) {
+  if (!msg) return null;
+  return <Text style={styles.eFieldError}>{msg}</Text>;
+}
 
 /* ───────────────── BookingManagementScreen ───────────────── */
 export function BookingManagementScreen({ navigation }: any) {
@@ -273,35 +323,263 @@ export function OwnerProfileScreen({ navigation }: any) {
 /* ───────────────── EditVenueScreen ───────────────── */
 export function EditVenueScreen({ navigation, route }: any) {
   const venueId: string = route.params.venueId;
+  const { data: venue, isLoading: venueLoading } = useVenueDetail(venueId);
+  const { data: allSports = [] } = useSports();
   const updateVenue = useUpdateVenue();
-  const [name, setName] = useState('');
-  const [desc, setDesc] = useState('');
-  const [price, setPrice] = useState('');
-  const [loading, setLoading] = useState(false);
+  const uploadImage = useUploadVenueImage();
 
-  const handleSave = async () => {
+  // ── Form state ───────────────────────────────────────────────────────────
+  const [name, setName]               = useState('');
+  const [desc, setDesc]               = useState('');
+  const [address, setAddress]         = useState('');
+  const [city, setCity]               = useState('');
+  const [state, setStateVal]          = useState('');
+  const [pincode, setPincode]         = useState('');
+  const [phone, setPhone]             = useState('');
+  const [email, setEmail]             = useState('');
+  const [selectedSports, setSports]   = useState<string[]>([]);
+  const [selectedAmenities, setAmen]  = useState<string[]>([]);
+  const [openTime, setOpenTime]       = useState('05:00');
+  const [closeTime, setCloseTime]     = useState('23:00');
+  const [price, setPrice]             = useState('');
+  const [isActive, setIsActive]       = useState(true);
+  const [latlong, setLatlong]         = useState('');
+  const [images, setImages]           = useState<PickedImage[]>([]);
+  const [errors, setErrors]           = useState<Record<string, string>>({});
+  const [loading, setLoading]         = useState(false);
+  const [prefilled, setPrefilled]     = useState(false);
+
+  // ── Prefill once venue loads ─────────────────────────────────────────────
+  useEffect(() => {
+    if (venue && !prefilled) {
+      setName(venue.name);
+      setDesc(venue.description);
+      setAddress(venue.address);
+      setCity(venue.city);
+      setStateVal(venue.state);
+      setPincode(venue.pincode);
+      setPhone(venue.contactPhone);
+      setEmail(venue.contactEmail);
+      setSports(venue.sports);
+      setAmen(venue.amenities);
+      setOpenTime(venue.openTime);
+      setCloseTime(venue.closeTime);
+      setPrice(String(venue.pricePerHour));
+      setIsActive(venue.isActive);
+      setLatlong(venue.lat && venue.lng ? formatLatLng(venue.lat, venue.lng) : '');
+      setImages((venue.images ?? []).map((img) => ({ uri: img.url, isPrimary: img.isPrimary })));
+      setPrefilled(true);
+    }
+  }, [venue, prefilled]);
+
+  // ── Validation ───────────────────────────────────────────────────────────
+  function validate(): boolean {
+    const errs: Record<string, string> = {};
+    if (!name.trim()) errs.name = 'Venue name is required';
+    if (!address.trim()) errs.address = 'Address is required';
+    if (!city.trim()) errs.city = 'City is required';
+    if (pincode && !/^\d{6}$/.test(pincode)) errs.pincode = 'Pincode must be exactly 6 digits';
+    if (!phone.trim()) errs.phone = 'Contact phone is required';
+    else if (!/^[6-9]\d{9}$/.test(phone)) errs.phone = 'Enter a valid 10-digit Indian mobile number';
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) errs.email = 'Enter a valid email address';
+    if (selectedSports.length === 0) errs.sports = 'Select at least one sport';
+    const open  = parseInt(openTime.split(':')[0], 10);
+    const close = parseInt(closeTime.split(':')[0], 10);
+    if (close <= open) errs.hours = 'Closing time must be after opening time';
+    if (!price.trim()) errs.price = 'Price per hour is required';
+    else if (isNaN(Number(price)) || Number(price) < 0) errs.price = 'Enter a valid price';
+    if (latlong.trim() && !parseLatLng(latlong.trim()))
+      errs.latlong = 'Enter valid coordinates like "20.015164, 73.84228"';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  }
+
+  // ── Save ─────────────────────────────────────────────────────────────────
+  async function handleSave() {
+    if (!validate()) return;
     setLoading(true);
     try {
+      // Separate new local images from already-uploaded ones
+      const uploadedUrls: string[] = [];
+      for (const img of images) {
+        if (img.uri.startsWith('http')) {
+          uploadedUrls.push(img.uri);
+        } else {
+          const res = await uploadImage.mutateAsync(img.uri);
+          uploadedUrls.push(res.url);
+        }
+      }
+
+      const primaryIdx = images.findIndex((i) => i.isPrimary);
+      const coverPhoto  = uploadedUrls[primaryIdx >= 0 ? primaryIdx : 0];
+
+      const coords = latlong.trim() ? parseLatLng(latlong.trim()) : null;
+
       await updateVenue.mutateAsync({
         id: Number(venueId),
-        data: { name: name || undefined, description: desc || undefined, pricePerHour: price ? parseInt(price) : undefined },
+        data: {
+          name:         name.trim(),
+          description:  desc.trim() || undefined,
+          address:      address.trim(),
+          city:         city.trim(),
+          state:        state.trim() || undefined,
+          pincode:      pincode.trim() || undefined,
+          contactPhone: phone.trim(),
+          contactEmail: email.trim() || undefined,
+          sportIds:     selectedSports.map(Number),
+          amenities:    selectedAmenities,
+          openTime,
+          closeTime,
+          pricePerHour: parseInt(price, 10),
+          isActive,
+          lat:          coords?.lat ?? venue?.lat ?? 0,
+          lng:          coords?.lng ?? venue?.lng ?? 0,
+          coverPhoto,
+          photos:       uploadedUrls,
+        },
       });
       navigation.goBack();
     } catch (err) {
-      console.warn(extractApiError(err));
+      Alert.alert('Save Failed', extractApiError(err));
     } finally {
       setLoading(false);
     }
-  };
+  }
 
+  const toggleItem = (arr: string[], set: (v: string[]) => void, val: string) =>
+    set(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
+
+  // ── Loading state ────────────────────────────────────────────────────────
+  if (venueLoading || !prefilled) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <AppHeader title="Edit Venue" onBack={() => navigation.goBack()} />
+        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+      </SafeAreaView>
+    );
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Edit Venue" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        <AppInput label="Venue Name" value={name} onChangeText={setName} />
-        <AppInput label="Description" value={desc} onChangeText={setDesc} multiline />
-        <AppInput label="Price per Slot (₹)" value={price} onChangeText={setPrice} keyboardType="numeric" />
-        <AppButton label={loading ? 'Saving…' : 'Save Changes'} loading={loading} onPress={handleSave} style={{ marginTop: spacing.md }} />
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xl * 2 }} keyboardShouldPersistTaps="handled">
+
+        {/* ── Basic Info ── */}
+        <Text style={styles.eSectionTitle}>Basic Info</Text>
+        <AppInput label="Venue Name *" value={name}
+          onChangeText={(v) => { setName(v); setErrors((e) => ({ ...e, name: '' })); }} />
+        <FieldErr msg={errors.name} />
+        <AppInput label="Description" value={desc} onChangeText={setDesc} multiline
+          placeholder="Describe your venue" />
+
+        {/* ── Address ── */}
+        <Text style={styles.eSectionTitle}>Address</Text>
+        <AppInput label="Street Address *" value={address} multiline
+          onChangeText={(v) => { setAddress(v); setErrors((e) => ({ ...e, address: '' })); }}
+          placeholder="Plot no., street, area" />
+        <FieldErr msg={errors.address} />
+        <AppInput label="City *" value={city}
+          onChangeText={(v) => { setCity(v); setErrors((e) => ({ ...e, city: '' })); }}
+          placeholder="e.g. Nashik" />
+        <FieldErr msg={errors.city} />
+        <AppInput label="State" value={state} onChangeText={setStateVal} placeholder="e.g. Maharashtra" />
+        <AppInput label="Pincode (6 digits)" value={pincode} keyboardType="numeric" maxLength={6}
+          onChangeText={(v) => { setPincode(v); setErrors((e) => ({ ...e, pincode: '' })); }}
+          placeholder="e.g. 422001" />
+        <FieldErr msg={errors.pincode} />
+        <AppInput
+          label="Location Coordinates (optional)"
+          value={latlong}
+          onChangeText={(v) => { setLatlong(v); setErrors((e) => ({ ...e, latlong: '' })); }}
+          placeholder="e.g. 20.015164, 73.84228"
+          autoCapitalize="none"
+        />
+        <FieldErr msg={errors.latlong} />
+
+        {/* ── Contact ── */}
+        <Text style={styles.eSectionTitle}>Contact</Text>
+        <AppInput label="Contact Phone *" value={phone} keyboardType="phone-pad" maxLength={10}
+          onChangeText={(v) => { setPhone(v); setErrors((e) => ({ ...e, phone: '' })); }}
+          placeholder="10-digit mobile number" />
+        <FieldErr msg={errors.phone} />
+        <AppInput label="Contact Email" value={email} keyboardType="email-address" autoCapitalize="none"
+          onChangeText={(v) => { setEmail(v); setErrors((e) => ({ ...e, email: '' })); }}
+          placeholder="owner@example.com" />
+        <FieldErr msg={errors.email} />
+
+        {/* ── Sports ── */}
+        <Text style={styles.eSectionTitle}>Sports Offered *</Text>
+        <View style={styles.eWrap}>
+          {allSports.map((s) => (
+            <SportChip key={s.id} icon={s.icon} name={s.name}
+              active={selectedSports.includes(s.id)}
+              onPress={() => { toggleItem(selectedSports, setSports, s.id); setErrors((e) => ({ ...e, sports: '' })); }} />
+          ))}
+        </View>
+        <FieldErr msg={errors.sports} />
+
+        {/* ── Amenities ── */}
+        <Text style={styles.eSectionTitle}>Amenities</Text>
+        <View style={styles.eWrap}>
+          {AMENITIES_LIST.map((a) => (
+            <TouchableOpacity key={a}
+              onPress={() => toggleItem(selectedAmenities, setAmen, a)}
+              style={[styles.eChip, selectedAmenities.includes(a) && styles.eChipActive]}>
+              <Text style={[styles.eChipText, selectedAmenities.includes(a) && { color: colors.white }]}>{a}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ── Hours ── */}
+        <Text style={styles.eSectionTitle}>Operating Hours</Text>
+        <HourPickerInline label="Opening Hour *" value={openTime}
+          onChange={(v) => { setOpenTime(v); setErrors((e) => ({ ...e, hours: '' })); }}
+          minHour={0} maxHour={22} />
+        <HourPickerInline label="Closing Hour *" value={closeTime}
+          onChange={(v) => { setCloseTime(v); setErrors((e) => ({ ...e, hours: '' })); }}
+          minHour={parseInt(openTime.split(':')[0], 10) + 1} maxHour={23} />
+        <View style={styles.eHoursPreview}>
+          <Text style={styles.eHoursPreviewText}>
+            {formatHour(openTime)} – {formatHour(closeTime)}
+            {'  '}({parseInt(closeTime.split(':')[0], 10) - parseInt(openTime.split(':')[0], 10)} slots/day)
+          </Text>
+        </View>
+        <FieldErr msg={errors.hours} />
+
+        {/* ── Pricing ── */}
+        <Text style={styles.eSectionTitle}>Pricing & Availability</Text>
+        <AppInput label="Price per Hour (₹) *" value={price} keyboardType="numeric"
+          onChangeText={(v) => { setPrice(v); setErrors((e) => ({ ...e, price: '' })); }}
+          placeholder="e.g. 800" />
+        <FieldErr msg={errors.price} />
+        <View style={styles.toggleRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.toggleLabel}>Venue is Active</Text>
+          </View>
+          <Switch value={isActive} onValueChange={setIsActive}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor={colors.white} />
+        </View>
+
+        {/* ── Photos ── */}
+        <Text style={styles.eSectionTitle}>Photos</Text>
+        <View style={styles.eInfoBox}>
+          <Text style={styles.eInfoText}>
+            First / starred photo is the venue cover. Add, remove, reorder, or replace images.
+            New photos are cropped to 16:9 and compressed automatically.
+          </Text>
+        </View>
+        <View style={{ marginTop: spacing.md }}>
+          <VenueImagePicker images={images} onChange={setImages} uploading={loading} />
+        </View>
+
+        <AppButton
+          label={loading ? 'Saving…' : 'Save Changes'}
+          loading={loading}
+          onPress={handleSave}
+          style={{ marginTop: spacing.xl }}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -459,4 +737,20 @@ const styles = StyleSheet.create({
   notifUnread: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
   notifTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
   notifBody: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2 },
+
+  // ── EditVenueScreen helpers ──────────────────────────────────────────────
+  eFieldLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid, marginBottom: spacing.sm },
+  eFieldError: { fontSize: fontSize.xs, color: '#e53935', marginTop: -spacing.sm, marginBottom: spacing.sm },
+  eHourChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginRight: spacing.sm },
+  eHourChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  eHourChipText: { fontSize: fontSize.sm, color: colors.textMid, fontWeight: fontWeight.semibold },
+  eChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  eChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  eChipText: { fontSize: fontSize.sm, color: colors.textMid },
+  eWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  eSectionTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.xl, marginBottom: spacing.sm },
+  eHoursPreview: { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md, marginTop: spacing.sm, alignItems: 'center' },
+  eHoursPreviewText: { fontSize: fontSize.sm, color: colors.textMid, fontWeight: fontWeight.semibold },
+  eInfoBox: { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.lg, marginTop: spacing.lg },
+  eInfoText: { fontSize: fontSize.sm, color: colors.textMid, lineHeight: 20 },
 });

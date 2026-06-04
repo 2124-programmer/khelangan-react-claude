@@ -5,14 +5,16 @@ import {
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, AppButton, AppInput, SportChip } from '../../components/common';
+import { VenueImagePicker, PickedImage } from '../../components/venue';
 import { ConfirmActionModal } from '../../modals';
 import { useSports } from '../../api/hooks/useSports';
-import { useCreateVenue } from '../../api/hooks/useVenues';
+import { useCreateVenue, useUploadVenueImage } from '../../api/hooks/useVenues';
 import { extractApiError } from '../../api/client';
+import { parseLatLng } from '../../utils/locationUtils';
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
-const STEPS = ['Basic Info', 'Address', 'Contact', 'Sports', 'Hours', 'Pricing'];
+const STEPS = ['Basic Info', 'Address', 'Contact', 'Sports', 'Hours', 'Pricing', 'Photos'];
 
 const AMENITIES = [
   'Parking', 'Floodlights', 'Washroom', 'Drinking Water',
@@ -76,6 +78,7 @@ function FieldError({ msg }: { msg?: string }) {
 export default function AddVenueScreen({ navigation }: any) {
   const { data: sports = [] } = useSports();
   const createVenue = useCreateVenue();
+  const uploadImage = useUploadVenueImage();
 
   // Wizard state
   const [step, setStep] = useState(0);
@@ -91,6 +94,7 @@ export default function AddVenueScreen({ navigation }: any) {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [pincode, setPincode] = useState('');
+  const [latlong, setLatlong] = useState('');
 
   // Step 2 — Contact
   const [phone, setPhone] = useState('');
@@ -107,6 +111,9 @@ export default function AddVenueScreen({ navigation }: any) {
   // Step 5 — Pricing
   const [price, setPrice] = useState('');
   const [isActive, setIsActive] = useState(true);
+
+  // Step 6 — Photos
+  const [images, setImages] = useState<PickedImage[]>([]);
 
   // Inline field errors (per step)
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -128,6 +135,8 @@ export default function AddVenueScreen({ navigation }: any) {
       if (!address.trim()) errs.address = 'Address is required';
       if (!city.trim()) errs.city = 'City is required';
       if (pincode && !/^\d{6}$/.test(pincode)) errs.pincode = 'Pincode must be exactly 6 digits';
+      if (latlong.trim() && !parseLatLng(latlong.trim()))
+        errs.latlong = 'Enter valid coordinates like "20.015164, 73.84228"';
     }
     if (s === 2) {
       if (!phone.trim()) errs.phone = 'Contact phone is required';
@@ -146,6 +155,7 @@ export default function AddVenueScreen({ navigation }: any) {
       if (!price.trim()) errs.price = 'Price per hour is required';
       else if (isNaN(Number(price)) || Number(price) < 0) errs.price = 'Enter a valid price (₹ 0 or more)';
     }
+    // Step 6 — photos are optional (min 1 recommended but not enforced as hard block)
 
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -173,6 +183,19 @@ export default function AddVenueScreen({ navigation }: any) {
   async function handleSubmit() {
     setLoading(true);
     try {
+      // Upload each picked image and collect server URLs
+      const uploadedUrls: string[] = [];
+      for (const img of images) {
+        const res = await uploadImage.mutateAsync(img.uri);
+        uploadedUrls.push(res.url);
+      }
+
+      const primaryImg = images.find((i) => i.isPrimary);
+      const primaryIdx = primaryImg ? images.indexOf(primaryImg) : 0;
+      const coverPhoto = uploadedUrls[primaryIdx] ?? uploadedUrls[0];
+
+      const coords = latlong.trim() ? parseLatLng(latlong.trim()) : null;
+
       const result = await createVenue.mutateAsync({
         name: name.trim(),
         address: address.trim(),
@@ -188,8 +211,10 @@ export default function AddVenueScreen({ navigation }: any) {
         amenities: selectedAmenities,
         sportIds: selectedSports.map((id) => Number(id)),
         isActive,
-        lat: 0,
-        lng: 0,
+        lat: coords?.lat ?? 0,
+        lng: coords?.lng ?? 0,
+        coverPhoto,
+        photos: uploadedUrls,
       });
       setSuccessVenueId(result.id ?? null);
     } catch (err) {
@@ -273,6 +298,15 @@ export default function AddVenueScreen({ navigation }: any) {
               maxLength={6}
             />
             <FieldError msg={errors.pincode} />
+            <AppInput
+              label="Location Coordinates (optional)"
+              value={latlong}
+              onChangeText={(v) => { setLatlong(v); setErrors((e) => ({ ...e, latlong: '' })); }}
+              placeholder="e.g. 20.015164, 73.84228"
+              keyboardType="default"
+              autoCapitalize="none"
+            />
+            <FieldError msg={errors.latlong} />
           </>
         )}
 
@@ -409,9 +443,28 @@ export default function AddVenueScreen({ navigation }: any) {
           </>
         )}
 
+        {/* ── Step 6: Photos ────────────────────────────────────────────── */}
+        {step === 6 && (
+          <>
+            <View style={styles.infoBox}>
+              <Text style={styles.infoText}>
+                Add up to 3 photos. The system will crop each to 16:9 and compress to ~200–300 KB.
+                The first / starred photo becomes the venue cover used in search results.
+              </Text>
+            </View>
+            <View style={{ marginTop: spacing.md }}>
+              <VenueImagePicker
+                images={images}
+                onChange={setImages}
+                uploading={loading}
+              />
+            </View>
+          </>
+        )}
+
         <AppButton
           label={step === STEPS.length - 1
-            ? (loading ? 'Submitting…' : 'Submit for Approval')
+            ? (loading ? 'Uploading & Submitting…' : 'Submit for Approval')
             : 'Next →'}
           onPress={next}
           loading={loading}

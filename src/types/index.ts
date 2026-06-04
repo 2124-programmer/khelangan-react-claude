@@ -56,6 +56,12 @@ export interface Court {
   effectiveCloseTime: string;
 }
 
+export interface VenueImage {
+  url: string;
+  order: number;
+  isPrimary: boolean;
+}
+
 export interface Venue {
   id: string;
   ownerId: string;
@@ -74,7 +80,8 @@ export interface Venue {
   reviewCount: number;
   distanceKm: number;
   pricePerHour: number;
-  photos: string[];
+  images?: VenueImage[];  // ordered list; images[0] with isPrimary is the cover; populated by adapter
+  photos: string[];       // legacy flat list kept for backward compat
   coverPhoto: string;
   sports: string[]; // sport ids
   amenities: string[];
@@ -82,6 +89,7 @@ export interface Venue {
   isActive: boolean;
   lat: number;
   lng: number;
+  isMostBooked?: boolean;
 }
 
 export interface Slot {

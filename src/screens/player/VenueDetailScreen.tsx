@@ -1,22 +1,68 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView, Image,
-  TouchableOpacity, ActivityIndicator,
+  View, Text, StyleSheet, SafeAreaView, ScrollView,
+  TouchableOpacity, ActivityIndicator, Linking,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, StarRating, EmptyState } from '../../components/common';
+import { VenueImageCarousel } from '../../components/venue';
 import { RatingDetailModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useVenueReviews } from '../../api/hooks/useReviews';
 import { useSports } from '../../api/hooks/useSports';
+import { useCurrentLocation } from '../../hooks/useCurrentLocation';
+import { haversineKm, formatDistance } from '../../utils/locationUtils';
+import { useAuth } from '../../store/AuthContext';
+
+const AMENITY_ICON: Record<string, string> = {
+  'Locker Room': '🔒',
+  'Floodlights': '💡',
+  'Drinking Water': '💧',
+  'Washroom': '🚿',
+  'Shower': '🚿',
+  'Parking': '🅿️',
+  'Cafeteria': '🍽️',
+  'First Aid': '⛑️',
+  'WiFi': '📶',
+  'Changing Room': '👕',
+  'Scoreboard': '📊',
+  'Referee': '🦺',
+  'Equipment Rental': '🎒',
+  'CCTV': '📹',
+  'AC': '❄️',
+  'Gym': '🏋️',
+  'Swimming Pool': '🏊',
+  'Spectator Seating': '🪑',
+  'Turf': '🌿',
+  'Ball': '⚽',
+};
+
+function fmt12h(t: string): string {
+  const [h, m] = t.split(':').map(Number);
+  if (isNaN(h)) return t;
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${hour}:${String(m ?? 0).padStart(2, '0')} ${period}`;
+}
+
+function buildFullAddress(address: string, city: string, state: string, pincode: string): string {
+  const parts = [
+    address,
+    city,
+    state && pincode ? `${state} ${pincode}` : state || pincode,
+  ].filter(Boolean);
+  return parts.join(', ');
+}
 
 export default function VenueDetailScreen({ navigation, route }: any) {
   const venueId: string = route.params.venueId;
+  const { isLoggedIn } = useAuth();
   const [showRating, setShowRating] = useState(false);
 
   const { data: venue, isLoading, isError } = useVenueDetail(venueId);
   const { data: reviewsData } = useVenueReviews(venueId);
   const { data: sports = [] } = useSports();
+  const userLocation = useCurrentLocation();
 
   const reviews = reviewsData?.reviews ?? [];
 
@@ -44,25 +90,94 @@ export default function VenueDetailScreen({ navigation, route }: any) {
     );
   }
 
+  const fullAddress = buildFullAddress(venue.address, venue.city, venue.state, venue.pincode);
+  const hoursLabel = `${fmt12h(venue.openTime)} – ${fmt12h(venue.closeTime)}`;
+  const distLabel =
+    userLocation && venue.lat && venue.lng && venue.lat !== 0
+      ? formatDistance(haversineKm(userLocation.lat, userLocation.lng, venue.lat, venue.lng))
+      : null;
+
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title={venue.name} onBack={() => navigation.goBack()} />
+
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Photo */}
-        <View>
-          <Image source={{ uri: venue.coverPhoto || undefined }} style={styles.cover} />
-          {/* <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Text style={{ fontSize: 24, color: colors.white }}>‹</Text>
-          </TouchableOpacity> */}
-        </View>
+        {/* Hero Carousel */}
+        <VenueImageCarousel images={venue.images ?? []} />
 
         <View style={styles.body}>
-          <Text style={styles.name}>{venue.name}</Text>
-          <Text style={styles.addr}>📍 {venue.address}</Text>
+
+          {/* Name + Status */}
+          <View style={styles.nameRow}>
+            <Text style={styles.name}>{venue.name}</Text>
+            {venue.status === 'live' && (
+              <View style={styles.liveBadge}>
+                <Text style={styles.liveBadgeText}>● LIVE</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Address + Distance */}
+          <Text style={styles.addr}>
+            📍 {fullAddress}{distLabel ? `  ·  ${distLabel}` : ''}
+          </Text>
+
+          {/* Rating */}
           <TouchableOpacity style={styles.ratingRow} onPress={() => setShowRating(true)}>
             <StarRating value={Math.round(venue.rating)} size={16} />
-            <Text style={styles.ratingText}>{venue.rating} · {venue.reviewCount} reviews ›</Text>
+            <Text style={styles.ratingText}>
+              {venue.rating > 0
+                ? `${venue.rating.toFixed(1)} · ${venue.reviewCount} review${venue.reviewCount !== 1 ? 's' : ''} ›`
+                : 'No ratings yet'}
+            </Text>
           </TouchableOpacity>
+
+          {/* Info Card: Hours / Phone / Email */}
+          <View style={[styles.infoCard, shadow.card]}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoIcon}>⏰</Text>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Operating Hours</Text>
+                <Text style={styles.infoValue}>{hoursLabel}</Text>
+              </View>
+            </View>
+
+            {!!venue.contactPhone && (
+              <>
+                <View style={styles.infoDivider} />
+                <TouchableOpacity
+                  style={styles.infoRow}
+                  onPress={() => Linking.openURL(`tel:${venue.contactPhone}`)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.infoIcon}>📞</Text>
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Phone</Text>
+                    <Text style={[styles.infoValue, styles.infoLink]}>{venue.contactPhone}</Text>
+                  </View>
+                  <Text style={styles.infoChevron}>›</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {!!venue.contactEmail && (
+              <>
+                <View style={styles.infoDivider} />
+                <TouchableOpacity
+                  style={styles.infoRow}
+                  onPress={() => Linking.openURL(`mailto:${venue.contactEmail}`)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.infoIcon}>✉️</Text>
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Email</Text>
+                    <Text style={[styles.infoValue, styles.infoLink]}>{venue.contactEmail}</Text>
+                  </View>
+                  <Text style={styles.infoChevron}>›</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
 
           {/* Sports */}
           {venue.sports.length > 0 && (
@@ -82,10 +197,11 @@ export default function VenueDetailScreen({ navigation, route }: any) {
           {venue.amenities.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Amenities</Text>
-              <View style={styles.chipWrap}>
+              <View style={styles.amenityGrid}>
                 {venue.amenities.map((a) => (
-                  <View key={a} style={styles.amenityChip}>
-                    <Text style={styles.amenityText}>✓ {a}</Text>
+                  <View key={a} style={styles.amenityItem}>
+                    <Text style={styles.amenityIcon}>{AMENITY_ICON[a] ?? '✓'}</Text>
+                    <Text style={styles.amenityText} numberOfLines={2}>{a}</Text>
                   </View>
                 ))}
               </View>
@@ -100,34 +216,64 @@ export default function VenueDetailScreen({ navigation, route }: any) {
             </>
           )}
 
-          {/* Map placeholder */}
+          {/* Courts */}
+          <Text style={styles.sectionTitle}>Courts</Text>
+          {venue.courts.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyBoxText}>No courts have been added yet</Text>
+            </View>
+          ) : (
+            venue.courts.map((c) => (
+              <View key={c.id} style={[styles.courtCard, shadow.card]}>
+                <View style={styles.courtHeader}>
+                  <Text style={styles.courtName}>{c.name}</Text>
+                  <Text style={styles.courtPrice}>₹{c.effectivePricePerHour}/hr</Text>
+                </View>
+                <Text style={styles.courtMeta}>
+                  {c.type ? `${c.type}  ·  ` : ''}{fmt12h(c.effectiveOpenTime)} – {fmt12h(c.effectiveCloseTime)}
+                </Text>
+              </View>
+            ))
+          )}
+
+          {/* Location */}
           <Text style={styles.sectionTitle}>Location</Text>
           <View style={styles.mapPlaceholder}>
-            <Text style={{ fontSize: 32 }}>🗺️</Text>
-            <Text style={styles.mapText}>{venue.address}</Text>
+            <Text style={styles.mapEmoji}>🗺️</Text>
+            <Text style={styles.mapText}>{fullAddress}</Text>
           </View>
 
           {/* Reviews */}
-          <Text style={styles.sectionTitle}>Reviews ({reviews.length})</Text>
-          {reviews.map((r) => (
-            <View key={r.id} style={styles.reviewCard}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={styles.reviewName}>{r.playerName}</Text>
-                <StarRating value={r.rating} size={13} />
-              </View>
-              <Text style={styles.reviewText}>{r.comment}</Text>
-              {r.ownerReply ? (
-                <View style={styles.replyBox}>
-                  <Text style={styles.replyLabel}>Owner replied:</Text>
-                  <Text style={styles.replyText}>{r.ownerReply}</Text>
-                </View>
-              ) : null}
+          <Text style={styles.sectionTitle}>
+            Reviews{reviews.length > 0 ? ` (${reviews.length})` : ''}
+          </Text>
+          {reviews.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyBoxText}>No reviews yet. Be the first to review!</Text>
             </View>
-          ))}
+          ) : (
+            reviews.map((r) => (
+              <View key={r.id} style={[styles.reviewCard, shadow.card]}>
+                <View style={styles.reviewHeader}>
+                  <Text style={styles.reviewName}>{r.playerName}</Text>
+                  <StarRating value={r.rating} size={13} />
+                </View>
+                {!!r.date && <Text style={styles.reviewDate}>{r.date}</Text>}
+                <Text style={styles.reviewText}>{r.comment}</Text>
+                {r.ownerReply ? (
+                  <View style={styles.replyBox}>
+                    <Text style={styles.replyLabel}>Owner replied:</Text>
+                    <Text style={styles.replyText}>{r.ownerReply}</Text>
+                  </View>
+                ) : null}
+              </View>
+            ))
+          )}
+
         </View>
       </ScrollView>
 
-      {/* Sticky Book bar */}
+      {/* Sticky Booking Bar */}
       <View style={[styles.bottomBar, shadow.modal]}>
         <View>
           <Text style={styles.priceLabel}>Starting from</Text>
@@ -139,7 +285,11 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         <AppButton
           label="Book Now"
           fullWidth={false}
-          onPress={() => navigation.navigate('SlotSelection', { venueId: venue.id })}
+          onPress={() =>
+            isLoggedIn
+              ? navigation.navigate('SlotSelection', { venueId: venue.id })
+              : navigation.navigate('Login')
+          }
           style={{ paddingHorizontal: 40 }}
         />
       </View>
@@ -161,29 +311,114 @@ export default function VenueDetailScreen({ navigation, route }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  cover: { width: '100%', height: 240, backgroundColor: colors.surfaceAlt },
-  backBtn: { position: 'absolute', top: spacing.lg, left: spacing.lg, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
+  backBtn: {
+    position: 'absolute', top: spacing.lg, left: spacing.lg,
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center',
+  },
   body: { padding: spacing.lg, paddingBottom: 120 },
-  name: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
-  addr: { fontSize: fontSize.sm, color: colors.textMid, marginTop: spacing.xs },
+
+  // Name + status
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap', marginTop: spacing.sm },
+  name: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text, flex: 1 },
+  liveBadge: { backgroundColor: '#DCFCE7', paddingHorizontal: spacing.md, paddingVertical: 3, borderRadius: radius.pill },
+  liveBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: '#15803D' },
+
+  // Address + rating
+  addr: { fontSize: fontSize.sm, color: colors.textMid, marginTop: spacing.xs, lineHeight: 20 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm },
   ratingText: { fontSize: fontSize.sm, color: colors.textMid },
-  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.xl, marginBottom: spacing.md },
+
+  // Info card
+  infoCard: {
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    marginTop: spacing.xl, overflow: 'hidden',
+  },
+  infoRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  infoDivider: { height: 1, backgroundColor: colors.border },
+  infoIcon: { fontSize: 20, width: 34, textAlign: 'center' },
+  infoContent: { flex: 1, marginLeft: spacing.sm },
+  infoLabel: { fontSize: fontSize.xs, color: colors.textDim },
+  infoValue: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text, marginTop: 1 },
+  infoLink: { color: colors.primary },
+  infoChevron: { fontSize: 20, color: colors.textDim, marginLeft: spacing.sm },
+
+  // Section titles
+  sectionTitle: {
+    fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text,
+    marginTop: spacing.xl, marginBottom: spacing.md,
+  },
+
+  // Sports chips
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: { backgroundColor: colors.primaryLight, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill },
   chipText: { fontSize: fontSize.sm, color: colors.primaryDark, fontWeight: fontWeight.semibold },
-  amenityChip: { backgroundColor: colors.surface, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
-  amenityText: { fontSize: fontSize.sm, color: colors.textMid },
+
+  // Amenity grid
+  amenityGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  amenityItem: {
+    width: '22%', minHeight: 72,
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    padding: spacing.sm, alignItems: 'center', justifyContent: 'center', gap: 4,
+  },
+  amenityIcon: { fontSize: 22 },
+  amenityText: { fontSize: fontSize.xs, color: colors.textMid, textAlign: 'center' },
+
+  // Description
   desc: { fontSize: fontSize.sm, color: colors.textMid, lineHeight: 22 },
-  mapPlaceholder: { height: 120, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
-  mapText: { fontSize: fontSize.sm, color: colors.textMid },
-  reviewCard: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border },
+
+  // Empty box
+  emptyBox: {
+    backgroundColor: colors.surfaceAlt, borderRadius: radius.md,
+    padding: spacing.lg, alignItems: 'center',
+  },
+  emptyBoxText: { fontSize: fontSize.sm, color: colors.textDim },
+
+  // Courts
+  courtCard: {
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    padding: spacing.lg, marginBottom: spacing.sm,
+  },
+  courtHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  courtName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
+  courtPrice: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.primary },
+  courtMeta: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 4 },
+
+  // Map placeholder
+  mapPlaceholder: {
+    height: 120, backgroundColor: colors.surfaceAlt, borderRadius: radius.md,
+    alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+  },
+  mapEmoji: { fontSize: 32 },
+  mapText: { fontSize: fontSize.sm, color: colors.textMid, textAlign: 'center', paddingHorizontal: spacing.lg },
+
+  // Reviews
+  reviewCard: {
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    padding: spacing.lg, marginBottom: spacing.md,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   reviewName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
+  reviewDate: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 2 },
   reviewText: { fontSize: fontSize.sm, color: colors.textMid, marginTop: spacing.sm, lineHeight: 20 },
-  replyBox: { backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, padding: spacing.md, marginTop: spacing.sm },
+  replyBox: {
+    backgroundColor: colors.surfaceAlt, borderRadius: radius.sm,
+    padding: spacing.md, marginTop: spacing.sm,
+  },
   replyLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textMid },
   replyText: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2 },
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border },
+
+  // Bottom booking bar
+  bottomBar: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: colors.surface, padding: spacing.lg,
+    borderTopWidth: 1, borderTopColor: colors.border,
+  },
   priceLabel: { fontSize: fontSize.xs, color: colors.textDim },
   price: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
   perSlot: { fontSize: fontSize.xs, color: colors.textDim, fontWeight: fontWeight.regular },

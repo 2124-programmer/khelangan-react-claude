@@ -6,11 +6,12 @@ import {
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, EmptyState } from '../../components/common';
 import { SlotGrid } from '../../components/venue';
-import { SlotLockExpiredModal } from '../../modals';
+import { SlotLockExpiredModal, BookingRequestModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useSlots } from '../../api/hooks/useSlots';
 import { useCourts } from '../../api/hooks/useCourts';
 import { useSports } from '../../api/hooks/useSports';
+import { useCreateBooking } from '../../api/hooks/useBookings';
 import { Slot } from '../../types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -153,11 +154,14 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, []);
 
+  const createBooking = useCreateBooking();
+
   const [activeSportId, setActiveSportId] = useState<string | null>(null);
   const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
   const [activeDate, setActiveDate] = useState(today);
   const [selected, setSelected] = useState<Slot | null>(null);
   const [lockExpired, setLockExpired] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
 
   const currentSportId = activeSportId ?? venue?.sports?.[0] ?? null;
 
@@ -285,24 +289,39 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
           <AppButton
             label="Proceed to Book"
             fullWidth={false}
-            onPress={() =>
-              navigation.navigate('BookingConfirm', {
-                venueId: venue.id,
-                courtId: selected.courtId,
-                slotId: selected.id,
-                sport: getSportLabel(currentSportId ?? ''),
-                date: activeDate,
-                slotPrice: selected.price,
-                startTime: selected.startTime,
-                endTime: selected.endTime,
-              })
-            }
+            onPress={() => setShowBookingModal(true)}
             style={{ paddingHorizontal: 24 }}
           />
         </View>
       )}
 
       <SlotLockExpiredModal visible={lockExpired} onGoBack={() => setLockExpired(false)} />
+
+      {selected && (
+        <BookingRequestModal
+          visible={showBookingModal}
+          venueName={venue.name}
+          sport={getSportLabel(currentSportId ?? '')}
+          date={activeDate}
+          startTime={selected.startTime}
+          endTime={selected.endTime}
+          slotPrice={selected.price}
+          onConfirm={async () => {
+            await createBooking.mutateAsync({
+              venueId: Number(venue.id),
+              courtId: Number(selected.courtId),
+              slotId: Number(selected.id),
+              sport: currentSportId ?? '',
+            });
+          }}
+          onDismiss={() => setShowBookingModal(false)}
+          onGoToBookings={() => {
+            setShowBookingModal(false);
+            setSelected(null);
+            navigation.navigate('Bookings');
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }

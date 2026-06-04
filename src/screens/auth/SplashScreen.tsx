@@ -177,7 +177,7 @@ export default function SplashScreen() {
   // ── render ─────────────────────────────────────────────────────────────
   return (
     <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="light-content" backgroundColor={NAVY} />
 
       {/* ── HERO (70 % of screen) ─────────────────────────────────────── */}
       <View style={s.hero}>

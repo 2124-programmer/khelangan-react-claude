@@ -1,6 +1,6 @@
 // Reusable modal/popup overlays.
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../theme';
 import { AppButton, StarRating } from '../components/common';
 
@@ -141,6 +141,159 @@ export function SlotLockExpiredModal({ visible, onGoBack }: { visible: boolean; 
     </Modal>
   );
 }
+
+/* ───────────────── BookingRequestModal ───────────────── */
+interface BookingRequestProps {
+  visible: boolean;
+  venueName: string;
+  sport: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  slotPrice: number;
+  onConfirm: () => Promise<void>;
+  onDismiss: () => void;
+  onGoToBookings: () => void;
+}
+
+export function BookingRequestModal({
+  visible, venueName, sport, date, startTime, endTime, slotPrice,
+  onConfirm, onDismiss, onGoToBookings,
+}: BookingRequestProps) {
+  const [phase, setPhase] = React.useState<'confirm' | 'loading' | 'success' | 'error'>('confirm');
+  const [errorMsg, setErrorMsg] = React.useState('');
+
+  React.useEffect(() => {
+    if (visible) setPhase('confirm');
+  }, [visible]);
+
+  const handleConfirm = async () => {
+    setPhase('loading');
+    try {
+      await onConfirm();
+      setPhase('success');
+    } catch (e: any) {
+      setErrorMsg(e?.response?.data?.message ?? e?.message ?? 'Something went wrong. Please try again.');
+      setPhase('error');
+    }
+  };
+
+  return (
+    <Modal
+      transparent
+      visible={visible}
+      animationType="slide"
+      onRequestClose={phase !== 'loading' ? onDismiss : undefined}
+    >
+      <View style={styles.sheetOverlay}>
+        <View style={[styles.sheet, shadow.modal]}>
+          <View style={styles.sheetHandle} />
+
+          {phase === 'confirm' && (
+            <>
+              <Text style={styles.dialogTitle}>Confirm Booking</Text>
+              <View style={brStyles.summaryBox}>
+                <BRRow label="Venue" value={venueName} />
+                <BRRow label="Sport" value={sport} />
+                <BRRow label="Date" value={date} />
+                <BRRow label="Time" value={`${startTime} – ${endTime}`} />
+              </View>
+              <View style={brStyles.priceRow}>
+                <Text style={brStyles.priceLabel}>Slot Price</Text>
+                <Text style={brStyles.priceValue}>₹{slotPrice}</Text>
+              </View>
+              <View style={{ gap: spacing.sm, marginTop: spacing.xl }}>
+                <AppButton label="Confirm Booking" onPress={handleConfirm} />
+                <AppButton label="Cancel" variant="secondary" onPress={onDismiss} />
+              </View>
+            </>
+          )}
+
+          {phase === 'loading' && (
+            <View style={brStyles.centeredContent}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={brStyles.loadingText}>Sending booking request…</Text>
+            </View>
+          )}
+
+          {phase === 'success' && (
+            <View style={brStyles.centeredContent}>
+              <View style={brStyles.successCircle}>
+                <Text style={{ fontSize: 36 }}>✓</Text>
+              </View>
+              <Text style={[styles.dialogTitle, { textAlign: 'center', marginTop: spacing.lg }]}>
+                Booking Request Sent!
+              </Text>
+              <Text style={[styles.dialogMsg, { textAlign: 'center' }]}>
+                Your booking request has been sent successfully. The venue will confirm shortly.
+              </Text>
+              <AppButton label="Go to Bookings" onPress={onGoToBookings} style={{ marginTop: spacing.xl, width: '100%' }} />
+              <AppButton label="Cancel" variant="secondary" onPress={onDismiss} />
+            </View>
+          )}
+
+          {phase === 'error' && (
+            <View style={brStyles.centeredContent}>
+              <Text style={{ fontSize: 40, textAlign: 'center' }}>❌</Text>
+              <Text style={[styles.dialogTitle, { textAlign: 'center' }]}>Request Failed</Text>
+              <Text style={[styles.dialogMsg, { textAlign: 'center' }]}>{errorMsg}</Text>
+              <View style={{ gap: spacing.sm, marginTop: spacing.lg, width: '100%' }}>
+                <AppButton label="Try Again" onPress={() => setPhase('confirm')} />
+                <AppButton label="Cancel" variant="secondary" onPress={onDismiss} />
+              </View>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function BRRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={brStyles.row}>
+      <Text style={brStyles.rowLabel}>{label}</Text>
+      <Text style={brStyles.rowValue}>{value}</Text>
+    </View>
+  );
+}
+
+const brStyles = StyleSheet.create({
+  summaryBox: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.lg,
+  },
+  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
+  rowLabel: { fontSize: fontSize.sm, color: colors.textMid },
+  rowValue: {
+    fontSize: fontSize.sm,
+    color: colors.text,
+    fontWeight: fontWeight.semibold,
+    flex: 1,
+    textAlign: 'right',
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.xs,
+  },
+  priceLabel: { fontSize: fontSize.md, color: colors.textMid },
+  priceValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
+  centeredContent: { alignItems: 'center', paddingVertical: spacing.lg, width: '100%' },
+  loadingText: { fontSize: fontSize.md, color: colors.textMid, marginTop: spacing.lg },
+  successCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
 
 /* ───────────────── RatingDetailModal ───────────────── */
 export function RatingDetailModal({ visible, rating, breakdown, onDismiss }: {

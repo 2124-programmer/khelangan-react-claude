@@ -8,10 +8,27 @@ import type {
   NotificationDto, AdminStatsDto, OwnerStatsDto, OwnerSettingsDto,
 } from './types';
 import type {
-  User, Sport, Venue, Court, Slot, Booking, Review, Coupon,
+  User, Sport, Venue, VenueImage, Court, Slot, Booking, Review, Coupon,
   Payout, Dispute, AppNotification, UserRole, VenueStatus,
   SlotStatus, BookingStatus, PaymentStatus, OwnerSettings,
 } from '../types';
+import { BASE_URL } from './client';
+
+// Rewrites the host in a stored image URL to match the current API base URL.
+// This handles the case where images were uploaded when the server had a different
+// IP (e.g. 192.168.1.5:8080) but the frontend now connects via localhost:8080.
+function normalizeImageUrl(url: string | undefined): string {
+  if (!url) return '';
+  try {
+    const img = new URL(url);
+    const api = new URL(BASE_URL);
+    img.protocol = api.protocol;
+    img.host = api.host;
+    return img.toString();
+  } catch {
+    return url;
+  }
+}
 
 export function adaptUser(dto: UserDto): User {
   return {
@@ -53,7 +70,19 @@ export function adaptCourt(dto: CourtDto): Court {
   };
 }
 
+function buildImages(photos: string[] | undefined, coverPhoto: string | undefined): VenueImage[] {
+  const allPhotos = photos?.length ? photos : (coverPhoto ? [coverPhoto] : []);
+  return allPhotos.slice(0, 3).map((url, i) => ({
+    url: normalizeImageUrl(url),
+    order: i,
+    isPrimary: i === 0,
+  }));
+}
+
 export function adaptVenueSummary(dto: VenueSummaryDto): Venue {
+  const rawPhotos = dto.coverPhoto ? [dto.coverPhoto] : [];
+  const photos = rawPhotos.map(normalizeImageUrl);
+  const coverPhoto = normalizeImageUrl(dto.coverPhoto);
   return {
     id: String(dto.id ?? 0),
     ownerId: String(dto.ownerId ?? 0),
@@ -72,10 +101,11 @@ export function adaptVenueSummary(dto: VenueSummaryDto): Venue {
     reviewCount: dto.reviewCount ?? 0,
     distanceKm: 0,
     pricePerHour: dto.pricePerHour ?? 0,
-    photos: dto.coverPhoto ? [dto.coverPhoto] : [],
-    coverPhoto: dto.coverPhoto ?? '',
-    sports: [],   // not in summary; available in VenueDetailDto
-    amenities: [],
+    images: buildImages(photos, coverPhoto),
+    photos,
+    coverPhoto,
+    sports: (dto.sports ?? []).map((s) => String(s.id ?? 0)),
+    amenities: dto.amenities ?? [],
     courts: [],
     isActive: dto.isActive ?? true,
     lat: dto.lat ?? 0,
@@ -84,6 +114,9 @@ export function adaptVenueSummary(dto: VenueSummaryDto): Venue {
 }
 
 export function adaptVenueDetail(dto: VenueDetailDto): Venue {
+  const rawPhotos = dto.photos?.length ? dto.photos : (dto.coverPhoto ? [dto.coverPhoto] : []);
+  const photos = rawPhotos.map(normalizeImageUrl);
+  const coverPhoto = normalizeImageUrl(dto.coverPhoto) || photos[0] || '';
   return {
     id: String(dto.id ?? 0),
     ownerId: String(dto.ownerId ?? 0),
@@ -102,8 +135,9 @@ export function adaptVenueDetail(dto: VenueDetailDto): Venue {
     reviewCount: dto.reviewCount ?? 0,
     distanceKm: 0,
     pricePerHour: dto.pricePerHour ?? 0,
-    photos: dto.photos?.length ? dto.photos : (dto.coverPhoto ? [dto.coverPhoto] : []),
-    coverPhoto: dto.coverPhoto ?? '',
+    images: buildImages(photos, coverPhoto),
+    photos,
+    coverPhoto,
     sports: (dto.sports ?? []).map((s) => String(s.id ?? 0)),
     amenities: dto.amenities ?? [],
     courts: (dto.courts ?? []).map(adaptCourt),
