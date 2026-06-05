@@ -16,7 +16,7 @@ import { BASE_URL } from './client';
 
 // Rewrites the host in a stored image URL to match the current API base URL.
 // This handles the case where images were uploaded when the server had a different
-// IP (e.g. 192.168.1.5:8080) but the frontend now connects via localhost:8080.
+// IP (e.g. 192.168.1.50:8080) but the frontend now connects via localhost:8080.
 function normalizeImageUrl(url: string | undefined): string {
   if (!url) return '';
   try {
