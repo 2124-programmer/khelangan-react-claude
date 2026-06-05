@@ -4,7 +4,7 @@ import {
   TouchableOpacity, Switch, Alert,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
-import { AppHeader, AppButton, AppInput, SportChip } from '../../components/common';
+import { AppHeader, AppButton, AppInput, SportChip, HourPickerDropdown } from '../../components/common';
 import { VenueImagePicker, PickedImage } from '../../components/venue';
 import { ConfirmActionModal } from '../../modals';
 import { useSports } from '../../api/hooks/useSports';
@@ -21,49 +21,11 @@ const AMENITIES = [
   'AC', 'Cafeteria', 'First Aid', 'Equipment Rental', 'Locker Room',
 ];
 
-const ALL_HOURS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}:00`);
-
 function formatHour(h24: string): string {
   const h = parseInt(h24.split(':')[0], 10);
   const period = h < 12 ? 'AM' : 'PM';
   const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
   return `${String(h12).padStart(2, '0')}:00 ${period}`;
-}
-
-// ─── Hour picker ────────────────────────────────────────────────────────────
-
-function HourPicker({
-  label, value, onChange, minHour = 0, maxHour = 23,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  minHour?: number;
-  maxHour?: number;
-}) {
-  const selectedHour = parseInt(value.split(':')[0], 10);
-  const hours = ALL_HOURS.slice(minHour, maxHour + 1);
-
-  return (
-    <View style={{ marginBottom: spacing.lg }}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {hours.map((h) => {
-          const hNum = parseInt(h.split(':')[0], 10);
-          const active = hNum === selectedHour;
-          return (
-            <TouchableOpacity
-              key={h}
-              onPress={() => onChange(h)}
-              style={[styles.hourChip, active && styles.hourChipActive]}
-            >
-              <Text style={[styles.hourChipText, active && { color: colors.white }]}>{formatHour(h)}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
 }
 
 // ─── Field error ─────────────────────────────────────────────────────────────
@@ -378,7 +340,7 @@ export default function AddVenueScreen({ navigation }: any) {
               </Text>
             </View>
 
-            <HourPicker
+            <HourPickerDropdown
               label="Opening Hour *"
               value={openTime}
               onChange={(v) => {
@@ -389,7 +351,7 @@ export default function AddVenueScreen({ navigation }: any) {
               maxHour={22}
             />
 
-            <HourPicker
+            <HourPickerDropdown
               label="Closing Hour *"
               value={closeTime}
               onChange={(v) => {

@@ -1,8 +1,8 @@
 // Reusable shared UI components used across all roles.
-import React from 'react';
+import React, { useState, forwardRef } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
-  ActivityIndicator, Image, ScrollView, ViewStyle,
+  ActivityIndicator, Image, ScrollView, ViewStyle, Modal,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { BookingStatus, VenueStatus, PaymentStatus } from '../../types';
@@ -66,15 +66,20 @@ interface AppInputProps {
   multiline?: boolean;
   maxLength?: number;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  returnKeyType?: 'done' | 'go' | 'next' | 'search' | 'send';
+  onSubmitEditing?: () => void;
+  onBlur?: () => void;
 }
-export function AppInput({
+export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
   label, value, onChangeText, placeholder, error, secureTextEntry,
   keyboardType, multiline, maxLength, autoCapitalize = 'none',
-}: AppInputProps) {
+  returnKeyType, onSubmitEditing, onBlur,
+}, ref) {
   return (
     <View style={{ marginBottom: spacing.lg }}>
       {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
       <TextInput
+        ref={ref}
         style={[
           styles.input,
           multiline && { height: 96, textAlignVertical: 'top', paddingTop: spacing.md },
@@ -82,6 +87,7 @@ export function AppInput({
         ]}
         value={value}
         onChangeText={onChangeText}
+        onBlur={onBlur}
         placeholder={placeholder}
         placeholderTextColor={colors.textDim}
         secureTextEntry={secureTextEntry}
@@ -89,11 +95,14 @@ export function AppInput({
         multiline={multiline}
         maxLength={maxLength}
         autoCapitalize={autoCapitalize}
+        returnKeyType={returnKeyType}
+        onSubmitEditing={onSubmitEditing}
+        blurOnSubmit={returnKeyType === 'done' || returnKeyType === undefined}
       />
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
-}
+});
 
 /* ───────────────── AppHeader ───────────────── */
 interface AppHeaderProps {
@@ -287,6 +296,70 @@ export function SportChip({ icon, name, active, onPress }: { icon: string; name:
   );
 }
 
+/* ───────────────── HourPickerDropdown ───────────────── */
+
+const ALL_HOURS_PICKER = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}:00`);
+
+function formatH24(h24: string): string {
+  const h = parseInt(h24.split(':')[0], 10);
+  const period = h < 12 ? 'AM' : 'PM';
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${String(h12).padStart(2, '0')}:00 ${period}`;
+}
+
+export function HourPickerDropdown({
+  label, value, onChange, minHour = 0, maxHour = 23, disabled = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  minHour?: number;
+  maxHour?: number;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const hours = ALL_HOURS_PICKER.slice(minHour, maxHour + 1);
+
+  return (
+    <View style={{ marginBottom: spacing.lg, opacity: disabled ? 0.4 : 1 }}>
+      {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
+      <TouchableOpacity
+        style={styles.dropdownTrigger}
+        onPress={() => !disabled && setOpen(true)}
+        disabled={disabled}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.dropdownValue}>{formatH24(value)}</Text>
+        <Text style={styles.dropdownArrow}>▾</Text>
+      </TouchableOpacity>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <TouchableOpacity style={styles.dropdownOverlay} activeOpacity={1} onPress={() => setOpen(false)}>
+          <View style={styles.dropdownSheet}>
+            <Text style={styles.dropdownSheetTitle}>{label}</Text>
+            <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
+              {hours.map((h) => {
+                const active = h === value;
+                return (
+                  <TouchableOpacity
+                    key={h}
+                    onPress={() => { onChange(h); setOpen(false); }}
+                    style={[styles.dropdownItem, active && styles.dropdownItemActive]}
+                  >
+                    <Text style={[styles.dropdownItemText, active && styles.dropdownItemTextActive]}>
+                      {formatH24(h)}
+                    </Text>
+                    {active && <Text style={{ color: colors.primary, fontSize: fontSize.md }}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   btn: {
     height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center',
@@ -363,4 +436,33 @@ const styles = StyleSheet.create({
   },
   sportChipActive: { backgroundColor: colors.primary },
   sportChipText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid },
+
+  dropdownTrigger: {
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    borderRadius: radius.md, paddingHorizontal: spacing.lg, height: 50,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  dropdownValue: { fontSize: fontSize.md, color: colors.text },
+  dropdownArrow: { fontSize: fontSize.md, color: colors.textDim },
+  dropdownOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center', alignItems: 'center', padding: spacing.xl,
+  },
+  dropdownSheet: {
+    backgroundColor: colors.surface, borderRadius: radius.lg,
+    width: '100%', maxWidth: 320, padding: spacing.sm,
+  },
+  dropdownSheetTitle: {
+    fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.md,
+    borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: spacing.xs,
+  },
+  dropdownItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.md, paddingVertical: spacing.md,
+    borderRadius: radius.sm,
+  },
+  dropdownItemActive: { backgroundColor: colors.primaryLight },
+  dropdownItemText: { fontSize: fontSize.md, color: colors.text },
+  dropdownItemTextActive: { color: colors.primary, fontWeight: fontWeight.semibold },
 });

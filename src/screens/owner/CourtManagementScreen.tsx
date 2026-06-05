@@ -4,53 +4,13 @@ import {
   TouchableOpacity, ActivityIndicator, Switch, Alert,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton, AppInput, EmptyState } from '../../components/common';
+import { AppHeader, AppButton, AppInput, EmptyState, HourPickerDropdown } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
 import { useCourts, useCreateCourt, useUpdateCourt, useDeleteCourt } from '../../api/hooks/useCourts';
 import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useSports } from '../../api/hooks/useSports';
 import { extractApiError } from '../../api/client';
 import type { Court } from '../../types';
-
-// ─── Hour picker ─────────────────────────────────────────────────────────────
-
-const ALL_HOURS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}:00`);
-
-function HourPicker({
-  label, value, onChange, minHour = 0, maxHour = 23, disabled = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  minHour?: number;
-  maxHour?: number;
-  disabled?: boolean;
-}) {
-  const selectedHour = parseInt(value.split(':')[0], 10);
-  const hours = ALL_HOURS.slice(minHour, maxHour + 1);
-
-  return (
-    <View style={{ marginBottom: spacing.md, opacity: disabled ? 0.4 : 1 }}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={!disabled}>
-        {hours.map((h) => {
-          const hNum = parseInt(h.split(':')[0], 10);
-          const active = hNum === selectedHour;
-          return (
-            <TouchableOpacity
-              key={h}
-              onPress={() => !disabled && onChange(h)}
-              style={[styles.hourChip, active && styles.hourChipActive]}
-              activeOpacity={disabled ? 1 : 0.7}
-            >
-              <Text style={[styles.hourChipText, active && { color: colors.white }]}>{h}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
-}
 
 // ─── Inherit badge ────────────────────────────────────────────────────────────
 
@@ -291,14 +251,14 @@ export default function CourtManagementScreen({ navigation, route }: any) {
             <InheritBadge label={`${venueOpenTime} – ${venueCloseTime}`} />
           ) : (
             <>
-              <HourPicker
+              <HourPickerDropdown
                 label="Court Opening Hour"
                 value={openTime}
                 onChange={(v) => { setOpenTime(v); setErrors((e) => ({ ...e, hours: '' })); }}
                 minHour={parseInt(venueOpenTime.split(':')[0], 10)}
                 maxHour={parseInt(closeTime.split(':')[0], 10) - 1}
               />
-              <HourPicker
+              <HourPickerDropdown
                 label="Court Closing Hour"
                 value={closeTime}
                 onChange={(v) => { setCloseTime(v); setErrors((e) => ({ ...e, hours: '' })); }}

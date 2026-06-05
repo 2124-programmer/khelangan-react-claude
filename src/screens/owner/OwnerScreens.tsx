@@ -6,7 +6,7 @@ import {
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import {
   AppHeader, AppButton, AppInput, SectionTabBar,
-  StatusBadge, StarRating, EmptyState, SportChip,
+  StatusBadge, StarRating, EmptyState, SportChip, HourPickerDropdown,
 } from '../../components/common';
 import { BookingCard, VenueImagePicker, PickedImage } from '../../components/venue';
 import { ConfirmActionModal } from '../../modals';
@@ -29,40 +29,11 @@ const AMENITIES_LIST = [
   'AC', 'Cafeteria', 'First Aid', 'Equipment Rental', 'Locker Room',
 ];
 
-const ALL_HOURS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}:00`);
-
 function formatHour(h24: string): string {
   const h = parseInt(h24.split(':')[0], 10);
   const period = h < 12 ? 'AM' : 'PM';
   const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
   return `${String(h12).padStart(2, '0')}:00 ${period}`;
-}
-
-function HourPickerInline({
-  label, value, onChange, minHour = 0, maxHour = 23,
-}: { label: string; value: string; onChange: (v: string) => void; minHour?: number; maxHour?: number }) {
-  const sel = parseInt(value.split(':')[0], 10);
-  const hours = ALL_HOURS.slice(minHour, maxHour + 1);
-  return (
-    <View style={{ marginBottom: spacing.lg }}>
-      <Text style={styles.eFieldLabel}>{label}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {hours.map((h) => {
-          const hNum = parseInt(h.split(':')[0], 10);
-          const active = hNum === sel;
-          return (
-            <TouchableOpacity
-              key={h}
-              onPress={() => onChange(h)}
-              style={[styles.eHourChip, active && styles.eHourChipActive]}
-            >
-              <Text style={[styles.eHourChipText, active && { color: colors.white }]}>{formatHour(h)}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
 }
 
 function FieldErr({ msg }: { msg?: string }) {
@@ -533,10 +504,10 @@ export function EditVenueScreen({ navigation, route }: any) {
 
         {/* ── Hours ── */}
         <Text style={styles.eSectionTitle}>Operating Hours</Text>
-        <HourPickerInline label="Opening Hour *" value={openTime}
+        <HourPickerDropdown label="Opening Hour *" value={openTime}
           onChange={(v) => { setOpenTime(v); setErrors((e) => ({ ...e, hours: '' })); }}
           minHour={0} maxHour={22} />
-        <HourPickerInline label="Closing Hour *" value={closeTime}
+        <HourPickerDropdown label="Closing Hour *" value={closeTime}
           onChange={(v) => { setCloseTime(v); setErrors((e) => ({ ...e, hours: '' })); }}
           minHour={parseInt(openTime.split(':')[0], 10) + 1} maxHour={23} />
         <View style={styles.eHoursPreview}>
