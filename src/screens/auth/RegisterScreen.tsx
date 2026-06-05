@@ -12,7 +12,7 @@ import {
   validateEmail, validatePassword, validateName, validatePhone, collectErrors,
 } from '../../utils/validation';
 
-export default function RegisterScreen({ navigation }: any) {
+export default function RegisterScreen({ navigation, route }: any) {
   const { registerUser } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -195,7 +195,7 @@ export default function RegisterScreen({ navigation }: any) {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <TouchableOpacity onPress={() => navigation.navigate('Login', { returnTo: route.params?.returnTo })}>
             <Text style={styles.link}>Login</Text>
           </TouchableOpacity>
         </View>

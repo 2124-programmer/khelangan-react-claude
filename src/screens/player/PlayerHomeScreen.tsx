@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { SportChip, EmptyState, AppHeader } from '../../components/common';
 import { VenueCard } from '../../components/venue';
@@ -10,11 +11,32 @@ import { useAuth } from '../../store/AuthContext';
 import { useSports } from '../../api/hooks/useSports';
 import { useVenues } from '../../api/hooks/useVenues';
 import { useLocation } from '../../store/LocationContext';
+import { consumePendingNav } from '../../store/pendingNav';
 
 export default function PlayerHomeScreen({ navigation }: any) {
   const { user, isLoggedIn } = useAuth();
   const [activeSport, setActiveSport] = useState<string | null>(null);
   const { location: userLocation, permission, isResolving } = useLocation();
+
+  useFocusEffect(
+    useCallback(() => {
+      const dest = consumePendingNav();
+      if (!dest) return;
+      // setTimeout(0) defers until after the navigator's state machine has
+      // finished initializing. navigation.reset() writes stack state directly
+      // and cannot be dropped the way navigate() can during init.
+      const id = setTimeout(() => {
+        navigation.reset({
+          index: 1,
+          routes: [
+            { name: 'Home' },
+            { name: dest.screen, params: dest.params as any },
+          ],
+        });
+      }, 0);
+      return () => clearTimeout(id);
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const requireAuth = (action: () => void) => {
     if (isLoggedIn) { action(); } else { navigation.navigate('Login'); }

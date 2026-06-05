@@ -1,10 +1,10 @@
 import React, { useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Alert, TextInput,
+  TouchableOpacity, TextInput,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
-import { AppInput, AppButton, AppHeader } from '../../components/common';
+import { AppInput, AppButton, AppHeader, Toast } from '../../components/common';
 import { useAuth } from '../../store/AuthContext';
 import { extractApiError, extractFieldErrors, getHttpStatus } from '../../api/client';
 import { authService } from '../../api/services/authService';
@@ -12,12 +12,12 @@ import {
   validateEmail, validateLoginPassword, collectErrors,
 } from '../../utils/validation';
 
-export default function LoginScreen({ navigation }: any) {
+export default function LoginScreen({ navigation, route }: any) {
   const { loginWithCredentials } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
 
@@ -39,13 +39,11 @@ export default function LoginScreen({ navigation }: any) {
     ]);
     if (Object.keys(errors).length) {
       setFieldErrors(errors);
-      setFormError(null);
       if (errors.email) emailRef.current?.focus();
       else if (errors.password) passwordRef.current?.focus();
       return;
     }
     setFieldErrors({});
-    setFormError(null);
     setLoading(true);
     try {
       await loginWithCredentials(email.trim().toLowerCase(), password);
@@ -58,13 +56,11 @@ export default function LoginScreen({ navigation }: any) {
         // Server returned per-field validation errors (400).
         setFieldErrors(fe);
       } else if (status === 401) {
-        // Wrong email or password — show inline, not a popup.
-        setFormError('Incorrect email or password. Please check your credentials and try again.');
+        setToastMsg('Incorrect email or password. Please check your credentials and try again.');
       } else if (status === 403) {
-        setFormError('Your account has been suspended. Please contact support.');
+        setToastMsg('Your account has been suspended. Please contact support.');
       } else {
-        // Network error, 5xx, etc. — Alert is appropriate here.
-        Alert.alert('Login Failed', extractApiError(err));
+        setToastMsg(extractApiError(err) || 'Login failed. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -79,7 +75,6 @@ export default function LoginScreen({ navigation }: any) {
       return;
     }
     setFieldErrors({});
-    setFormError(null);
     setOtpLoading(true);
     try {
       const trimmed = email.trim().toLowerCase();
@@ -88,13 +83,14 @@ export default function LoginScreen({ navigation }: any) {
         email: trimmed,
         maskedDestination: res.maskedDestination,
         resendAfterSec: res.resendAfterSec ?? 60,
+        returnTo: route.params?.returnTo,
       });
     } catch (err) {
       const status = getHttpStatus(err);
       if (status === 404) {
         setFieldError('email', 'No account found with this email.');
       } else {
-        Alert.alert('Could not send OTP', extractApiError(err));
+        setToastMsg(extractApiError(err) || 'Could not send OTP. Please try again.');
       }
     } finally {
       setOtpLoading(false);
@@ -103,6 +99,12 @@ export default function LoginScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Toast
+        visible={!!toastMsg}
+        message={toastMsg ?? ''}
+        type="error"
+        onHide={() => setToastMsg(null)}
+      />
       <AppHeader title="Login" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <Text style={styles.heading}>Welcome back</Text>
@@ -116,7 +118,6 @@ export default function LoginScreen({ navigation }: any) {
             onChangeText={(v) => {
               setEmail(v);
               setFieldError('email', validateEmail(v));
-              setFormError(null);
             }}
             onBlur={() => setFieldError('email', validateEmail(email))}
             keyboardType="email-address"
@@ -133,7 +134,6 @@ export default function LoginScreen({ navigation }: any) {
             onChangeText={(v) => {
               setPassword(v);
               setFieldError('password', validateLoginPassword(v));
-              setFormError(null);
             }}
             onBlur={() => setFieldError('password', validateLoginPassword(password))}
             secureTextEntry
@@ -148,12 +148,6 @@ export default function LoginScreen({ navigation }: any) {
             <Text style={styles.link}>Forgot Password?</Text>
           </TouchableOpacity>
         </View>
-
-        {formError ? (
-          <View style={styles.formErrorBox}>
-            <Text style={styles.formErrorText}>{formError}</Text>
-          </View>
-        ) : null}
 
         <View style={{ marginTop: spacing.lg }}>
           <AppButton
@@ -179,7 +173,7 @@ export default function LoginScreen({ navigation }: any) {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+          <TouchableOpacity onPress={() => navigation.navigate('Register', { returnTo: route.params?.returnTo })}>
             <Text style={styles.link}>Register</Text>
           </TouchableOpacity>
         </View>

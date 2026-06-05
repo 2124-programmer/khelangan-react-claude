@@ -1,8 +1,8 @@
 // Reusable shared UI components used across all roles.
-import React, { useState, forwardRef } from 'react';
+import React, { useState, forwardRef, useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
-  ActivityIndicator, Image, ScrollView, ViewStyle, Modal,
+  ActivityIndicator, Image, ScrollView, ViewStyle, Modal, Animated,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { BookingStatus, VenueStatus, PaymentStatus } from '../../types';
@@ -359,6 +359,59 @@ export function HourPickerDropdown({
     </View>
   );
 }
+
+/* ───────────────── Toast ───────────────── */
+interface ToastProps {
+  visible: boolean;
+  message: string;
+  type?: 'error' | 'success' | 'info';
+  onHide: () => void;
+}
+export function Toast({ visible, message, type = 'error', onHide }: ToastProps) {
+  const slideY = useRef(new Animated.Value(-100)).current;
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const hide = () => {
+    if (timer.current) clearTimeout(timer.current);
+    Animated.timing(slideY, { toValue: -100, duration: 250, useNativeDriver: true }).start(onHide);
+  };
+
+  useEffect(() => {
+    if (!visible) return;
+    Animated.timing(slideY, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+    timer.current = setTimeout(hide, 3500);
+    return () => { if (timer.current) clearTimeout(timer.current); };
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const bg =
+    type === 'error' ? '#DC2626'
+    : type === 'success' ? '#16A34A'
+    : '#1D4ED8';
+
+  return (
+    <Animated.View
+      pointerEvents={visible ? 'auto' : 'none'}
+      style={[toastStyles.wrap, { backgroundColor: bg, transform: [{ translateY: slideY }] }]}
+    >
+      <Text style={toastStyles.msg} numberOfLines={3}>{message}</Text>
+      <TouchableOpacity onPress={hide} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Text style={toastStyles.x}>✕</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+const toastStyles = StyleSheet.create({
+  wrap: {
+    position: 'absolute', top: 0, left: 0, right: 0, zIndex: 999,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 14, gap: 12,
+    shadowColor: '#000', shadowOpacity: 0.2, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8,
+    elevation: 8,
+  },
+  msg: { flex: 1, color: '#fff', fontSize: 14, lineHeight: 20, fontWeight: '500' },
+  x: { color: 'rgba(255,255,255,0.85)', fontSize: 16, fontWeight: 'bold' },
+});
 
 const styles = StyleSheet.create({
   btn: {
