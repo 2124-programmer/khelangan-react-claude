@@ -53,6 +53,7 @@ export default function LoginScreen({ navigation, route }: any) {
       const fe = extractFieldErrors(err);
 
       if (Object.keys(fe).length) {
+        // Server returned per-field validation errors (400).
         setFieldErrors(fe);
       } else if (status === 401) {
         setToastMsg('Incorrect email or password. Please check your credentials and try again.');
@@ -187,6 +188,15 @@ const styles = StyleSheet.create({
   heading: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
   sub: { fontSize: fontSize.md, color: colors.textMid, marginTop: spacing.xs },
   link: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
+  formErrorBox: {
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: '#FEE2E2',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  formErrorText: { color: '#B91C1C', fontSize: fontSize.sm, lineHeight: 20 },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: spacing.lg },
   line: { flex: 1, height: 1, backgroundColor: colors.border },
   or: { marginHorizontal: spacing.md, color: colors.textDim, fontSize: fontSize.xs },
