@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, ActivityIndicator,
@@ -10,11 +10,17 @@ import { useAuth } from '../../store/AuthContext';
 import { useSports } from '../../api/hooks/useSports';
 import { useVenues } from '../../api/hooks/useVenues';
 import { useLocation } from '../../store/LocationContext';
+import { consumePendingNav } from '../../store/pendingNav';
 
 export default function PlayerHomeScreen({ navigation }: any) {
   const { user, isLoggedIn } = useAuth();
   const [activeSport, setActiveSport] = useState<string | null>(null);
   const { location: userLocation, permission, isResolving } = useLocation();
+
+  useEffect(() => {
+    const dest = consumePendingNav();
+    if (dest) navigation.navigate(dest.screen as any, dest.params);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const requireAuth = (action: () => void) => {
     if (isLoggedIn) { action(); } else { navigation.navigate('Login'); }

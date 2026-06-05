@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, ActivityIndicator, Linking,
+  TouchableOpacity, ActivityIndicator, Linking, Alert,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, StarRating, EmptyState } from '../../components/common';
 import { VenueImageCarousel } from '../../components/venue';
-import { RatingDetailModal } from '../../modals';
+import { RatingDetailModal, ConfirmActionModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useVenueReviews } from '../../api/hooks/useReviews';
 import { useSports } from '../../api/hooks/useSports';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 import { haversineKm, formatDistance } from '../../utils/locationUtils';
 import { useAuth } from '../../store/AuthContext';
+import { setPendingNav } from '../../store/pendingNav';
 
 const AMENITY_ICON: Record<string, string> = {
   'Locker Room': '🔒',
@@ -56,8 +57,9 @@ function buildFullAddress(address: string, city: string, state: string, pincode:
 
 export default function VenueDetailScreen({ navigation, route }: any) {
   const venueId: string = route.params.venueId;
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, role } = useAuth();
   const [showRating, setShowRating] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   const { data: venue, isLoading, isError } = useVenueDetail(venueId);
   const { data: reviewsData } = useVenueReviews(venueId);
@@ -89,6 +91,22 @@ export default function VenueDetailScreen({ navigation, route }: any) {
       </SafeAreaView>
     );
   }
+
+  const handleBookNow = () => {
+    if (isLoggedIn) {
+      if (role !== 'player') {
+        Alert.alert(
+          'Player Account Required',
+          'You are logged in as a Venue Owner. Please use a Player account to book a slot.',
+          [{ text: 'OK' }],
+        );
+        return;
+      }
+      navigation.navigate('SlotSelection', { venueId: venue.id });
+      return;
+    }
+    setShowLoginPrompt(true);
+  };
 
   const fullAddress = buildFullAddress(venue.address, venue.city, venue.state, venue.pincode);
   const hoursLabel = `${fmt12h(venue.openTime)} – ${fmt12h(venue.closeTime)}`;
@@ -285,11 +303,7 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         <AppButton
           label="Book Now"
           fullWidth={false}
-          onPress={() =>
-            isLoggedIn
-              ? navigation.navigate('SlotSelection', { venueId: venue.id })
-              : navigation.navigate('Login')
-          }
+          onPress={handleBookNow}
           style={{ paddingHorizontal: 40 }}
         />
       </View>
@@ -304,6 +318,21 @@ export default function VenueDetailScreen({ navigation, route }: any) {
           { label: 'Facilities', value: 4 },
         ]}
         onDismiss={() => setShowRating(false)}
+      />
+
+      <ConfirmActionModal
+        visible={showLoginPrompt}
+        title="Login Required"
+        message="Login is required as a Player to book a slot. Do you want to continue?"
+        confirmLabel="Proceed"
+        onDismiss={() => setShowLoginPrompt(false)}
+        onConfirm={() => {
+          setShowLoginPrompt(false);
+          setPendingNav({ screen: 'SlotSelection', params: { venueId: venue.id } });
+          navigation.navigate('Login', {
+            returnTo: { screen: 'SlotSelection', params: { venueId: venue.id } },
+          });
+        }}
       />
     </SafeAreaView>
   );

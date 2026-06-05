@@ -78,7 +78,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ── Real auth ────────────────────────────────────────────────────────────
   const loginWithCredentials = useCallback(async (email: string, password: string) => {
     setAuthError(null);
-    setIsLoading(true);
     try {
       const res = await authService.login({ email: email.trim().toLowerCase(), password });
       if (!res.token || !res.user) throw new Error('Invalid server response');
@@ -92,15 +91,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         e?.response?.data?.message ?? e?.message ?? 'Login failed. Please try again.';
       setAuthError(String(msg));
       throw e;
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 
   const registerUser = useCallback(
     async (data: Omit<RegisterRequest, 'role'> & { role: UserRole }) => {
       setAuthError(null);
-      setIsLoading(true);
       try {
         const backendRole = data.role.toUpperCase() as 'PLAYER' | 'OWNER';
         const res = await authService.register({ ...data, role: backendRole });
@@ -115,8 +111,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           e?.response?.data?.message ?? e?.message ?? 'Registration failed. Please try again.';
         setAuthError(String(msg));
         throw e;
-      } finally {
-        setIsLoading(false);
       }
     },
     []
