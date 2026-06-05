@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, ActivityIndicator, Linking, Alert,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton, StarRating, EmptyState } from '../../components/common';
+import { AppHeader, AppButton, StarRating, EmptyState, Toast } from '../../components/common';
 import { VenueImageCarousel } from '../../components/venue';
 import { RatingDetailModal, ConfirmActionModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
@@ -60,6 +60,11 @@ export default function VenueDetailScreen({ navigation, route }: any) {
   const { isLoggedIn, role } = useAuth();
   const [showRating, setShowRating] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (route.params?._successToast) setSuccessToast(route.params._successToast as string);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: venue, isLoading, isError } = useVenueDetail(venueId);
   const { data: reviewsData } = useVenueReviews(venueId);
@@ -328,11 +333,19 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         onDismiss={() => setShowLoginPrompt(false)}
         onConfirm={() => {
           setShowLoginPrompt(false);
-          setPendingNav({ screen: 'SlotSelection', params: { venueId: venue.id } });
-          navigation.navigate('Login', {
-            returnTo: { screen: 'SlotSelection', params: { venueId: venue.id } },
+          setPendingNav({
+            screen: 'VenueDetail',
+            params: { venueId: venue.id, _successToast: 'Logged in successfully! Tap Book Now to proceed.' },
           });
+          navigation.navigate('Login');
         }}
+      />
+
+      <Toast
+        visible={!!successToast}
+        message={successToast ?? ''}
+        type="success"
+        onHide={() => setSuccessToast(null)}
       />
     </SafeAreaView>
   );
