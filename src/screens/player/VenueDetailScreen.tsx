@@ -6,6 +6,7 @@ import {
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, StarRating, EmptyState, Toast } from '../../components/common';
 import { VenueImageCarousel } from '../../components/venue';
+import { VenueMap } from '../../components/venue/VenueMap';
 import { RatingDetailModal, ConfirmActionModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useVenueReviews } from '../../api/hooks/useReviews';
@@ -155,6 +156,63 @@ export default function VenueDetailScreen({ navigation, route }: any) {
             </Text>
           </TouchableOpacity>
 
+          {/* Sports */}
+          {venue.sports.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Sports Available</Text>
+              <View style={styles.chipWrap}>
+                {venue.sports.map((s) => (
+                  <View key={s} style={styles.chip}>
+                    <Text style={styles.chipText}>{getSportLabel(s)}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* Courts */}
+          <Text style={styles.sectionTitle}>Courts</Text>
+          {venue.courts.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyBoxText}>No courts have been added yet</Text>
+            </View>
+          ) : (
+            venue.courts.map((c) => (
+              <View key={c.id} style={[styles.courtCard, shadow.card]}>
+                <View style={styles.courtHeader}>
+                  <Text style={styles.courtName}>{c.name}</Text>
+                  <Text style={styles.courtPrice}>₹{c.effectivePricePerHour}/hr</Text>
+                </View>
+                <Text style={styles.courtMeta}>
+                  {c.type ? `${c.type}  ·  ` : ''}{fmt12h(c.effectiveOpenTime)} – {fmt12h(c.effectiveCloseTime)}
+                </Text>
+              </View>
+            ))
+          )}
+
+          {/* About */}
+          {!!venue.description && (
+            <>
+              <Text style={styles.sectionTitle}>About</Text>
+              <Text style={styles.desc}>{venue.description}</Text>
+            </>
+          )}
+
+          {/* Amenities */}
+          {venue.amenities.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Amenities</Text>
+              <View style={styles.amenityGrid}>
+                {venue.amenities.map((a) => (
+                  <View key={a} style={styles.amenityItem}>
+                    <Text style={styles.amenityIcon}>{AMENITY_ICON[a] ?? '✓'}</Text>
+                    <Text style={styles.amenityText} numberOfLines={2}>{a}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
           {/* Info Card: Hours / Phone / Email */}
           <View style={[styles.infoCard, shadow.card]}>
             <View style={styles.infoRow}>
@@ -202,69 +260,14 @@ export default function VenueDetailScreen({ navigation, route }: any) {
             )}
           </View>
 
-          {/* Sports */}
-          {venue.sports.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Sports Available</Text>
-              <View style={styles.chipWrap}>
-                {venue.sports.map((s) => (
-                  <View key={s} style={styles.chip}>
-                    <Text style={styles.chipText}>{getSportLabel(s)}</Text>
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
-
-          {/* Amenities */}
-          {venue.amenities.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Amenities</Text>
-              <View style={styles.amenityGrid}>
-                {venue.amenities.map((a) => (
-                  <View key={a} style={styles.amenityItem}>
-                    <Text style={styles.amenityIcon}>{AMENITY_ICON[a] ?? '✓'}</Text>
-                    <Text style={styles.amenityText} numberOfLines={2}>{a}</Text>
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
-
-          {/* About */}
-          {!!venue.description && (
-            <>
-              <Text style={styles.sectionTitle}>About</Text>
-              <Text style={styles.desc}>{venue.description}</Text>
-            </>
-          )}
-
-          {/* Courts */}
-          <Text style={styles.sectionTitle}>Courts</Text>
-          {venue.courts.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyBoxText}>No courts have been added yet</Text>
-            </View>
-          ) : (
-            venue.courts.map((c) => (
-              <View key={c.id} style={[styles.courtCard, shadow.card]}>
-                <View style={styles.courtHeader}>
-                  <Text style={styles.courtName}>{c.name}</Text>
-                  <Text style={styles.courtPrice}>₹{c.effectivePricePerHour}/hr</Text>
-                </View>
-                <Text style={styles.courtMeta}>
-                  {c.type ? `${c.type}  ·  ` : ''}{fmt12h(c.effectiveOpenTime)} – {fmt12h(c.effectiveCloseTime)}
-                </Text>
-              </View>
-            ))
-          )}
-
           {/* Location */}
           <Text style={styles.sectionTitle}>Location</Text>
-          <View style={styles.mapPlaceholder}>
-            <Text style={styles.mapEmoji}>🗺️</Text>
-            <Text style={styles.mapText}>{fullAddress}</Text>
-          </View>
+          <VenueMap
+            lat={venue.lat ?? 0}
+            lng={venue.lng ?? 0}
+            name={venue.name}
+            fullAddress={fullAddress}
+          />
 
           {/* Reviews */}
           <Text style={styles.sectionTitle}>
@@ -429,13 +432,6 @@ const styles = StyleSheet.create({
   courtPrice: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.primary },
   courtMeta: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 4 },
 
-  // Map placeholder
-  mapPlaceholder: {
-    height: 120, backgroundColor: colors.surfaceAlt, borderRadius: radius.md,
-    alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
-  },
-  mapEmoji: { fontSize: 32 },
-  mapText: { fontSize: fontSize.sm, color: colors.textMid, textAlign: 'center', paddingHorizontal: spacing.lg },
 
   // Reviews
   reviewCard: {
