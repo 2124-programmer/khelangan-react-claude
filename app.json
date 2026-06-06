@@ -1,13 +1,14 @@
 {
   "expo": {
     "name": "TurfBook",
-    "icon":"./assets/logo/icon.png",
+    "icon": "./assets/logo/icon.png",
     "slug": "turfbook",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "newArchEnabled": false,
     "splash": {
+      "image": "./assets/logo/splash.jpg",
+      "resizeMode": "contain",
       "backgroundColor": "#0FAE6E"
     },
     "assetBundlePatterns": [
@@ -26,6 +27,14 @@
         {
           "photosPermission": "TurfBook needs access to your photos to upload venue images."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
       ]
     ],
     "ios": {
@@ -33,14 +42,13 @@
       "bundleIdentifier": "com.turfbook.app"
     },
     "androidStatusBar": {
-      "backgroundColor": "#ffffff",
+      "backgroundColor": "#0FAE6E",
       "translucent": false,
-      "barStyle": "dark-content"
+      "barStyle": "light-content"
     },
     "android": {
       "package": "com.turfbook.app",
       "versionCode": 1,
-      "usesCleartextTraffic": true,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -57,10 +65,5 @@
       }
     },
     "owner": "2124.programmer"
-  },
-  "splash": {
-  "image": "./assets/logo/splash.png",
-  "resizeMode": "contain",
-  "backgroundColor": "#0FAE6E"
-}
+  }
 }
