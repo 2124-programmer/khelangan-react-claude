@@ -4,6 +4,7 @@ import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
   ActivityIndicator, Image, ScrollView, ViewStyle, Modal, Animated,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { BookingStatus, VenueStatus, PaymentStatus } from '../../types';
 
@@ -75,30 +76,48 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
   keyboardType, multiline, maxLength, autoCapitalize = 'none',
   returnKeyType, onSubmitEditing, onBlur,
 }, ref) {
+  const [passwordVisible, setPasswordVisible] = useState(false);
   return (
     <View style={{ marginBottom: spacing.lg }}>
       {label ? <Text style={styles.inputLabel}>{label}</Text> : null}
-      <TextInput
-        ref={ref}
-        style={[
-          styles.input,
-          multiline && { height: 96, textAlignVertical: 'top', paddingTop: spacing.md },
-          error ? { borderColor: colors.danger } : {},
-        ]}
-        value={value}
-        onChangeText={onChangeText}
-        onBlur={onBlur}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textDim}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        maxLength={maxLength}
-        autoCapitalize={autoCapitalize}
-        returnKeyType={returnKeyType}
-        onSubmitEditing={onSubmitEditing}
-        blurOnSubmit={returnKeyType === 'done' || returnKeyType === undefined}
-      />
+      <View style={styles.inputWrapper}>
+        <TextInput
+          ref={ref}
+          style={[
+            styles.input,
+            multiline && { height: 96, textAlignVertical: 'top', paddingTop: spacing.md },
+            error ? { borderColor: colors.danger } : {},
+            secureTextEntry && styles.inputWithToggle,
+          ]}
+          value={value}
+          onChangeText={onChangeText}
+          onBlur={onBlur}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textDim}
+          secureTextEntry={secureTextEntry && !passwordVisible}
+          keyboardType={keyboardType}
+          multiline={multiline}
+          maxLength={maxLength}
+          autoCapitalize={autoCapitalize}
+          returnKeyType={returnKeyType}
+          onSubmitEditing={onSubmitEditing}
+          blurOnSubmit={returnKeyType === 'done' || returnKeyType === undefined}
+        />
+        {secureTextEntry ? (
+          <TouchableOpacity
+            style={styles.eyeToggle}
+            onPress={() => setPasswordVisible((v) => !v)}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather
+              name={passwordVisible ? 'eye' : 'eye-off'}
+              size={20}
+              color={colors.textDim}
+            />
+          </TouchableOpacity>
+        ) : null}
+      </View>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
@@ -423,10 +442,20 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid,
     marginBottom: spacing.xs,
   },
+  inputWrapper: {
+    position: 'relative',
+  },
   input: {
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
     borderRadius: radius.md, paddingHorizontal: spacing.lg, height: 50,
     fontSize: fontSize.md, color: colors.text,
+  },
+  inputWithToggle: {
+    paddingRight: 48,
+  },
+  eyeToggle: {
+    position: 'absolute', right: spacing.lg, top: 0, bottom: 0,
+    justifyContent: 'center', alignItems: 'center',
   },
   errorText: { color: colors.danger, fontSize: fontSize.xs, marginTop: spacing.xs },
   header: {
