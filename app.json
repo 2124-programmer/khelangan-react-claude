@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "TurfBook",
+    "icon":"./assets/logo/icon.png",
     "slug": "turfbook",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -18,6 +19,12 @@
         {
           "locationAlwaysAndWhenInUsePermission": "TurfBook uses your location to show nearby venues and distance.",
           "locationWhenInUsePermission": "TurfBook uses your location to show nearby venues and distance."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "TurfBook needs access to your photos to upload venue images."
         }
       ]
     ],
@@ -50,5 +57,10 @@
       }
     },
     "owner": "2124.programmer"
-  }
+  },
+  "splash": {
+  "image": "./assets/logo/splash.png",
+  "resizeMode": "contain",
+  "backgroundColor": "#0FAE6E"
+}
 }
