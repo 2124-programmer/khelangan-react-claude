@@ -125,7 +125,11 @@ export function extractApiError(error: unknown): string {
     const data = error.response?.data;
     if (data?.message) return String(data.message);
     if (data?.error) return String(data.error);
-    if (error.message) return error.message;
+    if (error.message) {
+      // Include error.code so network-level failures show a diagnostic tag,
+      // e.g. "Network Error [ERR_NETWORK]" or "Network Error [ERR_CLEARTEXT_NOT_PERMITTED]".
+      return error.code ? `${error.message} [${error.code}]` : error.message;
+    }
   }
   return 'Something went wrong. Please try again.';
 }
