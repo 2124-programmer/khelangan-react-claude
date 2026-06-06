@@ -21,4 +21,7 @@ export const authService = {
 
   forgotPassword: (data: ForgotPasswordRequest) =>
     apiClient.post<MessageResponse>(`${BASE}/forgot-password`, data).then((r) => r.data),
+
+  googleSignIn: (data: { idToken: string; role?: string }) =>
+    apiClient.post<AuthResponse>(`${BASE}/google`, data).then((r) => r.data),
 };

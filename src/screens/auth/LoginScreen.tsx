@@ -8,18 +8,20 @@ import { AppInput, AppButton, AppHeader, Toast } from '../../components/common';
 import { useAuth } from '../../store/AuthContext';
 import { extractApiError, extractFieldErrors, getHttpStatus, BASE_URL } from '../../api/client';
 import { authService } from '../../api/services/authService';
+import { getGoogleIdToken, GOOGLE_SIGN_IN_CANCELLED } from '../../api/googleAuth';
 import {
   validateEmail, validateLoginPassword, collectErrors,
 } from '../../utils/validation';
 
 export default function LoginScreen({ navigation, route }: any) {
-  const { loginWithCredentials } = useAuth();
+  const { loginWithCredentials, loginWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
@@ -64,6 +66,20 @@ export default function LoginScreen({ navigation, route }: any) {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      const idToken = await getGoogleIdToken();
+      await loginWithGoogle(idToken);
+      // Success: RootNavigator watches isLoggedIn and navigates automatically.
+    } catch (err: any) {
+      if (err?.code === GOOGLE_SIGN_IN_CANCELLED) return;
+      setToastMsg(extractApiError(err) || 'Google sign-in failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -168,8 +184,17 @@ export default function LoginScreen({ navigation, route }: any) {
             icon="📱"
             variant="secondary"
             loading={otpLoading}
-            disabled={!isEmailValid || otpLoading || loading}
+            disabled={!isEmailValid || otpLoading || loading || googleLoading}
             onPress={handleSendOtp}
+          />
+          <AppButton
+            label="Continue with Google"
+            icon="🇬"
+            variant="secondary"
+            loading={googleLoading}
+            disabled={loading || otpLoading || googleLoading}
+            onPress={handleGoogleSignIn}
+            style={{ marginTop: spacing.sm }}
           />
         </View>
 

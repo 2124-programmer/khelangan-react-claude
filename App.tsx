@@ -10,6 +10,11 @@ import { sportService } from './src/api/services/sportService';
 import { adaptSport } from './src/api/adapters';
 import { setSportsRegistry } from './src/utils/sportUtils';
 import RootNavigator from './src/navigation/RootNavigator';
+import { GoogleSignin } from './src/api/googleAuth';
+
+GoogleSignin.configure({
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+});
 
 function SportsBootstrap() {
   useEffect(() => {

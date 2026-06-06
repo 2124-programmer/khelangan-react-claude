@@ -23,6 +23,8 @@ interface AuthState {
   loginWithCredentials: (email: string, password: string) => Promise<void>;
   /** Real auth: register a new user */
   registerUser: (data: Omit<RegisterRequest, 'role'> & { role: UserRole }) => Promise<void>;
+  /** Real auth: Google Sign-In — idToken from GoogleSignin.signIn(), optional role for new accounts */
+  loginWithGoogle: (idToken: string, role?: UserRole) => Promise<void>;
   logout: () => Promise<void>;
   /** Update token + user after a role change — issues new JWT immediately */
   updateSession: (newToken: string, userDto: UserDto) => Promise<void>;
@@ -116,6 +118,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const loginWithGoogle = useCallback(async (idToken: string, role?: UserRole) => {
+    setAuthError(null);
+    try {
+      const backendRole = role ? (role.toUpperCase() as 'PLAYER' | 'OWNER') : undefined;
+      const res = await authService.googleSignIn({ idToken, role: backendRole });
+      if (!res.token || !res.user) throw new Error('Invalid server response');
+      await saveToken(res.token);
+      await saveRefreshToken(res.refreshToken ?? res.token);
+      setToken(res.token);
+      setUser(adaptUser(res.user));
+      setIsDemoMode(false);
+    } catch (e: any) {
+      const msg =
+        e?.response?.data?.message ?? e?.message ?? 'Google sign-in failed. Please try again.';
+      setAuthError(String(msg));
+      throw e;
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     // NOTE: no server-side token revocation endpoint exists; logout is client-side only.
     // The JWT remains technically valid until its expiry (app.jwt.expiration-ms).
@@ -151,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     loginWithCredentials,
     registerUser,
+    loginWithGoogle,
     logout,
     updateSession,
     clearAuthError,

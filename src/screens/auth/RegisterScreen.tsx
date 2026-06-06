@@ -4,16 +4,17 @@ import {
   TouchableOpacity, Alert, TextInput,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
-import { AppInput, AppButton, AppHeader } from '../../components/common';
+import { AppInput, AppButton, AppHeader, Toast } from '../../components/common';
 import { UserRole } from '../../types';
 import { useAuth } from '../../store/AuthContext';
 import { extractApiError, extractFieldErrors, getHttpStatus } from '../../api/client';
+import { getGoogleIdToken, GOOGLE_SIGN_IN_CANCELLED } from '../../api/googleAuth';
 import {
   validateEmail, validatePassword, validateName, validatePhone, collectErrors,
 } from '../../utils/validation';
 
 export default function RegisterScreen({ navigation, route }: any) {
-  const { registerUser } = useAuth();
+  const { registerUser, loginWithGoogle } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -22,6 +23,8 @@ export default function RegisterScreen({ navigation, route }: any) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const nameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -38,6 +41,20 @@ export default function RegisterScreen({ navigation, route }: any) {
     !validateEmail(email) &&
     !validatePhone(phone) &&
     !validatePassword(password);
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      const idToken = await getGoogleIdToken();
+      await loginWithGoogle(idToken, role);
+      // Success: RootNavigator watches isLoggedIn and navigates automatically.
+    } catch (err: any) {
+      if (err?.code === GOOGLE_SIGN_IN_CANCELLED) return;
+      setToastMsg(extractApiError(err) || 'Google sign-in failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleRegister = async () => {
     const errors = collectErrors([
@@ -92,6 +109,12 @@ export default function RegisterScreen({ navigation, route }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Toast
+        visible={!!toastMsg}
+        message={toastMsg ?? ''}
+        type="error"
+        onHide={() => setToastMsg(null)}
+      />
       <AppHeader title="Create Account" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <Text style={styles.sectionLabel}>I am a</Text>
@@ -189,8 +212,21 @@ export default function RegisterScreen({ navigation, route }: any) {
           label="Register"
           onPress={handleRegister}
           loading={loading}
-          disabled={!isFormValid || loading}
+          disabled={!isFormValid || loading || googleLoading}
           style={{ marginTop: spacing.md }}
+        />
+        <View style={styles.dividerRow}>
+          <View style={styles.line} />
+          <Text style={styles.or}>OR</Text>
+          <View style={styles.line} />
+        </View>
+        <AppButton
+          label="Continue with Google"
+          icon="🇬"
+          variant="secondary"
+          loading={googleLoading}
+          disabled={loading || googleLoading}
+          onPress={handleGoogleSignIn}
         />
 
         <View style={styles.footer}>
@@ -226,4 +262,7 @@ const styles = StyleSheet.create({
   footerText: { color: colors.textMid, fontSize: fontSize.sm },
   passwordRules: { marginTop: spacing.xs, gap: 2 },
   passwordRuleItem: { fontSize: fontSize.xs, color: colors.textMid },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: spacing.lg },
+  line: { flex: 1, height: 1, backgroundColor: colors.border },
+  or: { marginHorizontal: spacing.md, color: colors.textDim, fontSize: fontSize.xs },
 });
