@@ -22,6 +22,7 @@ import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead 
 import { useMe } from '../../api/hooks/useUser';
 import { extractApiError } from '../../api/client';
 import { parseLatLng, formatLatLng } from '../../utils/locationUtils';
+import { formatRelativeTime, useNow } from '../../utils/dateUtils';
 
 // ─── Edit-venue constants (mirror AddVenueScreen) ───────────────────────────
 
@@ -109,7 +110,8 @@ export function BookingManagementScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="Bookings" />
+      <AppHeader title="Bookings" 
+      onBack={() => navigation.goBack()}/>
       <SectionTabBar
         tabs={[
           { label: 'Requests', value: 'requests' },
@@ -649,21 +651,9 @@ const NOTIF_ICONS: Record<string, string> = {
   booking: '📋', payment: '💰', offer: '🎉', review: '⭐', system: '🔔',
 };
 
-function formatNotifDate(iso: string): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const diffMins = Math.floor((Date.now() - d.getTime()) / 60000);
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-}
 
 export function OwnerNotificationsScreen({ navigation }: any) {
+  useNow(); // re-renders every 30 s so relative timestamps stay current
   const { data, isLoading } = useNotifications();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
@@ -747,11 +737,17 @@ export function OwnerNotificationsScreen({ navigation }: any) {
     }
   };
 
-  // Show action buttons only if not yet actioned this session and not already read
+  // Show action buttons only when:
+  //   • it's a pending booking notification
+  //   • not yet actioned this session (in-memory fast path)
+  //   • not already read on the server (persists across reloads — once accepted/
+  //     rejected markAllSiblingNotifs marks the notification as read, so after the
+  //     next refetch isRead is true and buttons stay gone even with actionedRefs empty)
   const isActionable = (n: AppNotification) =>
     n.type === 'booking' &&
     !!n.referenceId &&
     n.title === 'New Booking Request' &&
+    !n.isRead &&
     !actionedRefs.has(n.referenceId!);
 
   const hasViewLink = (n: AppNotification) => n.type === 'booking' && !!n.referenceId;
@@ -788,7 +784,7 @@ export function OwnerNotificationsScreen({ navigation }: any) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={nfStyles.title}>{n.title}</Text>
-                    <Text style={nfStyles.time}>{formatNotifDate(n.date)}</Text>
+                    <Text style={nfStyles.time}>{formatRelativeTime(n.date)}</Text>
                   </View>
                   {!n.isRead && <View style={nfStyles.dot} />}
                 </View>

@@ -6,6 +6,7 @@ import {
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, EmptyState } from '../../components/common';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../../api/hooks/useNotifications';
+import { formatRelativeTime, useNow } from '../../utils/dateUtils';
 
 function getNotifIcon(type: string, title: string): string {
   if (type === 'booking') {
@@ -20,21 +21,9 @@ function getNotifIcon(type: string, title: string): string {
   return MAP[type] ?? '🔔';
 }
 
-function formatDate(iso: string): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const diffMins = Math.floor((Date.now() - d.getTime()) / 60000);
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-}
 
 export default function NotificationsScreen({ navigation }: any) {
+  useNow(); // re-renders every 30 s so relative timestamps stay current
   const { data, isLoading } = useNotifications();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
@@ -69,7 +58,7 @@ export default function NotificationsScreen({ navigation }: any) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.title}>{n.title}</Text>
                 <Text style={styles.body}>{n.body}</Text>
-                <Text style={styles.time}>{formatDate(n.date)}</Text>
+                <Text style={styles.time}>{formatRelativeTime(n.date)}</Text>
               </View>
               {!n.isRead && <View style={styles.dot} />}
             </TouchableOpacity>

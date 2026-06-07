@@ -77,7 +77,10 @@ export function useAcceptBooking() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => bookingService.accept(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: BOOKINGS_KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+    },
   });
 }
 
@@ -85,7 +88,10 @@ export function useRejectBooking() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => bookingService.reject(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: BOOKINGS_KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+    },
   });
 }
 
@@ -96,6 +102,7 @@ export function useAcceptBookingGroup() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: ['slots'] });
+      qc.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 }
@@ -107,6 +114,7 @@ export function useRejectBookingGroup() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: ['slots'] });
+      qc.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 }
