@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, ActivityIndicator, Alert,
+  TouchableOpacity, ActivityIndicator, Alert, FlatList,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, AppButton, EmptyState } from '../../components/common';
@@ -12,22 +12,90 @@ import { useSlots, useBlockSlot, useBulkBlockSlots } from '../../api/hooks/useSl
 import { Slot } from '../../types';
 import { extractApiError } from '../../api/client';
 
-function buildDateOptions() {
-  const opts = [];
+const BATCH = 10;
+
+type DateItem = {
+  date: string;
+  topLabel: string;
+  dayNum: string;
+  month: string;
+};
+
+function buildDates(count: number): DateItem[] {
+  const items: DateItem[] = [];
   const now = new Date();
-  const labels = ['Today', 'Tomorrow'];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < count; i++) {
     const d = new Date(now);
     d.setDate(now.getDate() + i);
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
-    const dayName = d.toLocaleDateString('en-IN', { weekday: 'short' });
-    opts.push({ label: labels[i] ?? dayName, date: `${yyyy}-${mm}-${dd}`, day: String(d.getDate()) });
+    const weekday = d.toLocaleDateString('en-IN', { weekday: 'short' });
+    const month = d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+    items.push({
+      date: `${yyyy}-${mm}-${dd}`,
+      topLabel: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : weekday,
+      dayNum: String(d.getDate()),
+      month,
+    });
   }
-  return opts;
+  return items;
 }
-const DATES = buildDateOptions();
+
+function DateRail({
+  activeDate,
+  onSelect,
+}: {
+  activeDate: string;
+  onSelect: (d: string) => void;
+}) {
+  const [count, setCount] = useState(BATCH);
+  const dates = useMemo(() => buildDates(count), [count]);
+  const loadMore = useCallback(() => setCount((c) => c + BATCH), []);
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: DateItem; index: number }) => {
+      const active = item.date === activeDate;
+      const showMonth = index === 0 || dates[index - 1].month !== item.month;
+      return (
+        <View style={styles.dateItemWrapper}>
+          {showMonth ? (
+            <Text style={styles.monthLabel}>{item.month}</Text>
+          ) : (
+            <View style={styles.monthLabelGhost} />
+          )}
+          <TouchableOpacity
+            onPress={() => onSelect(item.date)}
+            style={[styles.dateCard, active && styles.dateCardActive]}
+          >
+            <Text style={[styles.dateTopLabel, active && styles.dateTextActive]}>
+              {item.topLabel}
+            </Text>
+            <Text style={[styles.dateDayNum, active && styles.dateTextActive]}>
+              {item.dayNum}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      );
+    },
+    [activeDate, dates, onSelect],
+  );
+
+  return (
+    <FlatList
+      horizontal
+      data={dates}
+      keyExtractor={(item) => item.date}
+      renderItem={renderItem}
+      extraData={activeDate}
+      showsHorizontalScrollIndicator={false}
+      onEndReached={loadMore}
+      onEndReachedThreshold={0.5}
+      style={{ flexGrow: 0 }}
+      contentContainerStyle={{ paddingBottom: 4 }}
+    />
+  );
+}
 
 export default function VenueCalendarScreen({ navigation, route }: any) {
   const venueId: string = route.params.venueId;
@@ -37,7 +105,11 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
 
   const courts = venue?.courts ?? [];
   const [activeCourt, setActiveCourt] = useState<string | null>(null);
-  const [activeDate, setActiveDate] = useState(DATES[0].date);
+  const today = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+  const [activeDate, setActiveDate] = useState(today);
   const [blockTarget, setBlockTarget] = useState<Slot | null>(null);
   const [showBulk, setShowBulk] = useState(false);
 
@@ -102,20 +174,12 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
           ))}
         </ScrollView>
 
-        {/* Date tabs */}
+        {/* Date rail — lazy infinite scroll */}
         <Text style={styles.label}>Date</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {DATES.map((d) => (
-            <TouchableOpacity
-              key={d.date}
-              onPress={() => { setActiveDate(d.date); setBlockTarget(null); }}
-              style={[styles.dateCard, activeDate === d.date && styles.dateCardActive]}
-            >
-              <Text style={[styles.dateLabel, activeDate === d.date && { color: colors.white }]}>{d.label}</Text>
-              <Text style={[styles.dateDay, activeDate === d.date && { color: colors.white }]}>{d.day}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <DateRail
+          activeDate={activeDate}
+          onSelect={(d) => { setActiveDate(d); setBlockTarget(null); }}
+        />
 
         {/* Slot grid */}
         <Text style={styles.label}>Slots</Text>
@@ -158,8 +222,12 @@ const styles = StyleSheet.create({
   tab: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, marginRight: spacing.sm },
   tabActive: { backgroundColor: colors.primary },
   tabText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid },
-  dateCard: { width: 60, paddingVertical: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', marginRight: spacing.sm, borderWidth: 1, borderColor: colors.border },
+  dateItemWrapper: { alignItems: 'center', marginRight: spacing.sm },
+  monthLabel: { fontSize: 9, fontWeight: fontWeight.bold, color: colors.textDim, marginBottom: 3, letterSpacing: 0.4 },
+  monthLabelGhost: { height: 14, marginBottom: 3 },
+  dateCard: { width: 64, paddingVertical: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
   dateCardActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  dateLabel: { fontSize: fontSize.xs, color: colors.textMid },
-  dateDay: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: 2 },
+  dateTopLabel: { fontSize: fontSize.xs, color: colors.textMid },
+  dateDayNum: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: 2 },
+  dateTextActive: { color: colors.white },
 });
