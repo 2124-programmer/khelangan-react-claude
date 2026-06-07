@@ -4,7 +4,7 @@ import { colors, spacing } from '../../theme';
 import { AppHeader, SectionTabBar, EmptyState } from '../../components/common';
 import { BookingCard, GroupedBookingCard } from '../../components/venue';
 import { CancelBookingModal } from '../../modals';
-import { useBookings, useCancelBooking } from '../../api/hooks/useBookings';
+import { useBookings, useCancelBooking, useCancelBookingGroup } from '../../api/hooks/useBookings';
 import { Booking, BookingGroup, BookingStatus } from '../../types';
 import { extractApiError } from '../../api/client';
 
@@ -74,6 +74,7 @@ export default function MyBookingsScreen({ navigation }: any) {
   const [tab, setTab] = useState<string>('pending');
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
   const cancelBooking = useCancelBooking();
+  const cancelBookingGroup = useCancelBookingGroup();
 
   const { data, isLoading, refetch } = useBookings({ status: STATUS_MAP[tab] });
   const [refreshing, setRefreshing] = useState(false);
@@ -96,17 +97,12 @@ export default function MyBookingsScreen({ navigation }: any) {
   };
 
   const handleCancelGroup = useCallback(async (group: BookingGroup) => {
-    // Cancel each booking in the group sequentially
     try {
-      for (const b of group.bookings) {
-        if (b.status === 'pending' || b.status === 'confirmed') {
-          await cancelBooking.mutateAsync(Number(b.id));
-        }
-      }
+      await cancelBookingGroup.mutateAsync(group.groupId);
     } catch (err) {
       Alert.alert('Cancel Failed', extractApiError(err));
     }
-  }, [cancelBooking]);
+  }, [cancelBookingGroup]);
 
   return (
     <SafeAreaView style={styles.container}>

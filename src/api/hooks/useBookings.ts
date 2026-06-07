@@ -73,6 +73,17 @@ export function useCancelBooking() {
   });
 }
 
+export function useCancelBookingGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (groupId: string) => bookingService.cancelGroup(groupId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+}
+
 export function useAcceptBooking() {
   const qc = useQueryClient();
   return useMutation({

@@ -24,6 +24,9 @@ export const bookingService = {
   reject: (id: number) =>
     apiClient.patch<BookingDto>(`/api/v1/bookings/${id}/reject`).then((r) => r.data),
 
+  cancelGroup: (groupId: string) =>
+    apiClient.patch<BookingDto[]>(`/api/v1/bookings/group/${groupId}/cancel`).then((r) => r.data),
+
   acceptGroup: (groupId: string) =>
     apiClient.post<BookingDto[]>(`/api/v1/bookings/group/${groupId}/accept`).then((r) => r.data),
 
