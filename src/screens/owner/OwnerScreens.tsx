@@ -6,7 +6,7 @@ import {
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import {
   AppHeader, AppButton, AppInput, SectionTabBar,
-  StatusBadge, StarRating, EmptyState, SportChip, HourPickerDropdown,
+  StatusBadge, StarRating, EmptyState, SportChip, HourPickerDropdown, AvatarImage,
 } from '../../components/common';
 import { BookingCard, VenueImagePicker, PickedImage } from '../../components/venue';
 import { ConfirmActionModal } from '../../modals';
@@ -19,6 +19,7 @@ import { useOwnerReviews } from '../../api/hooks/useReviews';
 import { useVenueDetail, useUpdateVenue, useUploadVenueImage } from '../../api/hooks/useVenues';
 import { useSports } from '../../api/hooks/useSports';
 import { useNotifications } from '../../api/hooks/useNotifications';
+import { useMe } from '../../api/hooks/useUser';
 import { extractApiError } from '../../api/client';
 import { parseLatLng, formatLatLng } from '../../utils/locationUtils';
 
@@ -261,17 +262,31 @@ export function ReviewsManagementScreen() {
 /* ───────────────── OwnerProfileScreen ───────────────── */
 export function OwnerProfileScreen({ navigation }: any) {
   const { user, logout } = useAuth();
+  const { data: me } = useMe();
+
+  const displayName   = me?.name   ?? user?.name   ?? '';
+  const displayEmail  = me?.email  ?? user?.email  ?? '';
+  const displayAvatar = me?.avatar ?? user?.avatar;
+
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Profile" />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <Text style={{ fontSize: 32 }}>🏟</Text>
+        <TouchableOpacity
+          style={[styles.profileCard, shadow.card]}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('OwnerEditProfile')}
+        >
+          <View style={styles.oAvatarWrapper}>
+            <AvatarImage uri={displayAvatar} name={displayName} size={72} />
+            <View style={styles.oPencilBadge}>
+              <Text style={styles.oPencilIcon}>✏️</Text>
+            </View>
           </View>
-          <Text style={styles.profileName}>{user?.name}</Text>
-          <Text style={styles.profileEmail}>{user?.email}</Text>
-        </View>
+          <Text style={styles.profileName}>{displayName}</Text>
+          <Text style={styles.profileEmail}>{displayEmail}</Text>
+        </TouchableOpacity>
+
         {[
           { icon: '🏟', label: 'My Venues', onPress: () => navigation.navigate('VenuesTab') },
           { icon: '💰', label: 'Bank & Payouts', onPress: () => navigation.navigate('EarningsTab') },
@@ -691,10 +706,12 @@ const styles = StyleSheet.create({
   replyBox: { backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, padding: spacing.md, marginTop: spacing.sm },
   replyLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textMid },
   replyText: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2 },
-  profileCard: { alignItems: 'center', paddingVertical: spacing.xl },
-  avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
-  profileName: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  profileEmail: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 4 },
+  profileCard: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.xl },
+  oAvatarWrapper: { position: 'relative' },
+  oPencilBadge: { position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.owner, alignItems: 'center', justifyContent: 'center' },
+  oPencilIcon: { fontSize: 11 },
+  profileName: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.md },
+  profileEmail: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2 },
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   menuLabel: { flex: 1, fontSize: fontSize.md, color: colors.text },
   menuArrow: { fontSize: 22, color: colors.textDim },

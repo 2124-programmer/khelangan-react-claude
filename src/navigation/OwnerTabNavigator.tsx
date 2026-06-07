@@ -14,7 +14,7 @@ import {
   ReviewsManagementScreen, OwnerProfileScreen, EditVenueScreen,
   SubscriptionScreen, OwnerNotificationsScreen, OwnerSettingsScreen,
 } from '../screens/owner/OwnerScreens';
-import { RoleChangeScreen } from '../screens/player/MiscScreens';
+import { RoleChangeScreen, EditProfileScreen } from '../screens/player/MiscScreens';
 
 const SHARED = [
   { name: 'AddVenue', component: AddVenueScreen },
@@ -27,6 +27,7 @@ const SHARED = [
   { name: 'Subscription', component: SubscriptionScreen },
   { name: 'OwnerSettings', component: OwnerSettingsScreen },
   { name: 'RoleChange', component: RoleChangeScreen },
+  { name: 'OwnerEditProfile', component: EditProfileScreen },
 ];
 
 function makeStack(initialName: string, initialComponent: any) {
