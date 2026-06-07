@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, StatusBadge, EmptyState } from '../../components/common';
@@ -11,7 +11,12 @@ import { extractApiError } from '../../api/client';
 
 export default function BookingDetailScreen({ navigation, route }: any) {
   const bookingId: string = route.params.bookingId;
-  const { data: booking, isLoading, isError } = useBookingDetail(bookingId);
+  const { data: booking, isLoading, isError, refetch } = useBookingDetail(bookingId);
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await refetch(); } finally { setRefreshing(false); }
+  };
   const cancelBooking = useCancelBooking();
 
   const [showCancel, setShowCancel] = useState(false);
@@ -49,7 +54,10 @@ export default function BookingDetailScreen({ navigation, route }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Booking Details" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
         <View style={[styles.card, shadow.card]}>
           <View style={styles.qrBox}>
             <Text style={{ fontSize: 56 }}>🔲</Text>

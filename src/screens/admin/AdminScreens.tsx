@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Switch, Alert, ActivityIndicator,
+  Switch, Alert, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -23,12 +23,16 @@ import { usePlatformSettings, useUpdateSettings } from '../../api/hooks/useAdmin
 import { useSports, useCreateSport, useUpdateSport, useDeleteSport } from '../../api/hooks/useSports';
 import { extractApiError } from '../../api/client';
 
-function Screen({ title, navigation, children, scroll = true }: any) {
+function Screen({ title, navigation, children, scroll = true, refreshControl }: any) {
   const Body: any = scroll ? ScrollView : View;
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <AppHeader title={title} onBack={navigation ? () => navigation.goBack() : undefined} />
-      <Body style={styles.body} contentContainerStyle={scroll ? styles.bodyContent : undefined}>
+      <Body
+        style={styles.body}
+        contentContainerStyle={scroll ? styles.bodyContent : undefined}
+        {...(scroll && refreshControl ? { refreshControl } : {})}
+      >
         {children}
       </Body>
     </SafeAreaView>
@@ -37,10 +41,12 @@ function Screen({ title, navigation, children, scroll = true }: any) {
 
 /* ─── VENUE APPROVAL ───────────────────────────────────────────────── */
 export function VenueApprovalScreen({ navigation }: any) {
-  const { data, isLoading } = useAdminVenues({ status: 'PENDING' });
+  const { data, isLoading, refetch } = useAdminVenues({ status: 'PENDING' });
   const updateStatus = useUpdateVenueStatus();
   const pending = data?.venues ?? [];
   const [modal, setModal] = useState<{ id: string; action: 'approve' | 'reject' } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => { setRefreshing(true); try { await refetch(); } finally { setRefreshing(false); } };
 
   const act = async () => {
     if (!modal) return;
@@ -56,7 +62,7 @@ export function VenueApprovalScreen({ navigation }: any) {
   };
 
   return (
-    <Screen title="Venue Approvals" navigation={navigation}>
+    <Screen title="Venue Approvals" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       {isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
       ) : pending.length === 0 ? (
@@ -93,10 +99,12 @@ export function VenueApprovalScreen({ navigation }: any) {
 
 /* ─── VENUE MANAGEMENT ─────────────────────────────────────────────── */
 export function VenueManagementScreen({ navigation }: any) {
-  const { data, isLoading } = useAdminVenues();
+  const { data, isLoading, refetch } = useAdminVenues();
   const venues = data?.venues ?? [];
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => { setRefreshing(true); try { await refetch(); } finally { setRefreshing(false); } };
   return (
-    <Screen title="All Venues" navigation={navigation}>
+    <Screen title="All Venues" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       {isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
       ) : venues.map((v) => (
@@ -114,10 +122,12 @@ export function VenueManagementScreen({ navigation }: any) {
 
 /* ─── PLAYER MANAGEMENT ────────────────────────────────────────────── */
 export function PlayerManagementScreen({ navigation }: any) {
-  const { data, isLoading } = useAdminUsers({ role: 'PLAYER' });
+  const { data, isLoading, refetch } = useAdminUsers({ role: 'PLAYER' });
   const blockUser = useBlockUser();
   const unblockUser = useUnblockUser();
   const users = data?.users ?? [];
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => { setRefreshing(true); try { await refetch(); } finally { setRefreshing(false); } };
 
   const toggle = async (id: string, blocked: boolean) => {
     try {
@@ -129,7 +139,7 @@ export function PlayerManagementScreen({ navigation }: any) {
   };
 
   return (
-    <Screen title="Players" navigation={navigation}>
+    <Screen title="Players" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       {isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
       ) : users.map((u) => (
@@ -154,10 +164,12 @@ export function PlayerManagementScreen({ navigation }: any) {
 
 /* ─── OWNER MANAGEMENT ─────────────────────────────────────────────── */
 export function OwnerManagementScreen({ navigation }: any) {
-  const { data, isLoading } = useAdminUsers({ role: 'OWNER' });
+  const { data, isLoading, refetch } = useAdminUsers({ role: 'OWNER' });
   const users = data?.users ?? [];
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => { setRefreshing(true); try { await refetch(); } finally { setRefreshing(false); } };
   return (
-    <Screen title="Venue Owners" navigation={navigation}>
+    <Screen title="Venue Owners" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       {isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
       ) : users.map((u) => (
@@ -177,10 +189,12 @@ export function OwnerManagementScreen({ navigation }: any) {
 
 /* ─── ADMIN BOOKINGS ───────────────────────────────────────────────── */
 export function AdminBookingsScreen({ navigation }: any) {
-  const { data, isLoading } = useAdminBookings();
+  const { data, isLoading, refetch } = useAdminBookings();
   const bookings = data?.bookings ?? [];
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => { setRefreshing(true); try { await refetch(); } finally { setRefreshing(false); } };
   return (
-    <Screen title="All Bookings" navigation={navigation}>
+    <Screen title="All Bookings" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       {isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
       ) : bookings.map((b) => (
@@ -199,12 +213,14 @@ export function AdminBookingsScreen({ navigation }: any) {
 
 /* ─── PAYMENTS / REVENUE ───────────────────────────────────────────── */
 export function PaymentsRevenueScreen({ navigation }: any) {
-  const { data, isLoading } = useAdminPayouts();
+  const { data, isLoading, refetch } = useAdminPayouts();
   const processPayout = useProcessPayout();
   const payouts = data?.payouts ?? [];
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => { setRefreshing(true); try { await refetch(); } finally { setRefreshing(false); } };
 
   return (
-    <Screen title="Payments & Payouts" navigation={navigation}>
+    <Screen title="Payments & Payouts" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       {isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
       ) : payouts.map((p) => (
@@ -233,14 +249,16 @@ export function PaymentsRevenueScreen({ navigation }: any) {
 
 /* ─── DISPUTE MANAGEMENT ───────────────────────────────────────────── */
 export function DisputeManagementScreen({ navigation }: any) {
-  const { data, isLoading } = useDisputes();
+  const { data, isLoading, refetch } = useDisputes();
   const resolveDispute = useResolveDispute();
   const disputes = data?.disputes ?? [];
   const [resolveModal, setResolveModal] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => { setRefreshing(true); try { await refetch(); } finally { setRefreshing(false); } };
 
   return (
-    <Screen title="Disputes" navigation={navigation}>
+    <Screen title="Disputes" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       {isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
       ) : disputes.map((d) => (
@@ -276,10 +294,12 @@ export function DisputeManagementScreen({ navigation }: any) {
 
 /* ─── COUPON MANAGEMENT ────────────────────────────────────────────── */
 export function CouponManagementScreen({ navigation }: any) {
-  const { data, isLoading } = useAdminCoupons();
+  const { data, isLoading, refetch } = useAdminCoupons();
   const createCoupon = useCreateCoupon();
   const coupons = data?.coupons ?? [];
   const [showCreate, setShowCreate] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => { setRefreshing(true); try { await refetch(); } finally { setRefreshing(false); } };
   const [code, setCode] = useState('');
   const [value, setValue] = useState('');
   const [type, setType] = useState<'PERCENT' | 'FLAT'>('PERCENT');
@@ -303,7 +323,7 @@ export function CouponManagementScreen({ navigation }: any) {
   };
 
   return (
-    <Screen title="Coupons" navigation={navigation}>
+    <Screen title="Coupons" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       <AppButton label="+ Create Coupon" onPress={() => setShowCreate(!showCreate)} style={{ marginBottom: spacing.lg }} />
       {showCreate && (
         <Card style={{ marginBottom: spacing.lg }}>
@@ -442,7 +462,7 @@ export function AnalyticsScreen({ navigation }: any) {
   return <Screen title="Analytics" navigation={navigation}><EmptyState icon="📊" title="Coming soon" subtitle="" /></Screen>;
 }
 export function CategoryManagementScreen({ navigation }: any) {
-  const { data, isLoading } = useSports();
+  const { data, isLoading, refetch } = useSports();
   const createSport = useCreateSport();
   const updateSport = useUpdateSport();
   const deleteSport = useDeleteSport();
@@ -454,6 +474,8 @@ export function CategoryManagementScreen({ navigation }: any) {
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => { setRefreshing(true); try { await refetch(); } finally { setRefreshing(false); } };
 
   const isEdit = editTarget !== null;
   const isPending = createSport.isPending || updateSport.isPending;
@@ -507,7 +529,7 @@ export function CategoryManagementScreen({ navigation }: any) {
   };
 
   return (
-    <Screen title="Sports" navigation={navigation}>
+    <Screen title="Sports" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       <AppButton
         label={showForm && !isEdit ? 'Cancel' : '+ Add Sport'}
         variant={showForm && !isEdit ? 'secondary' : 'primary'}

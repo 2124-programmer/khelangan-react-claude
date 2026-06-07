@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { BookingCard } from '../../components/venue';
 import { NotificationBell } from '../../components/common';
@@ -9,13 +9,21 @@ import { useOwnerStats } from '../../api/hooks/useAdmin';
 
 export default function OwnerDashboardScreen({ navigation }: any) {
   const { user } = useAuth();
-  const { data: stats } = useOwnerStats();
+  const { data: stats, refetch } = useOwnerStats();
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await refetch(); } finally { setRefreshing(false); }
+  };
   // const { data: bookingsData } = useBookings({ page: 0 });
   // const recentBookings = bookingsData?.bookings ?? [];
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
         <View style={styles.topBar}>
           <View>
             <Text style={styles.hi}>Dashboard</Text>

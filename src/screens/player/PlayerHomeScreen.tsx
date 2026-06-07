@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, ActivityIndicator,
+  TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
@@ -49,13 +49,21 @@ export default function PlayerHomeScreen({ navigation }: any) {
 
   const sports = sportsQuery.data ?? [];
   const venues = venuesQuery.data?.venues ?? [];
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await Promise.all([sportsQuery.refetch(), venuesQuery.refetch()]); } finally { setRefreshing(false); }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader
         userName={user ? `Hi, ${user.name.split(' ')[0]} !!` : 'Welcome.!'}
       />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
 
         {/* Search bar */}
         <TouchableOpacity

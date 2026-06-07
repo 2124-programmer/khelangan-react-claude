@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, ActivityIndicator,
+  TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, EmptyState } from '../../components/common';
@@ -23,8 +23,13 @@ function getNotifIcon(type: string, title: string): string {
 
 
 export default function NotificationsScreen({ navigation }: any) {
-  useNow(); // re-renders every 30 s so relative timestamps stay current
-  const { data, isLoading } = useNotifications();
+  useNow();
+  const { data, isLoading, refetch } = useNotifications();
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await refetch(); } finally { setRefreshing(false); }
+  };
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
 
@@ -39,7 +44,10 @@ export default function NotificationsScreen({ navigation }: any) {
         rightLabel={unreadCount > 0 ? 'Mark all read' : undefined}
         onRightPress={unreadCount > 0 ? () => markAllRead.mutate() : undefined}
       />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
         ) : notifications.length === 0 ? (

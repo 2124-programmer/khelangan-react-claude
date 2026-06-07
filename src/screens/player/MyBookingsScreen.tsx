@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { colors, spacing } from '../../theme';
 import { AppHeader, SectionTabBar, EmptyState } from '../../components/common';
 import { BookingCard, GroupedBookingCard } from '../../components/venue';
@@ -75,7 +75,12 @@ export default function MyBookingsScreen({ navigation }: any) {
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
   const cancelBooking = useCancelBooking();
 
-  const { data, isLoading } = useBookings({ status: STATUS_MAP[tab] });
+  const { data, isLoading, refetch } = useBookings({ status: STATUS_MAP[tab] });
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await refetch(); } finally { setRefreshing(false); }
+  };
   const bookings = data?.bookings ?? [];
   const items = groupBookingList(bookings);
 
@@ -116,7 +121,10 @@ export default function MyBookingsScreen({ navigation }: any) {
         activeTab={tab}
         onChange={setTab}
       />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
         ) : items.length === 0 ? (

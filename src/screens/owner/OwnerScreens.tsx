@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Switch, ActivityIndicator, Alert,
+  TouchableOpacity, Switch, ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import {
@@ -101,16 +101,21 @@ export function BookingManagementScreen({ navigation }: any) {
     upcoming: 'CONFIRMED',
     past: 'COMPLETED',
   };
-  const { data, isLoading } = useBookings({ status: statusMap[tab] });
+  const { data, isLoading, refetch } = useBookings({ status: statusMap[tab] });
   const bookings = data?.bookings ?? [];
   const items = groupBookingList(bookings);
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await refetch(); } finally { setRefreshing(false); }
+  };
 
   const acceptGroup = useAcceptBookingGroup();
   const rejectGroup = useRejectBookingGroup();
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="Bookings" 
+      <AppHeader title="Bookings"
       onBack={() => navigation.goBack()}/>
       <SectionTabBar
         tabs={[
@@ -122,7 +127,10 @@ export function BookingManagementScreen({ navigation }: any) {
         activeTab={tab}
         onChange={setTab}
       />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
         ) : items.length === 0 ? (
@@ -255,14 +263,22 @@ export function OwnerBookingDetailScreen({ navigation, route }: any) {
 
 /* ───────────────── EarningsScreen ───────────────── */
 export function EarningsScreen() {
-  const { data: stats } = useOwnerStats();
-  const { data } = useOwnerPayouts();
+  const { data: stats, refetch: refetchStats } = useOwnerStats();
+  const { data, refetch: refetchPayouts } = useOwnerPayouts();
   const payouts = data?.payouts ?? [];
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await Promise.all([refetchStats(), refetchPayouts()]); } finally { setRefreshing(false); }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Earnings" />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
         <View style={styles.earnCard}>
           <Text style={styles.earnLabel}>Total This Month</Text>
           <Text style={styles.earnAmount}>₹{(stats?.monthRevenue ?? 0).toLocaleString('en-IN')}</Text>
@@ -301,13 +317,21 @@ export function EarningsScreen() {
 
 /* ───────────────── ReviewsManagementScreen ───────────────── */
 export function ReviewsManagementScreen() {
-  const { data, isLoading } = useOwnerReviews();
+  const { data, isLoading, refetch } = useOwnerReviews();
   const reviews = data?.reviews ?? [];
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await refetch(); } finally { setRefreshing(false); }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Reviews" />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
         ) : reviews.length === 0 ? (
@@ -653,8 +677,13 @@ const NOTIF_ICONS: Record<string, string> = {
 
 
 export function OwnerNotificationsScreen({ navigation }: any) {
-  useNow(); // re-renders every 30 s so relative timestamps stay current
-  const { data, isLoading } = useNotifications();
+  useNow();
+  const { data, isLoading, refetch } = useNotifications();
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await refetch(); } finally { setRefreshing(false); }
+  };
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const acceptBooking = useAcceptBooking();
@@ -760,7 +789,10 @@ export function OwnerNotificationsScreen({ navigation }: any) {
         rightLabel={unreadCount > 0 ? 'Mark all read' : undefined}
         onRightPress={unreadCount > 0 ? () => markAllRead.mutate() : undefined}
       />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
         ) : notifications.length === 0 ? (

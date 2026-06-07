@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, ActivityIndicator, Linking, Alert,
+  TouchableOpacity, ActivityIndicator, Linking, Alert, RefreshControl,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, StarRating, EmptyState, Toast } from '../../components/common';
@@ -67,10 +67,15 @@ export default function VenueDetailScreen({ navigation, route }: any) {
     if (route.params?._successToast) setSuccessToast(route.params._successToast as string);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { data: venue, isLoading, isError } = useVenueDetail(venueId);
-  const { data: reviewsData } = useVenueReviews(venueId);
+  const { data: venue, isLoading, isError, refetch: refetchVenue } = useVenueDetail(venueId);
+  const { data: reviewsData, refetch: refetchReviews } = useVenueReviews(venueId);
   const { data: sports = [] } = useSports();
   const userLocation = useCurrentLocation();
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await Promise.all([refetchVenue(), refetchReviews()]); } finally { setRefreshing(false); }
+  };
 
   const reviews = reviewsData?.reviews ?? [];
 
@@ -125,7 +130,10 @@ export default function VenueDetailScreen({ navigation, route }: any) {
     <SafeAreaView style={styles.container}>
       <AppHeader title={venue.name} onBack={() => navigation.goBack()} />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
         {/* Hero Carousel */}
         <VenueImageCarousel images={venue.images ?? []} />
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
@@ -7,7 +7,12 @@ import { useAdminStats } from '../../api/hooks/useAdmin';
 
 export default function AdminDashboardScreen({ navigation }: any) {
   const { user, logout } = useAuth();
-  const { data: stats } = useAdminStats();
+  const { data: stats, refetch } = useAdminStats();
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await refetch(); } finally { setRefreshing(false); }
+  };
   const [showLogout, setShowLogout] = useState(false);
 
   const kpis = [
@@ -39,7 +44,10 @@ export default function AdminDashboardScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
         <View style={styles.topBar}>
           <View>
             <Text style={styles.hi}>Admin Panel</Text>

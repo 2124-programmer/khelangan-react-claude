@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AvatarImage } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
@@ -17,8 +17,13 @@ const MENU = [
 
 export default function PlayerProfileScreen({ navigation }: any) {
   const { user, logout } = useAuth();
-  const { data: me } = useMe();
+  const { data: me, refetch } = useMe();
   const [showLogout, setShowLogout] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await refetch(); } finally { setRefreshing(false); }
+  };
 
   // me is the live source of truth; fall back to auth context while loading
   const displayName = me?.name ?? user?.name ?? '';
@@ -30,7 +35,10 @@ export default function PlayerProfileScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Profile" />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
         <TouchableOpacity
           style={[styles.profileCard, shadow.card]}
           activeOpacity={0.85}

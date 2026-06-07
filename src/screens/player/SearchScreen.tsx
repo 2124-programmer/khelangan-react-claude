@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TextInput, TouchableOpacity, ActivityIndicator,
+  TextInput, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { colors, spacing, radius, fontSize } from '../../theme';
 import { AppHeader, SportChip, EmptyState } from '../../components/common';
@@ -18,12 +18,17 @@ export default function SearchScreen({ navigation }: any) {
   const { location: userLocation } = useLocation();
 
   const { data: sports = [] } = useSports();
-  const { data, isLoading } = useVenues(
+  const { data, isLoading, refetch } = useVenues(
     debouncedQuery || activeSport
       ? { search: debouncedQuery || undefined, sport: activeSport || undefined }
       : undefined
   );
   const results = data?.venues ?? [];
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await refetch(); } finally { setRefreshing(false); }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -62,7 +67,10 @@ export default function SearchScreen({ navigation }: any) {
         ))}
       </ScrollView>
 
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
         ) : (

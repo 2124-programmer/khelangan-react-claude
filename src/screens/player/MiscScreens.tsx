@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Switch, Alert, ActivityIndicator,
+  TouchableOpacity, Switch, Alert, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
@@ -18,8 +18,13 @@ import type { UserRole } from '../../types';
 
 /* ───────────────── OffersScreen ───────────────── */
 export function OffersScreen({ navigation }: any) {
-  const { data: coupons = [], isLoading } = useCoupons();
+  const { data: coupons = [], isLoading, refetch } = useCoupons();
   const active = coupons.filter((c) => c.isActive);
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await refetch(); } finally { setRefreshing(false); }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -27,7 +32,10 @@ export function OffersScreen({ navigation }: any) {
         title="Offers & Coupons"
         onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
       />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
         ) : (

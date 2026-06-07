@@ -1,15 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  Image, TouchableOpacity, ActivityIndicator,
+  Image, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, StatusBadge, StarRating, EmptyState } from '../../components/common';
 import { useOwnerVenues } from '../../api/hooks/useVenues';
 
 export default function MyVenuesScreen({ navigation }: any) {
-  const { data, isLoading } = useOwnerVenues();
+  const { data, isLoading, refetch } = useOwnerVenues();
   const venues = data?.venues ?? [];
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await refetch(); } finally { setRefreshing(false); }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -18,7 +23,10 @@ export default function MyVenuesScreen({ navigation }: any) {
         rightLabel="+ Add"
         onRightPress={() => navigation.navigate('AddVenue')}
       />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      >
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
         ) : venues.length === 0 ? (
