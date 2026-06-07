@@ -143,25 +143,31 @@ export function SlotLockExpiredModal({ visible, onGoBack }: { visible: boolean; 
 }
 
 /* ───────────────── BookingRequestModal ───────────────── */
+interface SlotEntry {
+  startTime: string;
+  endTime: string;
+  price: number;
+}
+
 interface BookingRequestProps {
   visible: boolean;
   venueName: string;
   sport: string;
   date: string;
-  startTime: string;
-  endTime: string;
-  slotPrice: number;
+  slots: SlotEntry[];
   onConfirm: () => Promise<void>;
   onDismiss: () => void;
   onGoToBookings: () => void;
 }
 
 export function BookingRequestModal({
-  visible, venueName, sport, date, startTime, endTime, slotPrice,
+  visible, venueName, sport, date, slots,
   onConfirm, onDismiss, onGoToBookings,
 }: BookingRequestProps) {
   const [phase, setPhase] = React.useState<'confirm' | 'loading' | 'success' | 'error'>('confirm');
   const [errorMsg, setErrorMsg] = React.useState('');
+
+  const totalPrice = slots.reduce((sum, s) => sum + s.price, 0);
 
   React.useEffect(() => {
     if (visible) setPhase('confirm');
@@ -196,11 +202,20 @@ export function BookingRequestModal({
                 <BRRow label="Venue" value={venueName} />
                 <BRRow label="Sport" value={sport} />
                 <BRRow label="Date" value={date} />
-                <BRRow label="Time" value={`${startTime} – ${endTime}`} />
+                {slots.length === 1 ? (
+                  <BRRow label="Time" value={`${slots[0].startTime} – ${slots[0].endTime}`} />
+                ) : (
+                  <BRRow label="Slots" value={`${slots.length} slots selected`} />
+                )}
+                {slots.length > 1 && slots.map((s) => (
+                  <BRRow key={s.startTime} label="" value={`${s.startTime} – ${s.endTime}`} />
+                ))}
               </View>
               <View style={brStyles.priceRow}>
-                <Text style={brStyles.priceLabel}>Slot Price</Text>
-                <Text style={brStyles.priceValue}>₹{slotPrice}</Text>
+                <Text style={brStyles.priceLabel}>
+                  {slots.length === 1 ? 'Slot Price' : 'Total Price'}
+                </Text>
+                <Text style={brStyles.priceValue}>₹{totalPrice}</Text>
               </View>
               <View style={{ gap: spacing.sm, marginTop: spacing.xl }}>
                 <AppButton label="Confirm Booking" onPress={handleConfirm} />

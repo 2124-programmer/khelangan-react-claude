@@ -276,6 +276,21 @@ export interface BulkBlockRequest {
   date: string;
 }
 
+export interface BulkCreateBookingRequest {
+  venueId: number;
+  courtId: number;
+  date: string;       // YYYY-MM-DD
+  startTimes: string[]; // ["09:00", "10:00"]
+  sport: string;
+  couponCode?: string;
+  paymentMethod?: string;
+}
+
+export interface BlockSelectedRequest {
+  date: string;
+  startTimes: string[];
+}
+
 export interface CourtSlotsDto {
   courtId?: number;
   courtName?: string;

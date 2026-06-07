@@ -1,5 +1,5 @@
 import { apiClient } from '../client';
-import type { BookingDto, CreateBookingRequest, Page } from '../types';
+import type { BookingDto, BulkCreateBookingRequest, CreateBookingRequest, Page } from '../types';
 
 export const bookingService = {
   // Role-scoped: player sees own, owner sees venue bookings, admin sees all
@@ -11,6 +11,9 @@ export const bookingService = {
 
   create: (data: CreateBookingRequest) =>
     apiClient.post<BookingDto>('/api/v1/bookings', data).then((r) => r.data),
+
+  bulkCreate: (data: BulkCreateBookingRequest) =>
+    apiClient.post<BookingDto[]>('/api/v1/bookings/bulk', data).then((r) => r.data),
 
   cancel: (id: number) =>
     apiClient.patch<BookingDto>(`/api/v1/bookings/${id}/cancel`).then((r) => r.data),

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { slotService } from '../services/slotService';
 import { adaptSlot } from '../adapters';
-import type { BulkBlockRequest } from '../types';
+import type { BlockSelectedRequest, BulkBlockRequest } from '../types';
 import type { CourtSlotsGroup } from '../../types';
 
 export function slotsKey(courtId: number, date: string) {
@@ -69,6 +69,15 @@ export function useBulkBlockSlots() {
   return useMutation({
     mutationFn: ({ courtId, data }: { courtId: number; data: BulkBlockRequest }) =>
       slotService.bulkBlock(courtId, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['slots'] }),
+  });
+}
+
+export function useBlockSelectedSlots() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ courtId, data }: { courtId: number; data: BlockSelectedRequest }) =>
+      slotService.blockSelected(courtId, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['slots'] }),
   });
 }

@@ -11,7 +11,7 @@ import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useSlots } from '../../api/hooks/useSlots';
 import { useCourts } from '../../api/hooks/useCourts';
 import { useSports } from '../../api/hooks/useSports';
-import { useCreateBooking } from '../../api/hooks/useBookings';
+import { useBulkCreateBooking } from '../../api/hooks/useBookings';
 import { Slot } from '../../types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -154,12 +154,12 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, []);
 
-  const createBooking = useCreateBooking();
+  const bulkCreateBooking = useBulkCreateBooking();
 
   const [activeSportId, setActiveSportId] = useState<string | null>(null);
   const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
   const [activeDate, setActiveDate] = useState(today);
-  const [selected, setSelected] = useState<Slot | null>(null);
+  const [selected, setSelected] = useState<Slot[]>([]);
   const [lockExpired, setLockExpired] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
 
@@ -187,25 +187,37 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
     [rawSlots],
   );
 
+  const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
+  const totalPrice = useMemo(() => selected.reduce((sum, s) => sum + s.price, 0), [selected]);
+
   const getSportLabel = (sportId: string) => {
     const s = sports.find((sp) => sp.id === sportId);
     return s ? `${s.icon} ${s.name}` : sportId;
   };
 
+  const handleToggleSlot = useCallback((slot: Slot) => {
+    if (slot.status !== 'available') return;
+    setSelected((prev) =>
+      prev.some((s) => s.id === slot.id)
+        ? prev.filter((s) => s.id !== slot.id)
+        : [...prev, slot],
+    );
+  }, []);
+
   const handleSportChange = (sportId: string) => {
     setActiveSportId(sportId);
     setSelectedCourtId(null);
-    setSelected(null);
+    setSelected([]);
   };
 
   const handleCourtChange = (courtId: string) => {
     setSelectedCourtId(courtId);
-    setSelected(null);
+    setSelected([]);
   };
 
   const handleDateChange = (date: string) => {
     setActiveDate(date);
-    setSelected(null);
+    setSelected([]);
   };
 
   if (venueLoading) {
@@ -274,17 +286,19 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
         ) : slots.length === 0 ? (
           <EmptyState icon="📅" title="No slots available" subtitle="Try another date or court" />
         ) : (
-          <SlotGrid slots={slots} selectedId={selected?.id} onSelect={setSelected} />
+          <SlotGrid slots={slots} selectedIds={selectedIds} onSelect={handleToggleSlot} />
         )}
       </ScrollView>
 
-      {selected && (
+      {selected.length > 0 && (
         <View style={[styles.bottomBar, shadow.modal]}>
           <View>
             <Text style={styles.selLabel}>
-              {selected.startTime}–{selected.endTime}
+              {selected.length === 1
+                ? `${selected[0].startTime}–${selected[0].endTime}`
+                : `${selected.length} slots selected`}
             </Text>
-            <Text style={styles.selPrice}>₹{selected.price}</Text>
+            <Text style={styles.selPrice}>₹{totalPrice}</Text>
           </View>
           <AppButton
             label="Proceed to Book"
@@ -297,29 +311,26 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
 
       <SlotLockExpiredModal visible={lockExpired} onGoBack={() => setLockExpired(false)} />
 
-      {selected && (
+      {selected.length > 0 && (
         <BookingRequestModal
           visible={showBookingModal}
           venueName={venue.name}
           sport={getSportLabel(currentSportId ?? '')}
           date={activeDate}
-          startTime={selected.startTime}
-          endTime={selected.endTime}
-          slotPrice={selected.price}
+          slots={selected.map((s) => ({ startTime: s.startTime, endTime: s.endTime, price: s.price }))}
           onConfirm={async () => {
-            await createBooking.mutateAsync({
+            await bulkCreateBooking.mutateAsync({
               venueId: Number(venue.id),
-              courtId: Number(selected.courtId),
+              courtId: Number(effectiveCourtId),
               date: activeDate,
-              startTime: selected.startTime,
-              endTime: selected.endTime,
+              startTimes: selected.map((s) => s.startTime),
               sport: currentSportId ?? '',
             });
           }}
           onDismiss={() => setShowBookingModal(false)}
           onGoToBookings={() => {
             setShowBookingModal(false);
-            setSelected(null);
+            setSelected([]);
             navigation.navigate('Bookings');
           }}
         />

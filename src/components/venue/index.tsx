@@ -252,11 +252,11 @@ const vc = StyleSheet.create({
 /* ───────────────── SlotGrid ───────────────── */
 interface SlotGridProps {
   slots: Slot[];
-  selectedId?: string;
+  selectedIds?: Set<string>;
   onSelect?: (slot: Slot) => void;
   mode?: 'player' | 'owner';
 }
-export function SlotGrid({ slots, selectedId, onSelect, mode = 'player' }: SlotGridProps) {
+export function SlotGrid({ slots, selectedIds, onSelect, mode = 'player' }: SlotGridProps) {
   return (
     <View>
       <View style={styles.legendRow}>
@@ -266,7 +266,7 @@ export function SlotGrid({ slots, selectedId, onSelect, mode = 'player' }: SlotG
       </View>
       <View style={styles.slotGrid}>
         {slots.map((slot) => {
-          const isSelected = slot.id === selectedId;
+          const isSelected = selectedIds?.has(slot.id) ?? false;
           const disabled = slot.status !== 'available' || mode === 'owner';
           const bg =
             isSelected ? colors.slotSelected

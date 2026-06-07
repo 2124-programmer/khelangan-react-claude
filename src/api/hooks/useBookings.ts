@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bookingService } from '../services/bookingService';
 import { adaptBooking } from '../adapters';
-import type { CreateBookingRequest } from '../types';
+import type { BulkCreateBookingRequest, CreateBookingRequest } from '../types';
 
 export const BOOKINGS_KEY = ['bookings'] as const;
 export const ADMIN_BOOKINGS_KEY = ['admin', 'bookings'] as const;
@@ -49,7 +49,18 @@ export function useCreateBooking() {
     mutationFn: (data: CreateBookingRequest) => bookingService.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
-      qc.invalidateQueries({ queryKey: ['slots'] }); // slot status changes after booking
+      qc.invalidateQueries({ queryKey: ['slots'] });
+    },
+  });
+}
+
+export function useBulkCreateBooking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BulkCreateBookingRequest) => bookingService.bulkCreate(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
+      qc.invalidateQueries({ queryKey: ['slots'] });
     },
   });
 }

@@ -1,5 +1,5 @@
 import { apiClient } from '../client';
-import type { SlotDto, BulkBlockRequest, CourtSlotsDto } from '../types';
+import type { BlockSelectedRequest, BulkBlockRequest, CourtSlotsDto, SlotDto } from '../types';
 
 export const slotService = {
   listByCourtAndDate: (courtId: number, date: string) =>
@@ -30,5 +30,10 @@ export const slotService = {
   bulkBlock: (courtId: number, data: BulkBlockRequest) =>
     apiClient
       .post<SlotDto[]>(`/api/v1/courts/${courtId}/slots/bulk-block`, data)
+      .then((r) => r.data),
+
+  blockSelected: (courtId: number, data: BlockSelectedRequest) =>
+    apiClient
+      .post<SlotDto[]>(`/api/v1/courts/${courtId}/slots/block-selected`, data)
       .then((r) => r.data),
 };

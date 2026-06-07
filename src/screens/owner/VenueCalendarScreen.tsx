@@ -8,7 +8,7 @@ import { AppHeader, AppButton, EmptyState } from '../../components/common';
 import { SlotGrid } from '../../components/venue';
 import { ConfirmActionModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
-import { useSlots, useBlockSlot, useBlockSlotByTime, useBulkBlockSlots } from '../../api/hooks/useSlots';
+import { useSlots, useBlockSlotByTime, useBlockSelectedSlots, useBulkBlockSlots } from '../../api/hooks/useSlots';
 import { Slot } from '../../types';
 import { extractApiError } from '../../api/client';
 
@@ -100,8 +100,8 @@ function DateRail({
 export default function VenueCalendarScreen({ navigation, route }: any) {
   const venueId: string = route.params.venueId;
   const { data: venue, isLoading: venueLoading } = useVenueDetail(venueId);
-  const blockSlot = useBlockSlot();
   const blockSlotByTime = useBlockSlotByTime();
+  const blockSelected = useBlockSelectedSlots();
   const bulkBlock = useBulkBlockSlots();
 
   const courts = venue?.courts ?? [];
@@ -111,7 +111,7 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, []);
   const [activeDate, setActiveDate] = useState(today);
-  const [blockTarget, setBlockTarget] = useState<Slot | null>(null);
+  const [blockTargets, setBlockTargets] = useState<Slot[]>([]);
   const [showBulk, setShowBulk] = useState(false);
 
   const courtId = activeCourt ?? courts[0]?.id ?? null;
@@ -120,25 +120,38 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
     activeDate
   );
 
-  const handleBlockSlot = async () => {
-    if (!blockTarget) return;
+  const selectedIds = useMemo(() => new Set(blockTargets.map((s) => s.id)), [blockTargets]);
+
+  const handleToggleSlot = useCallback((slot: Slot) => {
+    if (slot.status !== 'available') return;
+    setBlockTargets((prev) =>
+      prev.some((s) => s.id === slot.id)
+        ? prev.filter((s) => s.id !== slot.id)
+        : [...prev, slot],
+    );
+  }, []);
+
+  const handleBlockSelected = async () => {
+    if (!courtId || blockTargets.length === 0) return;
     try {
-      const slotDbId = Number(blockTarget.id);
-      if (isNaN(slotDbId)) {
-        // Virtual AVAILABLE slot — no DB record yet; create and block by court+date+time
+      if (blockTargets.length === 1) {
+        const t = blockTargets[0];
         await blockSlotByTime.mutateAsync({
-          courtId: Number(blockTarget.courtId),
-          date: blockTarget.date,
-          startTime: blockTarget.startTime,
-          endTime: blockTarget.endTime,
+          courtId: Number(t.courtId),
+          date: t.date,
+          startTime: t.startTime,
+          endTime: t.endTime,
         });
       } else {
-        await blockSlot.mutateAsync(slotDbId);
+        await blockSelected.mutateAsync({
+          courtId: Number(courtId),
+          data: { date: activeDate, startTimes: blockTargets.map((t) => t.startTime) },
+        });
       }
     } catch (err) {
       Alert.alert('Error', extractApiError(err));
     }
-    setBlockTarget(null);
+    setBlockTargets([]);
   };
 
   const handleBulkBlock = async () => {
@@ -178,7 +191,7 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
           {courts.map((c) => (
             <TouchableOpacity
               key={c.id}
-              onPress={() => { setActiveCourt(c.id); setBlockTarget(null); }}
+              onPress={() => { setActiveCourt(c.id); setBlockTargets([]); }}
               style={[styles.tab, courtId === c.id && styles.tabActive]}
             >
               <Text style={[styles.tabText, courtId === c.id && { color: colors.white }]}>{c.name}</Text>
@@ -190,7 +203,7 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
         <Text style={styles.label}>Date</Text>
         <DateRail
           activeDate={activeDate}
-          onSelect={(d) => { setActiveDate(d); setBlockTarget(null); }}
+          onSelect={(d) => { setActiveDate(d); setBlockTargets([]); }}
         />
 
         {/* Slot grid */}
@@ -200,15 +213,17 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
         ) : slots.length === 0 ? (
           <EmptyState icon="📅" title="No slots" subtitle="Try another date" />
         ) : (
-          <SlotGrid slots={slots} selectedId={blockTarget?.id} onSelect={setBlockTarget} />
+          <SlotGrid slots={slots} selectedIds={selectedIds} onSelect={handleToggleSlot} />
         )}
 
-        {blockTarget && blockTarget.status === 'available' && (
+        {blockTargets.length > 0 && (
           <AppButton
-            label={`Block ${blockTarget.startTime}–${blockTarget.endTime}`}
+            label={blockTargets.length === 1
+              ? `Block ${blockTargets[0].startTime}–${blockTargets[0].endTime}`
+              : `Block ${blockTargets.length} slots`}
             variant="danger"
-            onPress={() => handleBlockSlot()}
-            loading={blockSlot.isPending || blockSlotByTime.isPending}
+            onPress={handleBlockSelected}
+            loading={blockSlotByTime.isPending || blockSelected.isPending}
             style={{ marginTop: spacing.lg }}
           />
         )}
