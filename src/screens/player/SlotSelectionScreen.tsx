@@ -310,7 +310,9 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
             await createBooking.mutateAsync({
               venueId: Number(venue.id),
               courtId: Number(selected.courtId),
-              slotId: Number(selected.id),
+              date: activeDate,
+              startTime: selected.startTime,
+              endTime: selected.endTime,
               sport: currentSportId ?? '',
             });
           }}

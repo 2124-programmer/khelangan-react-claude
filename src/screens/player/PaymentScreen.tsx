@@ -7,7 +7,7 @@ import { useCreateBooking } from '../../api/hooks/useBookings';
 import { extractApiError } from '../../api/client';
 
 export default function PaymentScreen({ navigation, route }: any) {
-  const { total, venueId, courtId, slotId, sport, couponCode, method } = route.params;
+  const { total, venueId, courtId, date, startTime, endTime, sport, couponCode, method } = route.params;
   const [processing, setProcessing] = useState(false);
   const [showFailed, setShowFailed] = useState(false);
   const createBooking = useCreateBooking();
@@ -22,7 +22,9 @@ export default function PaymentScreen({ navigation, route }: any) {
       const booking = await createBooking.mutateAsync({
         venueId: Number(venueId),
         courtId: Number(courtId),
-        slotId: Number(slotId),
+        date,
+        startTime,
+        endTime,
         sport,
         couponCode: couponCode ?? undefined,
         paymentMethod: method?.toUpperCase() ?? 'CARD',

@@ -311,7 +311,9 @@ export interface BookingDto {
 export interface CreateBookingRequest {
   venueId: number;
   courtId: number;
-  slotId: number;
+  date: string;       // YYYY-MM-DD
+  startTime: string;  // HH:mm
+  endTime: string;    // HH:mm
   sport: string;
   couponCode?: string;
   paymentMethod?: string;

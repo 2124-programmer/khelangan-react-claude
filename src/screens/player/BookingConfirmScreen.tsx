@@ -18,7 +18,7 @@ const PAYMENT_METHODS = [
 ];
 
 export default function BookingConfirmScreen({ navigation, route }: any) {
-  const { venueId, sport, date, slotPrice, startTime, endTime, courtId, slotId } = route.params;
+  const { venueId, sport, date, slotPrice, startTime, endTime, courtId } = route.params;
 
   const { data: venue } = useVenueDetail(venueId);
   const { data: coupons = [] } = useCoupons();
@@ -103,7 +103,6 @@ export default function BookingConfirmScreen({ navigation, route }: any) {
             navigation.navigate('Payment', {
               venueId,
               courtId,
-              slotId,
               sport,
               date,
               startTime,

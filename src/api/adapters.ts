@@ -149,7 +149,8 @@ export function adaptVenueDetail(dto: VenueDetailDto): Venue {
 
 export function adaptSlot(dto: SlotDto): Slot {
   return {
-    id: String(dto.id ?? 0),
+    // AVAILABLE slots have no DB id; use a composite key so React keys stay unique
+    id: dto.id != null ? String(dto.id) : `${dto.courtId}_${dto.date}_${dto.startTime}`,
     courtId: String(dto.courtId ?? 0),
     date: dto.date ?? '',
     startTime: dto.startTime ?? '',
