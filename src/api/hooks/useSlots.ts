@@ -46,6 +46,16 @@ export function useBlockSlot() {
   });
 }
 
+export function useBlockSlotByTime() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ courtId, date, startTime, endTime }: {
+      courtId: number; date: string; startTime: string; endTime: string;
+    }) => slotService.blockByTime(courtId, date, startTime, endTime),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['slots'] }),
+  });
+}
+
 export function useUnblockSlot() {
   const qc = useQueryClient();
   return useMutation({

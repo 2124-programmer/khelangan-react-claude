@@ -8,7 +8,7 @@ import { AppHeader, AppButton, EmptyState } from '../../components/common';
 import { SlotGrid } from '../../components/venue';
 import { ConfirmActionModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
-import { useSlots, useBlockSlot, useBulkBlockSlots } from '../../api/hooks/useSlots';
+import { useSlots, useBlockSlot, useBlockSlotByTime, useBulkBlockSlots } from '../../api/hooks/useSlots';
 import { Slot } from '../../types';
 import { extractApiError } from '../../api/client';
 
@@ -101,6 +101,7 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
   const venueId: string = route.params.venueId;
   const { data: venue, isLoading: venueLoading } = useVenueDetail(venueId);
   const blockSlot = useBlockSlot();
+  const blockSlotByTime = useBlockSlotByTime();
   const bulkBlock = useBulkBlockSlots();
 
   const courts = venue?.courts ?? [];
@@ -122,7 +123,18 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
   const handleBlockSlot = async () => {
     if (!blockTarget) return;
     try {
-      await blockSlot.mutateAsync(Number(blockTarget.id));
+      const slotDbId = Number(blockTarget.id);
+      if (isNaN(slotDbId)) {
+        // Virtual AVAILABLE slot — no DB record yet; create and block by court+date+time
+        await blockSlotByTime.mutateAsync({
+          courtId: Number(blockTarget.courtId),
+          date: blockTarget.date,
+          startTime: blockTarget.startTime,
+          endTime: blockTarget.endTime,
+        });
+      } else {
+        await blockSlot.mutateAsync(slotDbId);
+      }
     } catch (err) {
       Alert.alert('Error', extractApiError(err));
     }
@@ -196,7 +208,7 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
             label={`Block ${blockTarget.startTime}–${blockTarget.endTime}`}
             variant="danger"
             onPress={() => handleBlockSlot()}
-            loading={blockSlot.isPending}
+            loading={blockSlot.isPending || blockSlotByTime.isPending}
             style={{ marginTop: spacing.lg }}
           />
         )}

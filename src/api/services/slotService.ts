@@ -17,6 +17,13 @@ export const slotService = {
   block: (slotId: number) =>
     apiClient.patch<SlotDto>(`/api/v1/slots/${slotId}/block`).then((r) => r.data),
 
+  blockByTime: (courtId: number, date: string, startTime: string, endTime: string) =>
+    apiClient
+      .patch<SlotDto>(`/api/v1/courts/${courtId}/slots/block-by-time`, null, {
+        params: { date, startTime, endTime },
+      })
+      .then((r) => r.data),
+
   unblock: (slotId: number) =>
     apiClient.patch<SlotDto>(`/api/v1/slots/${slotId}/unblock`).then((r) => r.data),
 
