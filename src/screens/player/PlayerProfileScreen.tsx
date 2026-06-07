@@ -12,7 +12,7 @@ const MENU = [
   { icon: '🎟️', label: 'Offers & Coupons', route: 'Offers' },
   { icon: '⚙️', label: 'Settings', route: 'Settings' },
   { icon: '❓', label: 'Help & Support', route: 'HelpSupport' },
-  { icon: '🏟', label: 'Switch to Venue Owner', route: 'RoleChange', params: { targetRole: 'OWNER' } },
+  // { icon: '🏟', label: 'Switch to Venue Owner', route: 'RoleChange', params: { targetRole: 'OWNER' } },
 ];
 
 export default function PlayerProfileScreen({ navigation }: any) {

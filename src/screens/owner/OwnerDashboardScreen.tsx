@@ -5,13 +5,13 @@ import { BookingCard } from '../../components/venue';
 import { NotificationBell } from '../../components/common';
 import { useAuth } from '../../store/AuthContext';
 import { useOwnerStats } from '../../api/hooks/useAdmin';
-import { useBookings } from '../../api/hooks/useBookings';
+// import { useBookings } from '../../api/hooks/useBookings';
 
 export default function OwnerDashboardScreen({ navigation }: any) {
   const { user } = useAuth();
   const { data: stats } = useOwnerStats();
-  const { data: bookingsData } = useBookings({ page: 0 });
-  const recentBookings = bookingsData?.bookings ?? [];
+  // const { data: bookingsData } = useBookings({ page: 0 });
+  // const recentBookings = bookingsData?.bookings ?? [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -61,7 +61,7 @@ export default function OwnerDashboardScreen({ navigation }: any) {
           <Action icon="⭐" label="Reviews" onPress={() => navigation.navigate('ReviewsManagement')} />
         </View>
 
-        {/* Recent bookings */}
+        {/* Recent bookings
         <Text style={styles.sectionTitle}>Recent Bookings</Text>
         {recentBookings.map((b) => (
           <BookingCard
@@ -70,7 +70,7 @@ export default function OwnerDashboardScreen({ navigation }: any) {
             viewAs="owner"
             onPress={() => navigation.navigate('OwnerBookingDetail', { bookingId: b.id })}
           />
-        ))}
+        ))} */}
       </ScrollView>
     </SafeAreaView>
   );

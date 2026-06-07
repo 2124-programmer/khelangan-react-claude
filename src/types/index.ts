@@ -203,4 +203,6 @@ export interface AppNotification {
   type: 'booking' | 'payment' | 'offer' | 'system' | 'review';
   date: string;
   isRead: boolean;
+  referenceId?: string;   // bookingId or groupId
+  referenceType?: string; // "BOOKING" | "BOOKING_GROUP"
 }

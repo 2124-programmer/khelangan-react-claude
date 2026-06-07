@@ -18,7 +18,7 @@ import { useOwnerPayouts } from '../../api/hooks/usePayouts';
 import { useOwnerReviews } from '../../api/hooks/useReviews';
 import { useVenueDetail, useUpdateVenue, useUploadVenueImage } from '../../api/hooks/useVenues';
 import { useSports } from '../../api/hooks/useSports';
-import { useNotifications } from '../../api/hooks/useNotifications';
+import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../../api/hooks/useNotifications';
 import { useMe } from '../../api/hooks/useUser';
 import { extractApiError } from '../../api/client';
 import { parseLatLng, formatLatLng } from '../../utils/locationUtils';
@@ -43,7 +43,7 @@ function FieldErr({ msg }: { msg?: string }) {
 }
 
 /* ─── Booking grouping helper ─── */
-import { Booking, BookingGroup, BookingStatus } from '../../types';
+import { Booking, BookingGroup, BookingStatus, AppNotification } from '../../types';
 
 function deriveGroupStatus(bookings: Booking[]): BookingStatus {
   if (bookings.every((b) => b.status === 'pending')) return 'pending';
@@ -365,7 +365,7 @@ export function OwnerProfileScreen({ navigation }: any) {
           { icon: '💰', label: 'Bank & Payouts', onPress: () => navigation.navigate('EarningsTab') },
           { icon: '🔔', label: 'Notifications', onPress: () => navigation.navigate('OwnerNotifications') },
           { icon: '⚙️', label: 'Settings', onPress: () => navigation.navigate('OwnerSettings') },
-          { icon: '👤', label: 'Switch to Player', onPress: () => navigation.navigate('RoleChange', { targetRole: 'PLAYER' }), color: colors.primary },
+          // { icon: '👤', label: 'Switch to Player', onPress: () => navigation.navigate('RoleChange', { targetRole: 'PLAYER' }), color: colors.primary },
         ].map((item) => (
           <TouchableOpacity key={item.label} style={styles.menuRow} onPress={item.onPress}>
             <Text style={{ fontSize: 20 }}>{item.icon}</Text>
@@ -645,34 +645,239 @@ export function EditVenueScreen({ navigation, route }: any) {
 }
 
 /* ───────────────── OwnerNotificationsScreen ───────────────── */
+const NOTIF_ICONS: Record<string, string> = {
+  booking: '📋', payment: '💰', offer: '🎉', review: '⭐', system: '🔔',
+};
+
+function formatNotifDate(iso: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const diffMins = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
 export function OwnerNotificationsScreen({ navigation }: any) {
   const { data, isLoading } = useNotifications();
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
+  const acceptBooking = useAcceptBooking();
+  const rejectBooking = useRejectBooking();
+  const acceptGroup = useAcceptBookingGroup();
+  const rejectGroup = useRejectBookingGroup();
+
+  // Tracks referenceIds actioned this session — prevents double-fire and hides
+  // buttons immediately without waiting for a server round-trip.
+  const [actionedRefs, setActionedRefs] = useState<Set<string>>(new Set());
+  const [loadingRef, setLoadingRef] = useState<string | null>(null);
+
   const notifications = data?.notifications ?? [];
-  const ICONS: Record<string, string> = { booking: '✅', payment: '💰', offer: '🎉', review: '⭐', system: '🔔' };
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const markAllSiblingNotifs = (ref: string) => {
+    notifications
+      .filter((x) => x.referenceId === ref && !x.isRead)
+      .forEach((x) => markRead.mutate(Number(x.id)));
+  };
+
+  const handleAccept = async (n: AppNotification) => {
+    if (!n.referenceId || actionedRefs.has(n.referenceId) || loadingRef) return;
+
+    setLoadingRef(n.referenceId);
+    // Optimistically hide buttons on ALL cards sharing this referenceId
+    setActionedRefs((prev) => new Set(prev).add(n.referenceId!));
+
+    try {
+      if (n.referenceType === 'BOOKING_GROUP') {
+        await acceptGroup.mutateAsync(n.referenceId);
+      } else {
+        await acceptBooking.mutateAsync(Number(n.referenceId));
+      }
+      markAllSiblingNotifs(n.referenceId);
+    } catch {
+      // Revert optimistic update so the owner can retry
+      setActionedRefs((prev) => {
+        const next = new Set(prev);
+        next.delete(n.referenceId!);
+        return next;
+      });
+      Alert.alert('Error', 'Could not accept — booking may have already been actioned.');
+    } finally {
+      setLoadingRef(null);
+    }
+  };
+
+  const handleReject = async (n: AppNotification) => {
+    if (!n.referenceId || actionedRefs.has(n.referenceId) || loadingRef) return;
+
+    setLoadingRef(n.referenceId);
+    setActionedRefs((prev) => new Set(prev).add(n.referenceId!));
+
+    try {
+      if (n.referenceType === 'BOOKING_GROUP') {
+        await rejectGroup.mutateAsync(n.referenceId);
+      } else {
+        await rejectBooking.mutateAsync(Number(n.referenceId));
+      }
+      markAllSiblingNotifs(n.referenceId);
+    } catch {
+      setActionedRefs((prev) => {
+        const next = new Set(prev);
+        next.delete(n.referenceId!);
+        return next;
+      });
+      Alert.alert('Error', 'Could not reject — booking may have already been actioned.');
+    } finally {
+      setLoadingRef(null);
+    }
+  };
+
+  const handleView = (n: AppNotification) => {
+    if (!n.isRead) markRead.mutate(Number(n.id));
+    if (n.referenceType === 'BOOKING' && n.referenceId) {
+      navigation.navigate('OwnerBookingDetail', { bookingId: n.referenceId });
+    } else {
+      navigation.navigate('OwnerBookings');
+    }
+  };
+
+  // Show action buttons only if not yet actioned this session and not already read
+  const isActionable = (n: AppNotification) =>
+    n.type === 'booking' &&
+    !!n.referenceId &&
+    n.title === 'New Booking Request' &&
+    !actionedRefs.has(n.referenceId!);
+
+  const hasViewLink = (n: AppNotification) => n.type === 'booking' && !!n.referenceId;
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="Notifications" onBack={() => navigation.goBack()} />
+      <AppHeader
+        title={unreadCount > 0 ? `Notifications (${unreadCount})` : 'Notifications'}
+        onBack={() => navigation.goBack()}
+        rightLabel={unreadCount > 0 ? 'Mark all read' : undefined}
+        onRightPress={unreadCount > 0 ? () => markAllRead.mutate() : undefined}
+      />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         {isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
         ) : notifications.length === 0 ? (
-          <EmptyState icon="🔔" title="No notifications" subtitle="" />
+          <EmptyState icon="🔔" title="No notifications" subtitle="You're all caught up!" />
         ) : (
-          notifications.map((n) => (
-            <View key={n.id} style={[styles.notifRow, !n.isRead && styles.notifUnread]}>
-              <Text style={{ fontSize: 20 }}>{ICONS[n.type] ?? '🔔'}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.notifTitle}>{n.title}</Text>
-                <Text style={styles.notifBody}>{n.body}</Text>
-              </View>
-            </View>
-          ))
+          notifications.map((n) => {
+            const actionable = isActionable(n);
+            const isThisLoading = loadingRef === n.referenceId;
+
+            return (
+              <TouchableOpacity
+                key={n.id}
+                activeOpacity={0.85}
+                style={[nfStyles.card, !n.isRead && nfStyles.unread]}
+                onPress={() => { if (!n.isRead) markRead.mutate(Number(n.id)); }}
+              >
+                {/* Header */}
+                <View style={nfStyles.headerRow}>
+                  <View style={nfStyles.iconCircle}>
+                    <Text style={{ fontSize: 18 }}>{NOTIF_ICONS[n.type] ?? '🔔'}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={nfStyles.title}>{n.title}</Text>
+                    <Text style={nfStyles.time}>{formatNotifDate(n.date)}</Text>
+                  </View>
+                  {!n.isRead && <View style={nfStyles.dot} />}
+                </View>
+
+                {/* Body */}
+                <Text style={nfStyles.body}>{n.body}</Text>
+
+                {/* Inline loading for this card's action */}
+                {isThisLoading && (
+                  <ActivityIndicator
+                    size="small"
+                    color={colors.primary}
+                    style={{ marginTop: spacing.sm, alignSelf: 'flex-start' }}
+                  />
+                )}
+
+                {/* Accept / Reject / View — shown only while actionable and not loading */}
+                {actionable && !isThisLoading && (
+                  <View style={nfStyles.actionsRow}>
+                    <TouchableOpacity
+                      style={[nfStyles.actionBtn, nfStyles.acceptBtn]}
+                      disabled={!!loadingRef}
+                      onPress={() => handleAccept(n)}
+                    >
+                      <Text style={nfStyles.acceptText}>✓ Accept</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[nfStyles.actionBtn, nfStyles.rejectBtn]}
+                      disabled={!!loadingRef}
+                      onPress={() => handleReject(n)}
+                    >
+                      <Text style={nfStyles.rejectText}>✗ Reject</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[nfStyles.actionBtn, nfStyles.viewBtn]}
+                      onPress={() => handleView(n)}
+                    >
+                      <Text style={nfStyles.viewText}>View →</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* View-only link for non-actionable booking notifications */}
+                {!actionable && hasViewLink(n) && !isThisLoading && (
+                  <TouchableOpacity style={{ marginTop: spacing.sm }} onPress={() => handleView(n)}>
+                    <Text style={nfStyles.viewText}>View Booking →</Text>
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+            );
+          })
         )}
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const nfStyles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  unread: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.sm },
+  iconCircle: {
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  title: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
+  time: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 2 },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
+  body: { fontSize: fontSize.sm, color: colors.textMid, lineHeight: 20, marginBottom: spacing.xs },
+  actionsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  actionBtn: {
+    paddingHorizontal: spacing.md, paddingVertical: 8,
+    borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center',
+  },
+  acceptBtn: { backgroundColor: colors.success, flex: 1 },
+  rejectBtn: { backgroundColor: '#ef4444', flex: 1 },
+  viewBtn: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: spacing.lg },
+  acceptText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: '#fff' },
+  rejectText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: '#fff' },
+  viewText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.primary },
+});
 
 /* ───────────────── OwnerSettingsScreen ───────────────── */
 export function OwnerSettingsScreen({ navigation }: any) {

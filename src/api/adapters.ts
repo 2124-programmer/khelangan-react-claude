@@ -253,6 +253,8 @@ export function adaptNotification(dto: NotificationDto): AppNotification {
     type,
     date: dto.createdAt ?? '',
     isRead: dto.isRead ?? false,
+    referenceId: dto.referenceId ?? undefined,
+    referenceType: dto.referenceType ?? undefined,
   };
 }
 

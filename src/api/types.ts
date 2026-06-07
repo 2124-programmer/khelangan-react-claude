@@ -462,6 +462,8 @@ export interface NotificationDto {
   type?: string;           // "BOOKING" | "PAYMENT" | "OFFER" | "REVIEW" | "SYSTEM"
   isRead?: boolean;
   createdAt?: string;
+  referenceId?: string;    // bookingId or groupId
+  referenceType?: string;  // "BOOKING" | "BOOKING_GROUP"
 }
 
 export interface UnreadCountResponse {
