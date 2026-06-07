@@ -125,6 +125,20 @@ export interface Booking {
   status: BookingStatus;
   paymentStatus: PaymentStatus;
   hasReview?: boolean;
+  groupId?: string;
+}
+
+export interface BookingGroup {
+  groupId: string;
+  bookings: Booking[];
+  venueName: string;
+  courtName: string;
+  sport: string;
+  date: string;
+  totalAmount: number;
+  status: BookingStatus;
+  playerId: string;
+  playerName: string;
 }
 
 export interface Review {

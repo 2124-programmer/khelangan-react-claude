@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { colors, spacing } from '../../theme';
 import { AppHeader, SectionTabBar, EmptyState } from '../../components/common';
-import { BookingCard } from '../../components/venue';
+import { BookingCard, GroupedBookingCard } from '../../components/venue';
 import { CancelBookingModal } from '../../modals';
 import { useBookings, useCancelBooking } from '../../api/hooks/useBookings';
-import { Booking } from '../../types';
+import { Booking, BookingGroup, BookingStatus } from '../../types';
 import { extractApiError } from '../../api/client';
 
 const STATUS_MAP: Record<string, string> = {
@@ -15,6 +15,61 @@ const STATUS_MAP: Record<string, string> = {
   cancelled: 'CANCELLED',
 };
 
+// Derive an overall status from all bookings in the group (worst-case wins)
+function deriveGroupStatus(bookings: Booking[]): BookingStatus {
+  if (bookings.every((b) => b.status === 'pending')) return 'pending';
+  if (bookings.every((b) => b.status === 'confirmed')) return 'confirmed';
+  if (bookings.every((b) => b.status === 'cancelled')) return 'cancelled';
+  if (bookings.every((b) => b.status === 'completed')) return 'completed';
+  if (bookings.some((b) => b.status === 'confirmed')) return 'confirmed';
+  return bookings[0].status;
+}
+
+type BookingListItem = Booking | BookingGroup;
+
+function groupBookingList(bookings: Booking[]): BookingListItem[] {
+  const groupMap = new Map<string, Booking[]>();
+  const seenGroups = new Set<string>();
+  const result: BookingListItem[] = [];
+
+  for (const b of bookings) {
+    if (b.groupId) {
+      if (!groupMap.has(b.groupId)) groupMap.set(b.groupId, []);
+      groupMap.get(b.groupId)!.push(b);
+    }
+  }
+
+  for (const b of bookings) {
+    if (!b.groupId) {
+      result.push(b);
+    } else if (!seenGroups.has(b.groupId)) {
+      seenGroups.add(b.groupId);
+      const grouped = groupMap.get(b.groupId)!.sort((a, c) =>
+        a.startTime.localeCompare(c.startTime),
+      );
+      const group: BookingGroup = {
+        groupId: b.groupId,
+        bookings: grouped,
+        venueName: b.venueName,
+        courtName: b.courtName,
+        sport: b.sport,
+        date: b.date,
+        totalAmount: grouped.reduce((sum, g) => sum + g.amount, 0),
+        status: deriveGroupStatus(grouped),
+        playerId: b.playerId,
+        playerName: b.playerName,
+      };
+      result.push(group);
+    }
+  }
+
+  return result;
+}
+
+function isGroup(item: BookingListItem): item is BookingGroup {
+  return 'groupId' in item && 'bookings' in item;
+}
+
 export default function MyBookingsScreen({ navigation }: any) {
   const [tab, setTab] = useState<string>('pending');
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
@@ -22,6 +77,7 @@ export default function MyBookingsScreen({ navigation }: any) {
 
   const { data, isLoading } = useBookings({ status: STATUS_MAP[tab] });
   const bookings = data?.bookings ?? [];
+  const items = groupBookingList(bookings);
 
   const handleCancel = async () => {
     if (!cancelTarget) return;
@@ -33,6 +89,19 @@ export default function MyBookingsScreen({ navigation }: any) {
       setCancelTarget(null);
     }
   };
+
+  const handleCancelGroup = useCallback(async (group: BookingGroup) => {
+    // Cancel each booking in the group sequentially
+    try {
+      for (const b of group.bookings) {
+        if (b.status === 'pending' || b.status === 'confirmed') {
+          await cancelBooking.mutateAsync(Number(b.id));
+        }
+      }
+    } catch (err) {
+      Alert.alert('Cancel Failed', extractApiError(err));
+    }
+  }, [cancelBooking]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -50,19 +119,31 @@ export default function MyBookingsScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
-        ) : bookings.length === 0 ? (
+        ) : items.length === 0 ? (
           <EmptyState icon="📅" title="No bookings here" subtitle="Your bookings will appear in this tab" />
         ) : (
-          bookings.map((b) => (
-            <BookingCard
-              key={b.id}
-              booking={b}
-              onPress={() => navigation.navigate('BookingDetail', { bookingId: b.id })}
-              onCancel={() => setCancelTarget(b)}
-              onReview={() => navigation.navigate('RateReview', { bookingId: b.id })}
-              onRebook={() => navigation.navigate('VenueDetail', { venueId: b.venueId })}
-            />
-          ))
+          items.map((item) => {
+            if (isGroup(item)) {
+              return (
+                <GroupedBookingCard
+                  key={item.groupId}
+                  group={item}
+                  viewAs="player"
+                  onCancelAll={() => handleCancelGroup(item)}
+                />
+              );
+            }
+            return (
+              <BookingCard
+                key={item.id}
+                booking={item}
+                onPress={() => navigation.navigate('BookingDetail', { bookingId: item.id })}
+                onCancel={() => setCancelTarget(item)}
+                onReview={() => navigation.navigate('RateReview', { bookingId: item.id })}
+                onRebook={() => navigation.navigate('VenueDetail', { venueId: item.venueId })}
+              />
+            );
+          })
         )}
       </ScrollView>
 

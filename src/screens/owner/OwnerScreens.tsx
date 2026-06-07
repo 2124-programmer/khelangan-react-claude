@@ -8,10 +8,10 @@ import {
   AppHeader, AppButton, AppInput, SectionTabBar,
   StatusBadge, StarRating, EmptyState, SportChip, HourPickerDropdown, AvatarImage,
 } from '../../components/common';
-import { BookingCard, VenueImagePicker, PickedImage } from '../../components/venue';
+import { BookingCard, GroupedBookingCard, VenueImagePicker, PickedImage } from '../../components/venue';
 import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
-import { useBookings, useBookingDetail, useAcceptBooking, useRejectBooking } from '../../api/hooks/useBookings';
+import { useBookings, useBookingDetail, useAcceptBooking, useRejectBooking, useAcceptBookingGroup, useRejectBookingGroup } from '../../api/hooks/useBookings';
 import { useOwnerSettings, useUpdateOwnerSettings } from '../../api/hooks/useSettings';
 import { useOwnerStats } from '../../api/hooks/useAdmin';
 import { useOwnerPayouts } from '../../api/hooks/usePayouts';
@@ -42,6 +42,55 @@ function FieldErr({ msg }: { msg?: string }) {
   return <Text style={styles.eFieldError}>{msg}</Text>;
 }
 
+/* ─── Booking grouping helper ─── */
+import { Booking, BookingGroup, BookingStatus } from '../../types';
+
+function deriveGroupStatus(bookings: Booking[]): BookingStatus {
+  if (bookings.every((b) => b.status === 'pending')) return 'pending';
+  if (bookings.every((b) => b.status === 'confirmed')) return 'confirmed';
+  if (bookings.every((b) => b.status === 'cancelled')) return 'cancelled';
+  if (bookings.every((b) => b.status === 'completed')) return 'completed';
+  if (bookings.some((b) => b.status === 'confirmed')) return 'confirmed';
+  return bookings[0].status;
+}
+
+type BookingListItem = Booking | BookingGroup;
+function isGroup(item: BookingListItem): item is BookingGroup {
+  return 'groupId' in item && 'bookings' in item;
+}
+function groupBookingList(bookings: Booking[]): BookingListItem[] {
+  const groupMap = new Map<string, Booking[]>();
+  const seenGroups = new Set<string>();
+  const result: BookingListItem[] = [];
+  for (const b of bookings) {
+    if (b.groupId) {
+      if (!groupMap.has(b.groupId)) groupMap.set(b.groupId, []);
+      groupMap.get(b.groupId)!.push(b);
+    }
+  }
+  for (const b of bookings) {
+    if (!b.groupId) {
+      result.push(b);
+    } else if (!seenGroups.has(b.groupId)) {
+      seenGroups.add(b.groupId);
+      const grouped = groupMap.get(b.groupId)!.sort((a, c) => a.startTime.localeCompare(c.startTime));
+      result.push({
+        groupId: b.groupId,
+        bookings: grouped,
+        venueName: b.venueName,
+        courtName: b.courtName,
+        sport: b.sport,
+        date: b.date,
+        totalAmount: grouped.reduce((sum, g) => sum + g.amount, 0),
+        status: deriveGroupStatus(grouped),
+        playerId: b.playerId,
+        playerName: b.playerName,
+      } as BookingGroup);
+    }
+  }
+  return result;
+}
+
 /* ───────────────── BookingManagementScreen ───────────────── */
 export function BookingManagementScreen({ navigation }: any) {
   const [tab, setTab] = useState('requests');
@@ -53,6 +102,10 @@ export function BookingManagementScreen({ navigation }: any) {
   };
   const { data, isLoading } = useBookings({ status: statusMap[tab] });
   const bookings = data?.bookings ?? [];
+  const items = groupBookingList(bookings);
+
+  const acceptGroup = useAcceptBookingGroup();
+  const rejectGroup = useRejectBookingGroup();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -70,12 +123,32 @@ export function BookingManagementScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
-        ) : bookings.length === 0 ? (
+        ) : items.length === 0 ? (
           <EmptyState icon="📅" title="No bookings" subtitle="" />
         ) : (
-          bookings.map((b) => (
-            <BookingCard key={b.id} booking={b} viewAs="owner" onPress={() => navigation.navigate('OwnerBookingDetail', { bookingId: b.id })} />
-          ))
+          items.map((item) => {
+            if (isGroup(item)) {
+              return (
+                <GroupedBookingCard
+                  key={item.groupId}
+                  group={item}
+                  viewAs="owner"
+                  onAcceptAll={() => acceptGroup.mutate(item.groupId)}
+                  onRejectAll={() => rejectGroup.mutate(item.groupId)}
+                  acceptPending={acceptGroup.isPending && acceptGroup.variables === item.groupId}
+                  rejectPending={rejectGroup.isPending && rejectGroup.variables === item.groupId}
+                />
+              );
+            }
+            return (
+              <BookingCard
+                key={item.id}
+                booking={item}
+                viewAs="owner"
+                onPress={() => navigation.navigate('OwnerBookingDetail', { bookingId: item.id })}
+              />
+            );
+          })
         )}
       </ScrollView>
     </SafeAreaView>

@@ -88,3 +88,25 @@ export function useRejectBooking() {
     onSuccess: () => qc.invalidateQueries({ queryKey: BOOKINGS_KEY }),
   });
 }
+
+export function useAcceptBookingGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (groupId: string) => bookingService.acceptGroup(groupId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
+      qc.invalidateQueries({ queryKey: ['slots'] });
+    },
+  });
+}
+
+export function useRejectBookingGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (groupId: string) => bookingService.rejectGroup(groupId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
+      qc.invalidateQueries({ queryKey: ['slots'] });
+    },
+  });
+}

@@ -181,6 +181,7 @@ export function adaptBooking(dto: BookingDto): Booking {
     status: (dto.status?.toLowerCase() as BookingStatus) ?? 'pending',
     paymentStatus: (dto.paymentStatus?.toLowerCase() as PaymentStatus) ?? 'pending',
     hasReview: dto.hasReview ?? false,
+    groupId: dto.groupId ?? undefined,
   };
 }
 

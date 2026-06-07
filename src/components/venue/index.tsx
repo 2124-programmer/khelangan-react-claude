@@ -4,7 +4,7 @@ import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { haversineKm, formatDistance } from '../../utils/locationUtils';
 import type { LatLng } from '../../store/LocationContext';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { Venue, Slot, Booking } from '../../types';
+import { Venue, Slot, Booking, BookingGroup } from '../../types';
 import { StatusBadge, AppButton } from '../common';
 import { getSportIcon } from '../../utils/sportUtils';
 
@@ -345,6 +345,120 @@ export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, vi
     </TouchableOpacity>
   );
 }
+
+/* ───────────────── GroupedBookingCard ───────────────── */
+interface GroupedBookingCardProps {
+  group: BookingGroup;
+  viewAs?: 'player' | 'owner';
+  onPress?: () => void;
+  onAcceptAll?: () => void;
+  onRejectAll?: () => void;
+  onCancelAll?: () => void;
+  acceptPending?: boolean;
+  rejectPending?: boolean;
+}
+export function GroupedBookingCard({
+  group, viewAs = 'player', onPress,
+  onAcceptAll, onRejectAll, onCancelAll,
+  acceptPending, rejectPending,
+}: GroupedBookingCardProps) {
+  const slotTimes = group.bookings
+    .slice()
+    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+    .map((b) => `${b.startTime}–${b.endTime}`)
+    .join(', ');
+
+  const canAct = group.status === 'pending';
+
+  return (
+    <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={[gbStyles.card, shadow.card]}>
+      <View style={gbStyles.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={gbStyles.venueName} numberOfLines={1}>{group.venueName}</Text>
+          <Text style={gbStyles.meta}>{group.sport} · {group.courtName}</Text>
+        </View>
+        <StatusBadge status={group.status} />
+      </View>
+
+      <View style={gbStyles.body}>
+        <View style={gbStyles.slotCountBadge}>
+          <Text style={gbStyles.slotCountText}>{group.bookings.length} slots</Text>
+        </View>
+        <Text style={gbStyles.dateText}>📅 {group.date}</Text>
+      </View>
+
+      <Text style={gbStyles.times} numberOfLines={2}>{slotTimes}</Text>
+
+      <View style={gbStyles.footer}>
+        <View>
+          <Text style={gbStyles.totalLabel}>Total</Text>
+          <Text style={gbStyles.totalAmount}>₹{group.totalAmount}</Text>
+        </View>
+        {viewAs === 'owner' && canAct && (
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <AppButton
+              label={acceptPending ? '…' : 'Accept'}
+              fullWidth={false}
+              loading={acceptPending}
+              disabled={acceptPending || rejectPending}
+              onPress={onAcceptAll}
+              style={{ height: 38, paddingHorizontal: 14 }}
+            />
+            <AppButton
+              label={rejectPending ? '…' : 'Reject'}
+              variant="danger"
+              fullWidth={false}
+              loading={rejectPending}
+              disabled={acceptPending || rejectPending}
+              onPress={onRejectAll}
+              style={{ height: 38, paddingHorizontal: 14 }}
+            />
+          </View>
+        )}
+        {viewAs === 'player' && canAct && onCancelAll && (
+          <AppButton
+            label="Cancel"
+            variant="danger"
+            fullWidth={false}
+            onPress={onCancelAll}
+            style={{ height: 38, paddingHorizontal: 14 }}
+          />
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const gbStyles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  venueName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
+  meta: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 2 },
+  body: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.sm },
+  slotCountBadge: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 3,
+  },
+  slotCountText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.white },
+  dateText: { fontSize: fontSize.sm, color: colors.textMid },
+  times: { fontSize: fontSize.sm, color: colors.textMid, marginBottom: spacing.md, lineHeight: 18 },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  totalLabel: { fontSize: fontSize.xs, color: colors.textDim },
+  totalAmount: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
+});
 
 /* ───────────────── PriceSummary ───────────────── */
 export function PriceSummary({ base, fee, discount, total }: { base: number; fee: number; discount: number; total: number }) {

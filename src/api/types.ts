@@ -321,6 +321,7 @@ export interface BookingDto {
   couponCode?: string;
   hasReview?: boolean;
   createdAt?: string;
+  groupId?: string;
 }
 
 export interface CreateBookingRequest {
