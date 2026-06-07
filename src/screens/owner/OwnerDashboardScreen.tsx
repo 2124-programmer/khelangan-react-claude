@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { BookingCard } from '../../components/venue';
+import { NotificationBell } from '../../components/common';
 import { useAuth } from '../../store/AuthContext';
 import { useOwnerStats } from '../../api/hooks/useAdmin';
 import { useBookings } from '../../api/hooks/useBookings';
@@ -20,9 +21,7 @@ export default function OwnerDashboardScreen({ navigation }: any) {
             <Text style={styles.hi}>Dashboard</Text>
             <Text style={styles.name}>{user?.name}</Text>
           </View>
-          <TouchableOpacity onPress={() => navigation.navigate('OwnerNotifications')}>
-            <View style={styles.bell}><Text style={{ fontSize: 20 }}>🔔</Text></View>
-          </TouchableOpacity>
+          <NotificationBell />
         </View>
 
         {/* Revenue card */}
@@ -99,7 +98,6 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
   hi: { fontSize: fontSize.sm, color: colors.textMid },
   name: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  bell: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', ...shadow.card },
   revenueCard: { backgroundColor: colors.owner, borderRadius: radius.lg, padding: spacing.xl },
   revLabel: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.85)' },
   revAmount: { fontSize: 38, fontWeight: fontWeight.bold, color: colors.white, marginTop: spacing.xs },

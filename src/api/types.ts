@@ -446,6 +446,10 @@ export interface NotificationDto {
   createdAt?: string;
 }
 
+export interface UnreadCountResponse {
+  count: number;
+}
+
 export interface BroadcastRequest {
   title: string;
   body: string;

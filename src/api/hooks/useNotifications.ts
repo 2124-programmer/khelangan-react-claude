@@ -1,9 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationService } from '../services/notificationService';
 import { adaptNotification } from '../adapters';
+import { useAuth } from '../../store/AuthContext';
 import type { BroadcastRequest } from '../types';
 
 export const NOTIFICATIONS_KEY = ['notifications'] as const;
+export const NOTIFICATION_POLL_MS = 30_000;
 
 export function useNotifications(params?: { page?: number }) {
   return useQuery({
@@ -17,6 +19,18 @@ export function useNotifications(params?: { page?: number }) {
       };
     },
     refetchInterval: 60_000, // poll every 60s for new notifications
+  });
+}
+
+export function useUnreadNotifications() {
+  const { isLoggedIn } = useAuth();
+  return useQuery({
+    queryKey: [...NOTIFICATIONS_KEY, 'unread-count'],
+    queryFn: () => notificationService.unreadCount(),
+    enabled: isLoggedIn,
+    refetchInterval: NOTIFICATION_POLL_MS,
+    refetchIntervalInBackground: false,
+    staleTime: 0,
   });
 }
 

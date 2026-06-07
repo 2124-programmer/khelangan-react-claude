@@ -54,7 +54,6 @@ export default function PlayerHomeScreen({ navigation }: any) {
     <SafeAreaView style={styles.container}>
       <AppHeader
         userName={user ? `Hi, ${user.name.split(' ')[0]} !!` : 'Welcome.!'}
-        onBellPress={() => requireAuth(() => navigation.navigate('Notifications'))}
       />
       <ScrollView showsVerticalScrollIndicator={false}>
 

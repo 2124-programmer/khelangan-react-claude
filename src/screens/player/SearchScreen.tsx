@@ -27,7 +27,8 @@ export default function SearchScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="Search" onBack={() => navigation.goBack()} />
+      <AppHeader title="Search" onBack={() => navigation.goBack()} 
+        onBellPress={() => requireAuth(() => navigation.navigate('Notifications'))}/>
       <View style={styles.searchRow}>
         <View style={styles.searchBar}>
           <Text style={{ fontSize: 16 }}>🔍</Text>

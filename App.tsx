@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { StatusBar } from 'react-native';
+import { StatusBar, AppState } from 'react-native';
+import { focusManager } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -20,6 +21,16 @@ function SportsBootstrap() {
   return null;
 }
 
+function AppStateBridge() {
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      focusManager.setFocused(state === 'active');
+    });
+    return () => sub.remove();
+  }, []);
+  return null;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -27,6 +38,7 @@ export default function App() {
         <AuthProvider>
           <LocationProvider>
             <SportsBootstrap />
+            <AppStateBridge />
             <NavigationContainer>
               <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
               <RootNavigator />

@@ -4,9 +4,12 @@ import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
   ActivityIndicator, Image, ScrollView, ViewStyle, Modal, Animated,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { BookingStatus, VenueStatus, PaymentStatus } from '../../types';
+import { useAuth } from '../../store/AuthContext';
+import { useUnreadNotifications } from '../../api/hooks/useNotifications';
 
 /* ───────────────── AppButton ───────────────── */
 interface AppButtonProps {
@@ -123,6 +126,34 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
   );
 });
 
+/* ───────────────── NotificationBell ───────────────── */
+export function NotificationBell() {
+  const { isLoggedIn, role } = useAuth();
+  const { data } = useUnreadNotifications();
+  const navigation = useNavigation<any>();
+
+  if (!isLoggedIn) return null;
+
+  const count = data?.count ?? 0;
+  const label = count > 9 ? '9+' : count > 0 ? String(count) : null;
+  const screen = role === 'owner' ? 'OwnerNotifications' : 'Notifications';
+
+  return (
+    <TouchableOpacity
+      onPress={() => navigation.navigate(screen as never)}
+      activeOpacity={0.7}
+      style={styles.bellBtn}
+    >
+      <Text style={styles.bellIcon}>🔔</Text>
+      {label !== null ? (
+        <View style={styles.bellBadge}>
+          <Text style={styles.bellBadgeText}>{label}</Text>
+        </View>
+      ) : null}
+    </TouchableOpacity>
+  );
+}
+
 /* ───────────────── AppHeader ───────────────── */
 interface AppHeaderProps {
   title?: string;
@@ -131,9 +162,8 @@ interface AppHeaderProps {
   onRightPress?: () => void;
   // Home screen variant
   userName?: string;
-  onBellPress?: () => void;
 }
-export function AppHeader({ title, onBack, rightLabel, onRightPress, userName, onBellPress }: AppHeaderProps) {
+export function AppHeader({ title, onBack, rightLabel, onRightPress, userName }: AppHeaderProps) {
   if (userName !== undefined) {
     return (
       <View style={styles.homeHeader}>
@@ -148,11 +178,7 @@ export function AppHeader({ title, onBack, rightLabel, onRightPress, userName, o
         {/* Right: user name then bell */}
         <View style={styles.homeRight}>
           <Text style={styles.homeUserName} numberOfLines={1}>{userName}</Text>
-          {onBellPress ? (
-            <TouchableOpacity onPress={onBellPress} activeOpacity={0.7} style={styles.bellBtn}>
-              <Text style={styles.bellIcon}>🔔</Text>
-            </TouchableOpacity>
-          ) : null}
+          <NotificationBell />
         </View>
       </View>
     );
@@ -169,7 +195,11 @@ export function AppHeader({ title, onBack, rightLabel, onRightPress, userName, o
         <TouchableOpacity onPress={onRightPress} style={styles.headerBtn}>
           <Text style={styles.headerRight}>{rightLabel}</Text>
         </TouchableOpacity>
-      ) : <View style={styles.headerBtn} />}
+      ) : (
+        <View style={styles.headerBtn}>
+          <NotificationBell />
+        </View>
+      )}
     </View>
   );
 }
@@ -481,6 +511,14 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   bellIcon: { fontSize: 17 },
+  bellBadge: {
+    position: 'absolute', top: -4, right: -4,
+    minWidth: 16, height: 16, borderRadius: 8,
+    backgroundColor: colors.danger,
+    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  bellBadgeText: { fontSize: 9, fontWeight: fontWeight.bold, color: colors.white },
   homeUserInfo: { alignItems: 'flex-end' },
   homeUserName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
   homeLocation: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 1 },

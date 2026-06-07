@@ -1,5 +1,5 @@
 import { apiClient } from '../client';
-import type { NotificationDto, BroadcastRequest, MessageResponse, Page } from '../types';
+import type { NotificationDto, BroadcastRequest, MessageResponse, Page, UnreadCountResponse } from '../types';
 
 export const notificationService = {
   list: (params?: { page?: number; size?: number }) =>
@@ -10,6 +10,11 @@ export const notificationService = {
   markRead: (id: number) =>
     apiClient
       .patch<NotificationDto>(`/api/v1/notifications/${id}/read`)
+      .then((r) => r.data),
+
+  unreadCount: () =>
+    apiClient
+      .get<UnreadCountResponse>('/api/v1/notifications/unread-count')
       .then((r) => r.data),
 
   markAllRead: () =>
