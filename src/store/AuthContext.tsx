@@ -26,6 +26,8 @@ interface AuthState {
   logout: () => Promise<void>;
   /** Update token + user after a role change — issues new JWT immediately */
   updateSession: (newToken: string, userDto: UserDto) => Promise<void>;
+  /** Update the in-memory user after a profile edit — does NOT re-issue a token */
+  updateUser: (userDto: UserDto) => void;
   clearAuthError: () => void;
 }
 
@@ -138,6 +140,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearAuthError = useCallback(() => setAuthError(null), []);
 
+  const updateUser = useCallback((dto: UserDto) => {
+    setUser(adaptUser(dto));
+  }, []);
+
   const role = user?.role ?? null;
 
   const value: AuthState = {
@@ -153,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     registerUser,
     logout,
     updateSession,
+    updateUser,
     clearAuthError,
   };
 

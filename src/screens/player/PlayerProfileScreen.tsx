@@ -4,34 +4,52 @@ import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../the
 import { AppHeader, AvatarImage } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
+import { useMe } from '../../api/hooks/useUser';
 
 const MENU = [
   { icon: '🔔', label: 'Notifications', route: 'Notifications' },
-  { icon: '👛', label: 'Wallet & Payments', route: 'Wallet' },
+  // { icon: '👛', label: 'Wallet & Payments', route: 'Wallet' },
   { icon: '🎟️', label: 'Offers & Coupons', route: 'Offers' },
-  { icon: '❓', label: 'Help & Support', route: 'HelpSupport' },
   { icon: '⚙️', label: 'Settings', route: 'Settings' },
+  { icon: '❓', label: 'Help & Support', route: 'HelpSupport' },
   { icon: '🏟', label: 'Switch to Venue Owner', route: 'RoleChange', params: { targetRole: 'OWNER' } },
 ];
 
 export default function PlayerProfileScreen({ navigation }: any) {
   const { user, logout } = useAuth();
+  const { data: me } = useMe();
   const [showLogout, setShowLogout] = useState(false);
+
+  // me is the live source of truth; fall back to auth context while loading
+  const displayName = me?.name ?? user?.name ?? '';
+  const displayEmail = me?.email ?? user?.email ?? '';
+  const displayAvatar = me?.avatar ?? user?.avatar;
+  const isPremium = me?.isPremium ?? user?.isPremium ?? false;
+  const totalBookings = me?.totalBookings ?? user?.totalBookings ?? 0;
 
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Profile" />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        <View style={[styles.profileCard, shadow.card]}>
-          <AvatarImage uri={user?.avatar} name={user?.name ?? ''} size={72} />
-          <Text style={styles.name}>{user?.name}</Text>
-          <Text style={styles.email}>{user?.email}</Text>
-          {user?.isPremium && <View style={styles.premiumBadge}><Text style={styles.premiumText}>⭐ Premium Member</Text></View>}
-        </View>
+        <TouchableOpacity
+          style={[styles.profileCard, shadow.card]}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('EditProfile')}
+        >
+          <View style={styles.avatarWrapper}>
+            <AvatarImage uri={displayAvatar} name={displayName} size={72} />
+            <View style={styles.pencilBadge}>
+              <Text style={styles.pencilIcon}>✏️</Text>
+            </View>
+          </View>
+          <Text style={styles.name}>{displayName}</Text>
+          <Text style={styles.email}>{displayEmail}</Text>
+          {isPremium && <View style={styles.premiumBadge}><Text style={styles.premiumText}>⭐ Premium Member</Text></View>}
+        </TouchableOpacity>
 
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statNum}>{user?.totalBookings}</Text>
+            <Text style={styles.statNum}>{totalBookings}</Text>
             <Text style={styles.statLabel}>Bookings</Text>
           </View>
           <View style={styles.statBox}>
@@ -76,6 +94,9 @@ export default function PlayerProfileScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   profileCard: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.xl },
+  avatarWrapper: { position: 'relative' },
+  pencilBadge: { position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  pencilIcon: { fontSize: 11 },
   name: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.md },
   email: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2 },
   premiumBadge: { backgroundColor: '#FEF3C7', paddingHorizontal: spacing.lg, paddingVertical: spacing.xs, borderRadius: radius.pill, marginTop: spacing.md },

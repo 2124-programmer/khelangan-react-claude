@@ -1,5 +1,6 @@
+import { Platform } from 'react-native';
 import { apiClient } from '../client';
-import type { UserDto, UpdateProfileRequest, ChangeRoleRequest, AuthResponse, Page } from '../types';
+import type { UserDto, UpdateProfileRequest, ChangeRoleRequest, AuthResponse, Page, ImageUploadResponse } from '../types';
 
 export const userService = {
   getMe: () =>
@@ -7,6 +8,25 @@ export const userService = {
 
   updateMe: (data: UpdateProfileRequest) =>
     apiClient.put<UserDto>('/api/v1/users/me', data).then((r) => r.data),
+
+  uploadAvatar: async (localUri: string) => {
+    const formData = new FormData();
+    if (Platform.OS === 'web') {
+      const response = await fetch(localUri);
+      const blob = await response.blob();
+      formData.append('file', blob, 'avatar.jpg');
+    } else {
+      const filename = localUri.split('/').pop() ?? 'avatar.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      formData.append('file', { uri: localUri, name: filename, type } as any);
+    }
+    return apiClient
+      .post<ImageUploadResponse>('/api/v1/users/me/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((r) => r.data);
+  },
 
   changeRole: (data: ChangeRoleRequest) =>
     apiClient.patch<AuthResponse>('/api/v1/users/me/role', data).then((r) => r.data),

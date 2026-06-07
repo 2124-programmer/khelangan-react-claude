@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '../services/userService';
 import { adaptUser } from '../adapters';
+import { useAuth } from '../../store/AuthContext';
 import type { UpdateProfileRequest } from '../types';
 
 export const ME_KEY = ['users', 'me'] as const;
@@ -15,9 +16,19 @@ export function useMe() {
 
 export function useUpdateProfile() {
   const qc = useQueryClient();
+  const { updateUser } = useAuth();
   return useMutation({
     mutationFn: (data: UpdateProfileRequest) => userService.updateMe(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ME_KEY }),
+    onSuccess: (dto) => {
+      updateUser(dto);
+      qc.invalidateQueries({ queryKey: ME_KEY });
+    },
+  });
+}
+
+export function useUploadAvatar() {
+  return useMutation({
+    mutationFn: (localUri: string) => userService.uploadAvatar(localUri),
   });
 }
 

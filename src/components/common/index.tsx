@@ -73,11 +73,12 @@ interface AppInputProps {
   returnKeyType?: 'done' | 'go' | 'next' | 'search' | 'send';
   onSubmitEditing?: () => void;
   onBlur?: () => void;
+  editable?: boolean;
 }
 export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
   label, value, onChangeText, placeholder, error, secureTextEntry,
   keyboardType, multiline, maxLength, autoCapitalize = 'none',
-  returnKeyType, onSubmitEditing, onBlur,
+  returnKeyType, onSubmitEditing, onBlur, editable,
 }, ref) {
   const [passwordVisible, setPasswordVisible] = useState(false);
   return (
@@ -91,9 +92,11 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
             multiline && { height: 96, textAlignVertical: 'top', paddingTop: spacing.md },
             error ? { borderColor: colors.danger } : {},
             secureTextEntry && styles.inputWithToggle,
+            editable === false && { color: colors.textMid, backgroundColor: colors.bg },
           ]}
           value={value}
           onChangeText={onChangeText}
+          editable={editable}
           onBlur={onBlur}
           placeholder={placeholder}
           placeholderTextColor={colors.textDim}

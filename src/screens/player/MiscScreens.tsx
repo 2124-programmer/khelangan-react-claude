@@ -1,17 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, Switch, Alert, ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton, AppInput } from '../../components/common';
+import { AppHeader, AppButton, AppInput, AvatarImage } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
 import { useCoupons } from '../../api/hooks/useCoupons';
 import { useAuth } from '../../store/AuthContext';
-import { useUpdateProfile } from '../../api/hooks/useUser';
+import { useMe, useUpdateProfile, useUploadAvatar } from '../../api/hooks/useUser';
 import { useCreateDispute } from '../../api/hooks/useDisputes';
 import { extractApiError } from '../../api/client';
 import { userService } from '../../api/services/userService';
+import { validatePhone } from '../../utils/validation';
 import type { UserRole } from '../../types';
 
 /* ───────────────── OffersScreen ───────────────── */
@@ -134,36 +136,143 @@ export function SettingsScreen({ navigation }: any) {
 
 /* ───────────────── EditProfileScreen ───────────────── */
 export function EditProfileScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { data: me, isLoading: meLoading, isError, refetch } = useMe();
   const updateProfile = useUpdateProfile();
-  const [name, setName] = useState(user?.name ?? '');
-  const [phone, setPhone] = useState(user?.phone ?? '');
-  const [loading, setLoading] = useState(false);
+  const uploadAvatar = useUploadAvatar();
+
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [localAvatarUri, setLocalAvatarUri] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Seed form once me data arrives
+  useEffect(() => {
+    if (me) {
+      setName(me.name ?? '');
+      setPhone(me.phone ?? '');
+    }
+  }, [me]);
+
+  const isDirty =
+    name.trim() !== (me?.name ?? '') ||
+    phone.trim() !== (me?.phone ?? '') ||
+    localAvatarUri !== null;
+
+  const validateForm = () => {
+    const nErr = name.trim() ? null : 'Name is required';
+    const pErr = phone.trim() ? validatePhone(phone.trim()) : null; // null phone = optional
+    setNameError(nErr);
+    setPhoneError(pErr);
+    return !nErr && !pErr;
+  };
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Allow photo library access to pick a profile photo.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      setLocalAvatarUri(result.assets[0].uri);
+    }
+  };
 
   const handleSave = async () => {
-    setLoading(true);
+    if (!validateForm()) return;
+    setSaving(true);
     try {
-      await updateProfile.mutateAsync({ name: name.trim(), phone: phone.trim() });
+      let avatarUrl: string | undefined;
+      if (localAvatarUri) {
+        const res = await uploadAvatar.mutateAsync(localAvatarUri);
+        avatarUrl = res.url;
+      }
+      await updateProfile.mutateAsync({
+        name: name.trim(),
+        phone: phone.trim() || undefined,
+        avatarUrl,
+      });
       navigation.goBack();
     } catch (err) {
       Alert.alert('Update Failed', extractApiError(err));
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
+
+  if (meLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <AppHeader title="Edit Profile" onBack={() => navigation.goBack()} />
+        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
+      </SafeAreaView>
+    );
+  }
+
+  if (isError) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <AppHeader title="Edit Profile" onBack={() => navigation.goBack()} />
+        <View style={{ padding: spacing.lg, alignItems: 'center' }}>
+          <Text style={{ color: colors.textMid, marginBottom: spacing.md }}>Failed to load profile.</Text>
+          <AppButton label="Retry" onPress={() => refetch()} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const avatarUri = localAvatarUri ?? me?.avatar;
+  const displayName = (name || me?.name) ?? '';
 
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Edit Profile" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        <AppInput label="Full Name" value={name} onChangeText={setName} />
-        <AppInput label="Email" value={user?.email ?? ''} onChangeText={() => {}} keyboardType="email-address" />
-        <AppInput label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+
+        {/* Avatar picker */}
+        <TouchableOpacity style={styles.avatarWrapper} onPress={pickImage} activeOpacity={0.8}>
+          <AvatarImage uri={avatarUri} name={displayName} size={88} />
+          <View style={styles.pencilBadge}>
+            <Text style={styles.pencilIcon}>✏️</Text>
+          </View>
+        </TouchableOpacity>
+        <Text style={styles.avatarHint}>Tap to change photo</Text>
+
+        <AppInput
+          label="Full Name"
+          value={name}
+          onChangeText={(v) => { setName(v); if (nameError) setNameError(null); }}
+          error={nameError ?? undefined}
+        />
+        <AppInput
+          label="Email"
+          value={me?.email ?? ''}
+          onChangeText={() => {}}
+          keyboardType="email-address"
+          editable={false}
+        />
+        <AppInput
+          label="Phone"
+          value={phone}
+          onChangeText={(v) => { setPhone(v); if (phoneError) setPhoneError(null); }}
+          keyboardType="phone-pad"
+          placeholder="10-digit mobile number"
+          error={phoneError ?? undefined}
+        />
+
         <AppButton
-          label={loading ? 'Saving…' : 'Save Changes'}
-          loading={loading}
+          label={saving ? 'Saving…' : 'Save Changes'}
+          loading={saving}
+          disabled={!isDirty || saving}
           onPress={handleSave}
-          style={{ marginTop: spacing.md }}
+          style={{ marginTop: spacing.lg }}
         />
       </ScrollView>
     </SafeAreaView>
@@ -286,6 +395,11 @@ export function RoleChangeScreen({ navigation, route }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md },
+  avatarWrapper: { alignSelf: 'center', marginBottom: spacing.xs, position: 'relative' },
+  pencilBadge: { position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  pencilIcon: { fontSize: 13 },
+  avatarHint: { textAlign: 'center', fontSize: fontSize.xs, color: colors.textMid, marginBottom: spacing.lg },
+  xxl: { marginTop: spacing.xl },
   couponCard: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: radius.lg, marginBottom: spacing.md, overflow: 'hidden' },
   couponLeft: { backgroundColor: colors.primary, padding: spacing.lg, justifyContent: 'center', minWidth: 120 },
   couponDiscount: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.white },
