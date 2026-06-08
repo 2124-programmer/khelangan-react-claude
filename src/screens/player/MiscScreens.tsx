@@ -283,6 +283,7 @@ export function EditProfileScreen({ navigation }: any) {
           style={{ marginTop: spacing.lg }}
         />
       </ScrollView>
+      <LoadingOverlay visible={saving} />
     </SafeAreaView>
   );
 }
