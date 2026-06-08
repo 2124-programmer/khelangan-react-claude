@@ -99,7 +99,7 @@ function DateRail({
 
 export default function VenueCalendarScreen({ navigation, route }: any) {
   const venueId: string = route.params.venueId;
-  const { data: venue, isLoading: venueLoading } = useVenueDetail(venueId);
+  const { data: venue, isLoading: venueLoading, isError: venueError } = useVenueDetail(venueId);
   const blockSlotByTime = useBlockSlotByTime();
   const blockSelected = useBlockSelectedSlots();
   const bulkBlock = useBulkBlockSlots();
@@ -170,6 +170,38 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
       <SafeAreaView style={styles.container}>
         <AppHeader title="Manage Calendar" onBack={() => navigation.goBack()} />
         <LoadingOverlay visible={venueLoading} />
+      </SafeAreaView>
+    );
+  }
+
+  if (venueError || !venue) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <AppHeader title="Manage Calendar" onBack={() => navigation.goBack()} />
+        <View style={styles.centeredState}>
+          <EmptyState
+            icon="🏟️"
+            title="Venue not found"
+            subtitle="This venue could not be loaded. It may have been removed or you may not have access."
+          />
+          <AppButton label="Go Back" variant="ghost" onPress={() => navigation.goBack()} style={styles.stateButton} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (courts.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <AppHeader title="Manage Calendar" onBack={() => navigation.goBack()} />
+        <View style={styles.centeredState}>
+          <EmptyState
+            icon="🎾"
+            title="No courts available"
+            subtitle="Add a court to this venue before managing the calendar."
+          />
+          <AppButton label="Go Back" variant="ghost" onPress={() => navigation.goBack()} style={styles.stateButton} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -257,4 +289,6 @@ const styles = StyleSheet.create({
   dateTopLabel: { fontSize: fontSize.xs, color: colors.textMid },
   dateDayNum: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: 2 },
   dateTextActive: { color: colors.white },
+  centeredState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
+  stateButton: { marginTop: spacing.lg, width: 160 },
 });
