@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 
 interface Props {
@@ -9,6 +8,8 @@ interface Props {
   name: string;
   fullAddress: string;
 }
+
+const MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ?? '';
 
 export function VenueMap({ lat, lng, name, fullAddress }: Props) {
   const hasCoords = lat !== 0 && lng !== 0;
@@ -24,7 +25,12 @@ export function VenueMap({ lat, lng, name, fullAddress }: Props) {
   const openAddressSearch = () =>
     Linking.openURL(`https://maps.google.com/maps?q=${encodeURIComponent(fullAddress)}`);
 
-  if (hasCoords) {
+  // Only render the native MapView when coordinates are available AND a Google Maps
+  // API key has been configured (EXPO_PUBLIC_GOOGLE_MAPS_KEY in .env).
+  // Without the key in the manifest, PROVIDER_GOOGLE crashes the app on Android.
+  if (hasCoords && MAPS_KEY) {
+    // Lazily import so the native module is only loaded when actually used.
+    const { default: MapView, Marker, PROVIDER_GOOGLE } = require('react-native-maps');
     return (
       <View style={[styles.card, shadow.card]}>
         <MapView
@@ -56,8 +62,7 @@ export function VenueMap({ lat, lng, name, fullAddress }: Props) {
     );
   }
 
-  // Fallback when no coordinates
-  const GRID_COLOR = 'rgba(15,174,110,0.08)';
+  // Static fallback — shown when no coordinates or no Maps API key configured.
   return (
     <View style={[styles.card, shadow.card]}>
       <View style={styles.mapBg}>
@@ -76,8 +81,12 @@ export function VenueMap({ lat, lng, name, fullAddress }: Props) {
           <Text style={styles.venueName} numberOfLines={1}>{name}</Text>
           <Text style={styles.address} numberOfLines={2}>{fullAddress}</Text>
         </View>
-        <TouchableOpacity style={styles.btn} onPress={openAddressSearch} activeOpacity={0.8}>
-          <Text style={styles.btnText}>Search</Text>
+        <TouchableOpacity
+          style={styles.btn}
+          onPress={hasCoords ? openDirections : openAddressSearch}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.btnText}>{hasCoords ? 'Directions' : 'Search'}</Text>
         </TouchableOpacity>
       </View>
     </View>
