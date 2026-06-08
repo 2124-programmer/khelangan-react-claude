@@ -184,7 +184,7 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
             title="Venue not found"
             subtitle="This venue could not be loaded. It may have been removed or you may not have access."
           />
-          <AppButton label="Go Back" variant="ghost" onPress={() => navigation.goBack()} style={styles.stateButton} />
+          <AppButton label="Go to Venues" variant="ghost" onPress={() => navigation.navigate('VenuesTab')} style={styles.stateButton} />
         </View>
       </SafeAreaView>
     );
@@ -200,7 +200,7 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
             title="No courts available"
             subtitle="Add a court to this venue before managing the calendar."
           />
-          <AppButton label="Go Back" variant="ghost" onPress={() => navigation.goBack()} style={styles.stateButton} />
+          <AppButton label="Go to Venues" variant="ghost" onPress={() => navigation.navigate('VenuesTab')} style={styles.stateButton} />
         </View>
       </SafeAreaView>
     );
