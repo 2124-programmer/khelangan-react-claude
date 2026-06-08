@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  Image, TouchableOpacity, ActivityIndicator, RefreshControl,
+  Image, TouchableOpacity, RefreshControl, Modal,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, StatusBadge, StarRating, EmptyState } from '../../components/common';
 import { useOwnerVenues } from '../../api/hooks/useVenues';
+import BallOrbitLoader from '../../components/BallOrbitLoader';
 
 export default function MyVenuesScreen({ navigation }: any) {
   const { data, isLoading, refetch } = useOwnerVenues();
@@ -27,9 +28,7 @@ export default function MyVenuesScreen({ navigation }: any) {
         contentContainerStyle={{ padding: spacing.lg }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
-        {isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
-        ) : venues.length === 0 ? (
+        {venues.length === 0 && !isLoading ? (
           <EmptyState icon="🏟" title="No venues yet" subtitle="Add your first venue to start accepting bookings" />
         ) : (
           venues.map((v) => (
@@ -76,6 +75,12 @@ export default function MyVenuesScreen({ navigation }: any) {
           ))
         )}
       </ScrollView>
+
+      <Modal visible={isLoading} transparent animationType="fade" statusBarTranslucent>
+        <View style={styles.loaderOverlay}>
+          <BallOrbitLoader size={120} />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -90,4 +95,5 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
   meta: { fontSize: fontSize.xs, color: colors.textMid },
   actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  loaderOverlay: { flex: 1, backgroundColor: 'rgba(126, 124, 124, 0.37)', alignItems: 'center', justifyContent: 'center' },
 });

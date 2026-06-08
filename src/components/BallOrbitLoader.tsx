@@ -95,7 +95,7 @@ function Ball({ size, ballColor }: { size: number; ballColor: string }) {
 export default function BallOrbitLoader({
   size = 120,
   speed = 1400,
-  logoColor = '#ffffff',
+  logoColor = '#ff7300',
   accentColor = GREEN,
   ballColor = RED,
 }: Props) {
