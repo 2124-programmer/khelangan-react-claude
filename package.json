@@ -4,12 +4,15 @@
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
+    "start:uat": "powershell -ExecutionPolicy Bypass -File start-uat.ps1",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "generate-api": "npx @openapitools/openapi-generator-cli generate -i turfbook-backend/src/main/resources/openapi/api.yaml -g typescript-axios -o src/api/generated --additional-properties=supportsES6=true,withInterfaces=true,npmName=turfbook-api-client",
     "build:apk": "eas build -p android --profile preview",
-    "build:apk:local": "powershell -ExecutionPolicy Bypass -File build-apk-local.ps1"
+    "build:apk:local": "powershell -ExecutionPolicy Bypass -File build-apk-local.ps1",
+    "build:apk:uat": "eas build -p android --profile uat",
+    "build:apk:uat:local": "powershell -ExecutionPolicy Bypass -File build-apk-uat.ps1"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
