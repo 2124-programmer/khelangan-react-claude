@@ -4,6 +4,7 @@ import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
   ActivityIndicator, Image, ScrollView, ViewStyle, Modal, Animated,
 } from 'react-native';
+import BallOrbitLoader from '../BallOrbitLoader';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
@@ -411,6 +412,23 @@ export function HourPickerDropdown({
     </View>
   );
 }
+
+/* ───────────────── LoadingOverlay ───────────────── */
+export function LoadingOverlay({ visible }: { visible: boolean }) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
+      <View style={overlayStyle}>
+        <BallOrbitLoader size={120} />
+      </View>
+    </Modal>
+  );
+}
+const overlayStyle: ViewStyle = {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.75)',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
 
 /* ───────────────── Toast ───────────────── */
 interface ToastProps {

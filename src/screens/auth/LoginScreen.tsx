@@ -1,11 +1,10 @@
 import React, { useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, TextInput, Modal,
+  TouchableOpacity, TextInput,
 } from 'react-native';
-import BallOrbitLoader from '../../components/BallOrbitLoader';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
-import { AppInput, AppButton, AppHeader, Toast } from '../../components/common';
+import { AppInput, AppButton, AppHeader, Toast, LoadingOverlay } from '../../components/common';
 import { useAuth } from '../../store/AuthContext';
 import { extractApiError, extractFieldErrors, getHttpStatus, BASE_URL } from '../../api/client';
 import { authService } from '../../api/services/authService';
@@ -182,11 +181,7 @@ export default function LoginScreen({ navigation, route }: any) {
         </View>
       </ScrollView>
 
-      <Modal visible={loading} transparent animationType="fade" statusBarTranslucent>
-        <View style={styles.loaderOverlay}>
-          <BallOrbitLoader size={120} />
-        </View>
-      </Modal>
+      <LoadingOverlay visible={loading} />
     </SafeAreaView>
   );
 }
@@ -212,5 +207,4 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.xl },
   footerText: { color: colors.textMid, fontSize: fontSize.sm },
   debugBanner: { marginTop: spacing.xs, fontSize: 10, color: '#888', fontFamily: 'monospace' },
-  loaderOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center' },
 });

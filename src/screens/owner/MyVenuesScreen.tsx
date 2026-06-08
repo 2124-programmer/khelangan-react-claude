@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  Image, TouchableOpacity, RefreshControl, Modal,
+  Image, TouchableOpacity, RefreshControl,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton, StatusBadge, StarRating, EmptyState } from '../../components/common';
+import { AppHeader, AppButton, StatusBadge, StarRating, EmptyState, LoadingOverlay } from '../../components/common';
 import { useOwnerVenues } from '../../api/hooks/useVenues';
-import BallOrbitLoader from '../../components/BallOrbitLoader';
 
 export default function MyVenuesScreen({ navigation }: any) {
   const { data, isLoading, refetch } = useOwnerVenues();
@@ -76,11 +75,7 @@ export default function MyVenuesScreen({ navigation }: any) {
         )}
       </ScrollView>
 
-      <Modal visible={isLoading} transparent animationType="fade" statusBarTranslucent>
-        <View style={styles.loaderOverlay}>
-          <BallOrbitLoader size={120} />
-        </View>
-      </Modal>
+      <LoadingOverlay visible={isLoading} />
     </SafeAreaView>
   );
 }
@@ -95,5 +90,4 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
   meta: { fontSize: fontSize.xs, color: colors.textMid },
   actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
-  loaderOverlay: { flex: 1, backgroundColor: 'rgba(126, 124, 124, 0.37)', alignItems: 'center', justifyContent: 'center' },
 });
