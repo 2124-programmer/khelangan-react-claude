@@ -4,7 +4,7 @@ import {
   TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
-import { AppHeader, EmptyState } from '../../components/common';
+import { AppHeader, EmptyState, LoadingOverlay } from '../../components/common';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../../api/hooks/useNotifications';
 import { formatRelativeTime, useNow } from '../../utils/dateUtils';
 
@@ -49,7 +49,7 @@ export default function NotificationsScreen({ navigation }: any) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
+          <LoadingOverlay visible={isLoading} />
         ) : notifications.length === 0 ? (
           <EmptyState icon="🔔" title="No notifications yet" subtitle="You're all caught up!" />
         ) : (
