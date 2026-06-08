@@ -4,7 +4,7 @@ import {
   TextInput, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { colors, spacing, radius, fontSize } from '../../theme';
-import { AppHeader, SportChip, EmptyState } from '../../components/common';
+import { AppHeader, SportChip, EmptyState, LoadingOverlay } from '../../components/common';
 import { VenueCard } from '../../components/venue';
 import { useSports } from '../../api/hooks/useSports';
 import { useVenues } from '../../api/hooks/useVenues';
@@ -72,7 +72,7 @@ export default function SearchScreen({ navigation }: any) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+          <LoadingOverlay visible={isLoading} />
         ) : (
           <>
             <Text style={styles.resultCount}>{results.length} venues found</Text>

@@ -4,7 +4,7 @@ import {
   TouchableOpacity, ActivityIndicator, Alert, FlatList,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
-import { AppHeader, AppButton, EmptyState } from '../../components/common';
+import { AppHeader, AppButton, EmptyState, LoadingOverlay } from '../../components/common';
 import { SlotGrid } from '../../components/venue';
 import { ConfirmActionModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
@@ -169,7 +169,7 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
     return (
       <SafeAreaView style={styles.container}>
         <AppHeader title="Manage Calendar" onBack={() => navigation.goBack()} />
-        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+        <LoadingOverlay visible={venueLoading} />
       </SafeAreaView>
     );
   }
@@ -209,7 +209,7 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
         {/* Slot grid */}
         <Text style={styles.label}>Slots</Text>
         {slotsLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+          <LoadingOverlay visible={slotsLoading} />
         ) : slots.length === 0 ? (
           <EmptyState icon="📅" title="No slots" subtitle="Try another date" />
         ) : (

@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { colors, spacing } from '../../theme';
-import { AppHeader, SectionTabBar, EmptyState } from '../../components/common';
+import { AppHeader, SectionTabBar, EmptyState, LoadingOverlay} from '../../components/common';
 import { BookingCard, GroupedBookingCard } from '../../components/venue';
 import { CancelBookingModal } from '../../modals';
 import { useBookings, useCancelBooking, useCancelBookingGroup } from '../../api/hooks/useBookings';
@@ -122,7 +122,7 @@ export default function MyBookingsScreen({ navigation }: any) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
+          <LoadingOverlay visible={isLoading} />
         ) : items.length === 0 ? (
           <EmptyState icon="📅" title="No bookings here" subtitle="Your bookings will appear in this tab" />
         ) : (
@@ -149,6 +149,7 @@ export default function MyBookingsScreen({ navigation }: any) {
             );
           })
         )}
+        
       </ScrollView>
 
       <CancelBookingModal

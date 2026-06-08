@@ -18,6 +18,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
+import { LoadingOverlay } from '../common';
 
 const TARGET_W = 1200;
 const TARGET_H = 675;
@@ -186,7 +187,7 @@ export function VenueImagePicker({ images, onChange, uploading = false }: Props)
           activeOpacity={0.8}
         >
           {uploading ? (
-            <ActivityIndicator color={colors.primary} />
+            <LoadingOverlay visible={uploading} />
           ) : (
             <>
               <Text style={styles.addIcon}>＋</Text>

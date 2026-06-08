@@ -4,7 +4,7 @@ import {
   ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton, StatusBadge, EmptyState } from '../../components/common';
+import { AppHeader, AppButton, StatusBadge, EmptyState, LoadingOverlay } from '../../components/common';
 import { CancelBookingModal, ConfirmActionModal } from '../../modals';
 import { useBookingDetail, useCancelBooking } from '../../api/hooks/useBookings';
 import { extractApiError } from '../../api/client';
@@ -37,7 +37,7 @@ export default function BookingDetailScreen({ navigation, route }: any) {
     return (
       <SafeAreaView style={styles.container}>
         <AppHeader title="Booking Details" onBack={() => navigation.goBack()} />
-        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+        <LoadingOverlay visible={isLoading} />
       </SafeAreaView>
     );
   }

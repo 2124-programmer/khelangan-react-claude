@@ -4,7 +4,7 @@ import {
   TouchableOpacity, ActivityIndicator, FlatList,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton, EmptyState } from '../../components/common';
+import { AppHeader, AppButton, EmptyState, LoadingOverlay } from '../../components/common';
 import { SlotGrid } from '../../components/venue';
 import { SlotLockExpiredModal, BookingRequestModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
@@ -224,7 +224,7 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
     return (
       <SafeAreaView style={styles.container}>
         <AppHeader title="Select Slot" onBack={() => navigation.goBack()} />
-        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+        <LoadingOverlay visible={venueLoading} />
       </SafeAreaView>
     );
   }
@@ -282,7 +282,7 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
         )}
 
         {loadingSlots ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+          <LoadingOverlay visible={loadingSlots} />
         ) : slots.length === 0 ? (
           <EmptyState icon="📅" title="No slots available" subtitle="Try another date or court" />
         ) : (

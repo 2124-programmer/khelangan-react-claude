@@ -4,7 +4,7 @@ import {
   TouchableOpacity, ActivityIndicator, Linking, Alert, RefreshControl,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton, StarRating, EmptyState, Toast } from '../../components/common';
+import { AppHeader, AppButton, StarRating, EmptyState, Toast, LoadingOverlay } from '../../components/common';
 import { VenueImageCarousel } from '../../components/venue';
 import { VenueMap } from '../../components/venue/VenueMap';
 import { RatingDetailModal, ConfirmActionModal } from '../../modals';
@@ -87,7 +87,7 @@ export default function VenueDetailScreen({ navigation, route }: any) {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+        <LoadingOverlay visible={isLoading} />
       </SafeAreaView>
     );
   }

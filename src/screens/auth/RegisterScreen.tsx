@@ -4,7 +4,7 @@ import {
   TouchableOpacity, Alert, TextInput,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
-import { AppInput, AppButton, AppHeader } from '../../components/common';
+import { AppInput, AppButton, AppHeader, LoadingOverlay } from '../../components/common';
 import { UserRole } from '../../types';
 import { useAuth } from '../../store/AuthContext';
 import { extractApiError, extractFieldErrors, getHttpStatus } from '../../api/client';
@@ -200,6 +200,7 @@ export default function RegisterScreen({ navigation, route }: any) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <LoadingOverlay visible={loading} />
     </SafeAreaView>
   );
 }

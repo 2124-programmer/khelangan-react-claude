@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton, AppInput, AvatarImage } from '../../components/common';
+import { AppHeader, AppButton, AppInput, AvatarImage, LoadingOverlay } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
 import { useCoupons } from '../../api/hooks/useCoupons';
 import { useAuth } from '../../store/AuthContext';
@@ -37,7 +37,7 @@ export function OffersScreen({ navigation }: any) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+          <LoadingOverlay visible={isLoading} />
         ) : (
           active.map((c) => (
             <View key={c.id} style={[styles.couponCard, shadow.card]}>
@@ -219,7 +219,7 @@ export function EditProfileScreen({ navigation }: any) {
     return (
       <SafeAreaView style={styles.container}>
         <AppHeader title="Edit Profile" onBack={() => navigation.goBack()} />
-        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
+        <LoadingOverlay visible={meLoading} />
       </SafeAreaView>
     );
   }

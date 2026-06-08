@@ -4,7 +4,7 @@ import {
   TouchableOpacity, ActivityIndicator, Switch, Alert,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton, AppInput, EmptyState, HourPickerDropdown } from '../../components/common';
+import { AppHeader, AppButton, AppInput, EmptyState, HourPickerDropdown, LoadingOverlay } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
 import { useCourts, useCreateCourt, useUpdateCourt, useDeleteCourt } from '../../api/hooks/useCourts';
 import { useVenueDetail } from '../../api/hooks/useVenues';
@@ -331,7 +331,7 @@ export default function CourtManagementScreen({ navigation, route }: any) {
       ) : (
         <ScrollView contentContainerStyle={styles.listContent}>
           {isLoading ? (
-            <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+            <LoadingOverlay visible={isLoading} />
           ) : courts.length === 0 ? (
             <EmptyState
               icon="🏸"

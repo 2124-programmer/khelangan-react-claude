@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   AppHeader, AppButton, AppInput, StatusBadge,
-  StatCard, Card, EmptyState, AvatarImage,
+  StatCard, Card, EmptyState, AvatarImage, LoadingOverlay
 } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
@@ -64,7 +64,7 @@ export function VenueApprovalScreen({ navigation }: any) {
   return (
     <Screen title="Venue Approvals" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       {isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+        <LoadingOverlay visible={isLoading} />
       ) : pending.length === 0 ? (
         <EmptyState icon="✅" title="All caught up" subtitle="No venues pending approval." />
       ) : (
@@ -106,7 +106,7 @@ export function VenueManagementScreen({ navigation }: any) {
   return (
     <Screen title="All Venues" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       {isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+        <LoadingOverlay visible={isLoading} />
       ) : venues.map((v) => (
         <Card key={v.id} style={{ marginBottom: spacing.md }}>
           <View style={styles.rowBetween}>
@@ -141,7 +141,7 @@ export function PlayerManagementScreen({ navigation }: any) {
   return (
     <Screen title="Players" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       {isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+        <LoadingOverlay visible={isLoading} />
       ) : users.map((u) => (
         <Card key={u.id} style={{ marginBottom: spacing.sm }}>
           <View style={styles.rowBetween}>
@@ -171,7 +171,7 @@ export function OwnerManagementScreen({ navigation }: any) {
   return (
     <Screen title="Venue Owners" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       {isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+        <LoadingOverlay visible={isLoading} />
       ) : users.map((u) => (
         <Card key={u.id} style={{ marginBottom: spacing.sm }}>
           <View style={styles.rowGapSm}>
@@ -196,7 +196,7 @@ export function AdminBookingsScreen({ navigation }: any) {
   return (
     <Screen title="All Bookings" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       {isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+        <LoadingOverlay visible={isLoading} />
       ) : bookings.map((b) => (
         <Card key={b.id} style={{ marginBottom: spacing.sm }}>
           <View style={styles.rowBetween}>
@@ -222,7 +222,7 @@ export function PaymentsRevenueScreen({ navigation }: any) {
   return (
     <Screen title="Payments & Payouts" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       {isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+        <LoadingOverlay visible={isLoading} />
       ) : payouts.map((p) => (
         <Card key={p.id} style={{ marginBottom: spacing.md }}>
           <View style={styles.rowBetween}>
@@ -260,7 +260,7 @@ export function DisputeManagementScreen({ navigation }: any) {
   return (
     <Screen title="Disputes" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
       {isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+        <LoadingOverlay visible={isLoading} />
       ) : disputes.map((d) => (
         <Card key={d.id} style={{ marginBottom: spacing.md }}>
           <View style={styles.rowBetween}>
@@ -343,7 +343,7 @@ export function CouponManagementScreen({ navigation }: any) {
         </Card>
       )}
       {isLoading ? (
-        <ActivityIndicator color={colors.primary} />
+        <LoadingOverlay visible={isLoading} />
       ) : coupons.map((c) => (
         <Card key={c.id} style={{ marginBottom: spacing.sm }}>
           <View style={styles.rowBetween}>
@@ -433,7 +433,7 @@ export function AdminSettingsScreen({ navigation }: any) {
     }
   };
 
-  if (isLoading) return <Screen title="Settings" navigation={navigation}><ActivityIndicator color={colors.primary} /></Screen>;
+  if (isLoading) return <Screen title="Settings" navigation={navigation}><LoadingOverlay visible={isLoading} /></Screen>;
 
   return (
     <Screen title="Platform Settings" navigation={navigation}>
@@ -557,7 +557,7 @@ export function CategoryManagementScreen({ navigation }: any) {
       )}
 
       {isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+        <LoadingOverlay visible={isLoading} />
       ) : sports.length === 0 ? (
         <EmptyState icon="⚽" title="No sports yet" subtitle="Add your first sport to get started." />
       ) : (

@@ -6,7 +6,7 @@ import {
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import {
   AppHeader, AppButton, AppInput, SectionTabBar,
-  StatusBadge, StarRating, EmptyState, SportChip, HourPickerDropdown, AvatarImage,
+  StatusBadge, StarRating, EmptyState, SportChip, HourPickerDropdown, AvatarImage, LoadingOverlay
 } from '../../components/common';
 import { BookingCard, GroupedBookingCard, VenueImagePicker, PickedImage } from '../../components/venue';
 import { ConfirmActionModal } from '../../modals';
@@ -132,7 +132,7 @@ export function BookingManagementScreen({ navigation }: any) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+          <LoadingOverlay visible={isLoading} />
         ) : items.length === 0 ? (
           <EmptyState icon="📅" title="No bookings" subtitle="" />
         ) : (
@@ -177,7 +177,7 @@ export function OwnerBookingDetailScreen({ navigation, route }: any) {
     return (
       <SafeAreaView style={styles.container}>
         <AppHeader title="Booking Details" onBack={() => navigation.goBack()} />
-        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+        <LoadingOverlay visible={isLoading} />
       </SafeAreaView>
     );
   }
@@ -333,7 +333,7 @@ export function ReviewsManagementScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+          <LoadingOverlay visible={isLoading} />
         ) : reviews.length === 0 ? (
           <EmptyState icon="⭐" title="No reviews yet" subtitle="" />
         ) : (
@@ -539,7 +539,7 @@ export function EditVenueScreen({ navigation, route }: any) {
     return (
       <SafeAreaView style={styles.container}>
         <AppHeader title="Edit Venue" onBack={() => navigation.goBack()} />
-        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+        <LoadingOverlay visible={isLoading} />
       </SafeAreaView>
     );
   }
@@ -794,7 +794,7 @@ export function OwnerNotificationsScreen({ navigation }: any) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
+          <LoadingOverlay visible={isLoading} />
         ) : notifications.length === 0 ? (
           <EmptyState icon="🔔" title="No notifications" subtitle="You're all caught up!" />
         ) : (
@@ -826,11 +826,7 @@ export function OwnerNotificationsScreen({ navigation }: any) {
 
                 {/* Inline loading for this card's action */}
                 {isThisLoading && (
-                  <ActivityIndicator
-                    size="small"
-                    color={colors.primary}
-                    style={{ marginTop: spacing.sm, alignSelf: 'flex-start' }}
-                  />
+                  <LoadingOverlay visible={isThisLoading} />
                 )}
 
                 {/* Accept / Reject / View — shown only while actionable and not loading */}
@@ -923,7 +919,7 @@ export function OwnerSettingsScreen({ navigation }: any) {
     <SafeAreaView style={styles.container}>
       <AppHeader title="Settings" onBack={() => navigation.goBack()} />
       {isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+        <LoadingOverlay visible={isLoading} />
       ) : (
         <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
           <Text style={styles.sectionTitle}>Bookings</Text>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
-import { AppHeader, AppButton, AppInput, StarRating, EmptyState } from '../../components/common';
+import { AppHeader, AppButton, AppInput, StarRating, EmptyState, LoadingOverlay } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
 import { useBookingDetail } from '../../api/hooks/useBookings';
 import { useCreateReview } from '../../api/hooks/useReviews';
@@ -42,7 +42,7 @@ export default function RateReviewScreen({ navigation, route }: any) {
     return (
       <SafeAreaView style={styles.container}>
         <AppHeader title="Rate & Review" onBack={() => navigation.goBack()} />
-        <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+        <LoadingOverlay visible={isLoading} />
       </SafeAreaView>
     );
   }

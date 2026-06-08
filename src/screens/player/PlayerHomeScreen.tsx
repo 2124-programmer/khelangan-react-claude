@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { SportChip, EmptyState, AppHeader } from '../../components/common';
+import { SportChip, EmptyState, AppHeader, LoadingOverlay } from '../../components/common';
 import { VenueCard } from '../../components/venue';
 import { useAuth } from '../../store/AuthContext';
 import { useSports } from '../../api/hooks/useSports';
@@ -86,7 +86,7 @@ export default function PlayerHomeScreen({ navigation }: any) {
         {/* Sport filter */}
         <Text style={styles.sectionTitle}>Choose a sport</Text>
         {sportsQuery.isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ margin: spacing.lg }} />
+          <LoadingOverlay visible={sportsQuery.isLoading}/>
         ) : (
           <ScrollView
             horizontal
@@ -127,7 +127,7 @@ export default function PlayerHomeScreen({ navigation }: any) {
 
         <View style={{ paddingHorizontal: spacing.lg }}>
           {venuesQuery.isLoading ? (
-            <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} />
+            <LoadingOverlay visible={venuesQuery.isLoading} />
           ) : venuesQuery.isError ? (
             <EmptyState
               icon="⚠️"
