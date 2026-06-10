@@ -1,12 +1,18 @@
 // Venue and booking related reusable components.
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, Linking } from 'react-native';
 import { haversineKm, formatDistance } from '../../utils/locationUtils';
 import type { LatLng } from '../../store/LocationContext';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { Venue, Slot, Booking, BookingGroup } from '../../types';
 import { StatusBadge, AppButton } from '../common';
-import { getSportIcon } from '../../utils/sportUtils';
+import { getSportIcon, getSportName } from '../../utils/sportUtils';
+
+function callPhone(phone: string | undefined) {
+  if (!phone) return;
+  const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+  Linking.openURL(`tel:${cleaned}`).catch(() => {});
+}
 
 export { VenueImagePicker } from './VenueImagePicker';
 export type { PickedImage } from './VenueImagePicker';
@@ -255,26 +261,31 @@ interface SlotGridProps {
   selectedIds?: Set<string>;
   onSelect?: (slot: Slot) => void;
   mode?: 'player' | 'owner';
+  pastSlotIds?: Set<string>;
 }
-export function SlotGrid({ slots, selectedIds, onSelect, mode = 'player' }: SlotGridProps) {
+export function SlotGrid({ slots, selectedIds, onSelect, mode = 'player', pastSlotIds }: SlotGridProps) {
   return (
     <View>
       <View style={styles.legendRow}>
         <Legend color={colors.slotAvailable} label="Available" />
         <Legend color={colors.slotBooked} label="Booked" />
         <Legend color={colors.slotBlocked} label="Blocked" />
+        <Legend color={colors.slotSelected} label="Selected" />
       </View>
       <View style={styles.slotGrid}>
         {slots.map((slot) => {
           const isSelected = selectedIds?.has(slot.id) ?? false;
-          const disabled = slot.status !== 'available' || mode === 'owner';
+          const isPast = pastSlotIds?.has(slot.id) ?? false;
+          const disabled = slot.status !== 'available' || mode === 'owner' || isPast;
           const bg =
             isSelected ? colors.slotSelected
+            : isPast ? colors.surfaceAlt
             : slot.status === 'available' ? colors.primaryLight
             : slot.status === 'booked' ? '#FEE2E2'
             : colors.surfaceAlt;
           const fg =
             isSelected ? colors.white
+            : isPast ? colors.textDim
             : slot.status === 'available' ? colors.primaryDark
             : slot.status === 'booked' ? '#B91C1C'
             : colors.textDim;
@@ -285,6 +296,7 @@ export function SlotGrid({ slots, selectedIds, onSelect, mode = 'player' }: Slot
               onPress={() => onSelect?.(slot)}
               style={[styles.slot, { backgroundColor: bg }]}
               activeOpacity={0.8}
+              accessibilityState={{ disabled: mode === 'player' && disabled }}
             >
               <Text style={[styles.slotTime, { color: fg }]}>{slot.startTime}</Text>
               <Text style={[styles.slotPrice, { color: fg }]}>₹{slot.price}</Text>
@@ -311,26 +323,44 @@ interface BookingCardProps {
   onCancel?: () => void;
   onReview?: () => void;
   onRebook?: () => void;
+  onCheckIn?: () => void;
   viewAs?: 'player' | 'owner';
 }
-export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, viewAs = 'player' }: BookingCardProps) {
+export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, onCheckIn, viewAs = 'player' }: BookingCardProps) {
+  const counterpartPhone = viewAs === 'owner' ? booking.playerPhone : booking.venuePhone;
+  const hasActions = onCancel || onReview || onRebook || onCheckIn;
+
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={[styles.bookingCard, shadow.card]}>
       <View style={{ flexDirection: 'row' }}>
         <Image source={{ uri: booking.venuePhoto }} style={styles.bookingImg} />
         <View style={{ flex: 1, marginLeft: spacing.md }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text style={styles.bookingVenue} numberOfLines={1}>{booking.venueName}</Text>
-            <StatusBadge status={booking.status} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <Text style={[styles.bookingVenue, { flex: 1, marginRight: spacing.sm }]} numberOfLines={1}>{booking.venueName}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+              {counterpartPhone && (
+                <TouchableOpacity
+                  onPress={(e) => { e.stopPropagation(); callPhone(counterpartPhone); }}
+                  style={styles.callBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.callBtnText}>📞</Text>
+                </TouchableOpacity>
+              )}
+              <StatusBadge status={booking.status} />
+            </View>
           </View>
-          <Text style={styles.bookingMeta}>{getSportIcon('s1')} {booking.sport} · {booking.courtName}</Text>
+          <Text style={styles.bookingMeta}>{getSportIcon(booking.sport)} {getSportName(booking.sport)} · {booking.courtName}</Text>
           <Text style={styles.bookingMeta}>📅 {booking.date} · {booking.startTime}–{booking.endTime}</Text>
           {viewAs === 'owner' && <Text style={styles.bookingMeta}>👤 {booking.playerName}</Text>}
           <Text style={styles.bookingAmount}>₹{booking.amount}</Text>
         </View>
       </View>
-      {(onCancel || onReview || onRebook) && (
+      {hasActions && (
         <View style={styles.actionRow}>
+          {booking.status === 'confirmed' && onCheckIn && (
+            <AppButton label="Check In" fullWidth={false} onPress={onCheckIn} style={{ flex: 1, height: 40 }} />
+          )}
           {booking.status === 'confirmed' && onCancel && (
             <AppButton label="Cancel" variant="danger" fullWidth={false} onPress={onCancel} style={{ flex: 1, height: 40 }} />
           )}
@@ -354,30 +384,50 @@ interface GroupedBookingCardProps {
   onAcceptAll?: () => void;
   onRejectAll?: () => void;
   onCancelAll?: () => void;
+  onCheckInAll?: () => void;
   acceptPending?: boolean;
   rejectPending?: boolean;
+  checkInPending?: boolean;
 }
 export function GroupedBookingCard({
   group, viewAs = 'player', onPress,
-  onAcceptAll, onRejectAll, onCancelAll,
-  acceptPending, rejectPending,
+  onAcceptAll, onRejectAll, onCancelAll, onCheckInAll,
+  acceptPending, rejectPending, checkInPending,
 }: GroupedBookingCardProps) {
-  const slotTimes = group.bookings
-    .slice()
-    .sort((a, b) => a.startTime.localeCompare(b.startTime))
-    .map((b) => `${b.startTime}–${b.endTime}`)
-    .join(', ');
+  const sorted = group.bookings.slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const isContiguous =
+    sorted.length > 1 &&
+    sorted.every((b, i) => i === 0 || b.startTime === sorted[i - 1].endTime);
+  const slotTimes = isContiguous
+    ? `${sorted[0].startTime} to ${sorted[sorted.length - 1].endTime}`
+    : sorted.map((b) => `${b.startTime}–${b.endTime}`).join(', ');
 
   const canAct = group.status === 'pending';
+  const canCheckIn = group.status === 'confirmed' && !!onCheckInAll;
+  const counterpartPhone = viewAs === 'owner' ? group.playerPhone : group.venuePhone;
 
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={[gbStyles.card, shadow.card]}>
       <View style={gbStyles.header}>
         <View style={{ flex: 1 }}>
           <Text style={gbStyles.venueName} numberOfLines={1}>{group.venueName}</Text>
-          <Text style={gbStyles.meta}>{group.sport} · {group.courtName}</Text>
+          <Text style={gbStyles.meta}>{getSportIcon(group.sport)} {getSportName(group.sport)} · {group.courtName}</Text>
+          {viewAs === 'owner' && (
+            <Text style={gbStyles.meta}>👤 {group.playerName}</Text>
+          )}
         </View>
-        <StatusBadge status={group.status} />
+        <View style={{ alignItems: 'flex-end', gap: spacing.xs }}>
+          {counterpartPhone && (
+            <TouchableOpacity
+              onPress={(e) => { e.stopPropagation(); callPhone(counterpartPhone); }}
+              style={styles.callBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.callBtnText}>📞</Text>
+            </TouchableOpacity>
+          )}
+          <StatusBadge status={group.status} />
+        </View>
       </View>
 
       <View style={gbStyles.body}>
@@ -414,6 +464,16 @@ export function GroupedBookingCard({
               style={{ height: 38, paddingHorizontal: 14 }}
             />
           </View>
+        )}
+        {viewAs === 'owner' && canCheckIn && (
+          <AppButton
+            label={checkInPending ? '…' : 'Check In'}
+            fullWidth={false}
+            loading={checkInPending}
+            disabled={checkInPending}
+            onPress={onCheckInAll}
+            style={{ height: 38, paddingHorizontal: 14 }}
+          />
         )}
         {viewAs === 'player' && canAct && onCancelAll && (
           <AppButton
@@ -499,7 +559,7 @@ const styles = StyleSheet.create({
   metaText: { fontSize: fontSize.xs, color: colors.textMid },
   sportRow: { flexDirection: 'row', gap: 6, marginTop: spacing.md, flexWrap: 'wrap' },
   miniChip: { backgroundColor: colors.surfaceAlt, paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.pill },
-  legendRow: { flexDirection: 'row', gap: spacing.lg, marginBottom: spacing.md },
+  legendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   legendText: { fontSize: fontSize.xs, color: colors.textMid },
   slotGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   slot: { width: '31%', borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center' },
@@ -511,6 +571,8 @@ const styles = StyleSheet.create({
   bookingMeta: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 3 },
   bookingAmount: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text, marginTop: 4 },
   actionRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  callBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  callBtnText: { fontSize: 14 },
   priceBox: { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.lg },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
   priceLabel: { fontSize: fontSize.sm, color: colors.textMid },

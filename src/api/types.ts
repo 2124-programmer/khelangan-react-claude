@@ -322,6 +322,8 @@ export interface BookingDto {
   hasReview?: boolean;
   createdAt?: string;
   groupId?: string;
+  playerPhone?: string;    // exposed to venue owners only (server-enforced)
+  venuePhone?: string;     // exposed to players (venue contact number)
 }
 
 export interface CreateBookingRequest {

@@ -33,6 +33,12 @@ export const bookingService = {
   rejectGroup: (groupId: string) =>
     apiClient.post<BookingDto[]>(`/api/v1/bookings/group/${groupId}/reject`).then((r) => r.data),
 
+  checkIn: (id: number) =>
+    apiClient.patch<BookingDto>(`/api/v1/bookings/${id}/check-in`).then((r) => r.data),
+
+  checkInGroup: (groupId: string) =>
+    apiClient.post<BookingDto[]>(`/api/v1/bookings/group/${groupId}/check-in`).then((r) => r.data),
+
   // Admin only
   listAdmin: (params?: { status?: string; page?: number; size?: number }) =>
     apiClient.get<Page<BookingDto>>('/api/v1/admin/bookings', { params }).then((r) => r.data),

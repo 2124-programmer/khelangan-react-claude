@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.pill, alignSelf: 'flex-start' },
   badgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold },
   tabBar: { flexGrow: 0, backgroundColor: colors.surface, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  tab: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, marginRight: spacing.sm, backgroundColor: colors.surfaceAlt },
+  tab: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, marginRight: spacing.sm, backgroundColor: colors.surfaceAlt, flexShrink: 0 },
   tabActive: { backgroundColor: colors.primary },
   tabText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid },
   tabTextActive: { color: colors.white },

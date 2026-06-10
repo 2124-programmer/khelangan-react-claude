@@ -169,6 +169,14 @@ export function BookingRequestModal({
 
   const totalPrice = slots.reduce((sum, s) => sum + s.price, 0);
 
+  const sortedSlots = [...slots].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const isContiguous =
+    sortedSlots.length > 1 &&
+    sortedSlots.every((s, i) => i === 0 || s.startTime === sortedSlots[i - 1].endTime);
+  const mergedTimeRange = isContiguous
+    ? `${sortedSlots[0].startTime} to ${sortedSlots[sortedSlots.length - 1].endTime}`
+    : null;
+
   React.useEffect(() => {
     if (visible) setPhase('confirm');
   }, [visible]);
@@ -204,12 +212,19 @@ export function BookingRequestModal({
                 <BRRow label="Date" value={date} />
                 {slots.length === 1 ? (
                   <BRRow label="Time" value={`${slots[0].startTime} – ${slots[0].endTime}`} />
+                ) : mergedTimeRange ? (
+                  <>
+                    <BRRow label="Slots" value={`${slots.length} slots`} />
+                    <BRRow label="Time" value={mergedTimeRange} />
+                  </>
                 ) : (
-                  <BRRow label="Slots" value={`${slots.length} slots selected`} />
+                  <>
+                    <BRRow label="Slots" value={`${slots.length} slots selected`} />
+                    {sortedSlots.map((s) => (
+                      <BRRow key={s.startTime} label="" value={`${s.startTime} – ${s.endTime}`} />
+                    ))}
+                  </>
                 )}
-                {slots.length > 1 && slots.map((s) => (
-                  <BRRow key={s.startTime} label="" value={`${s.startTime} – ${s.endTime}`} />
-                ))}
               </View>
               <View style={brStyles.priceRow}>
                 <Text style={brStyles.priceLabel}>

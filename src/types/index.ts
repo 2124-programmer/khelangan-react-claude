@@ -112,9 +112,11 @@ export interface Booking {
   id: string;
   playerId: string;
   playerName: string;
+  playerPhone?: string;
   venueId: string;
   venueName: string;
   venuePhoto: string;
+  venuePhone?: string;
   sport: string;
   courtName: string;
   date: string;
@@ -139,6 +141,8 @@ export interface BookingGroup {
   status: BookingStatus;
   playerId: string;
   playerName: string;
+  playerPhone?: string;
+  venuePhone?: string;
 }
 
 export interface Review {

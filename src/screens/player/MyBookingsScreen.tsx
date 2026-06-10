@@ -1,12 +1,13 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { colors, spacing } from '../../theme';
 import { AppHeader, SectionTabBar, EmptyState, LoadingOverlay} from '../../components/common';
 import { BookingCard, GroupedBookingCard } from '../../components/venue';
 import { CancelBookingModal } from '../../modals';
 import { useBookings, useCancelBooking, useCancelBookingGroup } from '../../api/hooks/useBookings';
-import { Booking, BookingGroup, BookingStatus } from '../../types';
+import { Booking, BookingGroup } from '../../types';
 import { extractApiError } from '../../api/client';
+import { groupBookingList, isGroup } from '../../utils/bookingUtils';
 
 const STATUS_MAP: Record<string, string> = {
   pending: 'PENDING',
@@ -14,61 +15,6 @@ const STATUS_MAP: Record<string, string> = {
   completed: 'COMPLETED',
   cancelled: 'CANCELLED',
 };
-
-// Derive an overall status from all bookings in the group (worst-case wins)
-function deriveGroupStatus(bookings: Booking[]): BookingStatus {
-  if (bookings.every((b) => b.status === 'pending')) return 'pending';
-  if (bookings.every((b) => b.status === 'confirmed')) return 'confirmed';
-  if (bookings.every((b) => b.status === 'cancelled')) return 'cancelled';
-  if (bookings.every((b) => b.status === 'completed')) return 'completed';
-  if (bookings.some((b) => b.status === 'confirmed')) return 'confirmed';
-  return bookings[0].status;
-}
-
-type BookingListItem = Booking | BookingGroup;
-
-function groupBookingList(bookings: Booking[]): BookingListItem[] {
-  const groupMap = new Map<string, Booking[]>();
-  const seenGroups = new Set<string>();
-  const result: BookingListItem[] = [];
-
-  for (const b of bookings) {
-    if (b.groupId) {
-      if (!groupMap.has(b.groupId)) groupMap.set(b.groupId, []);
-      groupMap.get(b.groupId)!.push(b);
-    }
-  }
-
-  for (const b of bookings) {
-    if (!b.groupId) {
-      result.push(b);
-    } else if (!seenGroups.has(b.groupId)) {
-      seenGroups.add(b.groupId);
-      const grouped = groupMap.get(b.groupId)!.sort((a, c) =>
-        a.startTime.localeCompare(c.startTime),
-      );
-      const group: BookingGroup = {
-        groupId: b.groupId,
-        bookings: grouped,
-        venueName: b.venueName,
-        courtName: b.courtName,
-        sport: b.sport,
-        date: b.date,
-        totalAmount: grouped.reduce((sum, g) => sum + g.amount, 0),
-        status: deriveGroupStatus(grouped),
-        playerId: b.playerId,
-        playerName: b.playerName,
-      };
-      result.push(group);
-    }
-  }
-
-  return result;
-}
-
-function isGroup(item: BookingListItem): item is BookingGroup {
-  return 'groupId' in item && 'bookings' in item;
-}
 
 export default function MyBookingsScreen({ navigation }: any) {
   const [tab, setTab] = useState<string>('pending');
@@ -83,7 +29,42 @@ export default function MyBookingsScreen({ navigation }: any) {
     try { await refetch(); } finally { setRefreshing(false); }
   };
   const bookings = data?.bookings ?? [];
-  const items = groupBookingList(bookings);
+
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+
+  const filteredBookings = useMemo(() => {
+    const now = new Date();
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+
+    let list = [...bookings];
+
+    if (tab === 'upcoming') {
+      // Only show CONFIRMED bookings whose slot is still in the future
+      list = list.filter((b) => {
+        if (b.date > todayStr) return true;
+        if (b.date === todayStr) {
+          const [h, m] = (b.endTime ?? '00:00').split(':').map(Number);
+          return h * 60 + m > nowMins;
+        }
+        return false;
+      });
+      // Soonest first
+      list.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+    } else if (tab === 'pending') {
+      // Soonest first
+      list.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+    } else if (tab === 'completed' || tab === 'cancelled') {
+      // Most recent first
+      list.sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
+    }
+
+    return list;
+  }, [bookings, tab, todayStr]);
+
+  const items = groupBookingList(filteredBookings);
 
   const handleCancel = async () => {
     if (!cancelTarget) return;

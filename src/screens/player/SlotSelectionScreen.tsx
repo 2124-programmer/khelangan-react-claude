@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, ActivityIndicator, FlatList,
+  TouchableOpacity, ActivityIndicator, FlatList, Alert,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, EmptyState, LoadingOverlay } from '../../components/common';
@@ -187,6 +187,22 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
     [rawSlots],
   );
 
+  const isToday = activeDate === today;
+
+  const pastSlotIds = useMemo(() => {
+    if (!isToday) return new Set<string>();
+    const now = new Date();
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+    return new Set(
+      slots
+        .filter((sl) => {
+          const [h, m] = sl.startTime.split(':').map(Number);
+          return h * 60 + m <= nowMins;
+        })
+        .map((sl) => sl.id),
+    );
+  }, [isToday, slots]);
+
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
   const totalPrice = useMemo(() => selected.reduce((sum, s) => sum + s.price, 0), [selected]);
 
@@ -197,12 +213,49 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
 
   const handleToggleSlot = useCallback((slot: Slot) => {
     if (slot.status !== 'available') return;
-    setSelected((prev) =>
-      prev.some((s) => s.id === slot.id)
-        ? prev.filter((s) => s.id !== slot.id)
-        : [...prev, slot],
+    if (pastSlotIds.has(slot.id)) return;
+
+    const alreadySelected = selected.some((s) => s.id === slot.id);
+
+    if (alreadySelected) {
+      // Only deselect from an edge to preserve contiguity
+      const sorted = [...selected].sort((a, b) => a.startTime.localeCompare(b.startTime));
+      const first = sorted[0];
+      const last = sorted[sorted.length - 1];
+      if (slot.id === first.id || slot.id === last.id) {
+        setSelected((prev) => prev.filter((s) => s.id !== slot.id));
+      }
+      // Tapping a middle slot is a no-op — deselecting it would break contiguity
+      return;
+    }
+
+    if (selected.length === 0) {
+      setSelected([slot]);
+      return;
+    }
+
+    // Adjacency check using start/end times (handles variable-duration slots)
+    const sorted = [...selected].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+
+    if (slot.endTime === first.startTime || slot.startTime === last.endTime) {
+      setSelected((prev) => [...prev, slot]);
+      return;
+    }
+
+    Alert.alert(
+      'Adjacent slots only',
+      `You can only select adjacent slots in one booking. To book ${slot.startTime}–${slot.endTime} separately, please complete this booking and raise a new booking request for that slot.`,
+      [
+        { text: 'OK', style: 'cancel' },
+        {
+          text: 'Start new selection here',
+          onPress: () => setSelected([slot]),
+        },
+      ],
     );
-  }, []);
+  }, [selected, pastSlotIds]);
 
   const handleSportChange = (sportId: string) => {
     setActiveSportId(sportId);
@@ -286,7 +339,7 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
         ) : slots.length === 0 ? (
           <EmptyState icon="📅" title="No slots available" subtitle="Try another date or court" />
         ) : (
-          <SlotGrid slots={slots} selectedIds={selectedIds} onSelect={handleToggleSlot} />
+          <SlotGrid slots={slots} selectedIds={selectedIds} onSelect={handleToggleSlot} pastSlotIds={pastSlotIds} />
         )}
       </ScrollView>
 
