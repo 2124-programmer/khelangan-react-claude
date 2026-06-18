@@ -200,7 +200,7 @@ function BookingStatCard({
       hitSlop={4}
       style={({ pressed }) => [styles.bsCard, shadow.card, { opacity: pressed ? 0.75 : 1 }]}
     >
-      <Text style={styles.bsIcon}>{icon}</Text>
+      {/* <Text style={styles.bsIcon}>{icon}</Text> */}
       <Text style={[styles.bsCount, color ? { color } : undefined]}>{count}</Text>
       <Text style={styles.bsLabel}>{label}</Text>
     </Pressable>
