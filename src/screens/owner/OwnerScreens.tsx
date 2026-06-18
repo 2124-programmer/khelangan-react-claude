@@ -72,9 +72,13 @@ function tabQueryParams(tab: TabKey): { status?: string; date?: string; dateFrom
   }
 }
 
+const REFRESH_COOLDOWN_SECS = 12;
+
 export function BookingManagementScreen({ navigation }: any) {
   const [tab, setTab] = useState<TabKey>('requests');
   const [refreshing, setRefreshing] = useState(false);
+  // Counts down from REFRESH_COOLDOWN_SECS → 0; button is disabled while > 0
+  const [cooldownSecs, setCooldownSecs] = useState(0);
 
   const todayStr = useMemo(getTodayStr, []);
   const params = useMemo(() => tabQueryParams(tab), [tab]);
@@ -88,13 +92,22 @@ export function BookingManagementScreen({ navigation }: any) {
     { enabled: tab === 'cancelled' }
   );
 
+  // Tick the cooldown down by 1 every second until it reaches 0
+  useEffect(() => {
+    if (cooldownSecs <= 0) return;
+    const timer = setTimeout(() => setCooldownSecs((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldownSecs]);
+
   const handleRefresh = async () => {
+    if (refreshing || cooldownSecs > 0) return;
     setRefreshing(true);
     try {
       await refetch();
       if (tab === 'cancelled') await refetchPending();
     } finally {
       setRefreshing(false);
+      setCooldownSecs(REFRESH_COOLDOWN_SECS);
     }
   };
 
@@ -153,11 +166,13 @@ export function BookingManagementScreen({ navigation }: any) {
         </Text>
         <TouchableOpacity
           onPress={handleRefresh}
-          disabled={isLoading || refreshing}
-          style={[styles.bmsRefreshBtn, (isLoading || refreshing) && { opacity: 0.4 }]}
+          disabled={refreshing || cooldownSecs > 0}
+          style={[styles.bmsRefreshBtn, (refreshing || cooldownSecs > 0) && { opacity: 0.4 }]}
         >
           <Text style={styles.bmsRefreshIcon}>↻</Text>
-          <Text style={styles.bmsRefreshText}>Refresh</Text>
+          <Text style={styles.bmsRefreshText}>
+            {refreshing ? 'Loading…' : cooldownSecs > 0 ? `${cooldownSecs}s` : 'Refresh'}
+          </Text>
         </TouchableOpacity>
       </View>
       <ScrollView
@@ -170,12 +185,16 @@ export function BookingManagementScreen({ navigation }: any) {
           <EmptyState icon="📅" title="No bookings" subtitle="" />
         ) : (
           items.map((item) => {
+            const showContact = tab === 'today' || tab === 'upcoming' || tab === 'completed';
+            const tabCtx = showContact ? tab as 'today' | 'upcoming' | 'completed' : undefined;
             if (isGroup(item)) {
               return (
                 <GroupedBookingCard
                   key={item.groupId}
                   group={item}
                   viewAs="owner"
+                  showContact={showContact}
+                  tabCtx={tabCtx}
                   onAcceptAll={tab === 'requests' ? () => acceptGroup.mutate(item.groupId) : undefined}
                   onRejectAll={tab === 'requests' ? () => rejectGroup.mutate(item.groupId) : undefined}
                   onCheckInAll={tab === 'today' ? () => checkInGroup.mutate(item.groupId) : undefined}
@@ -190,6 +209,8 @@ export function BookingManagementScreen({ navigation }: any) {
                 key={item.id}
                 booking={item}
                 viewAs="owner"
+                showContact={showContact}
+                tabCtx={tabCtx}
                 onPress={() => navigation.navigate('OwnerBookingDetail', { bookingId: item.id })}
                 onCheckIn={tab === 'today' ? () => checkIn.mutate(Number(item.id)) : undefined}
               />

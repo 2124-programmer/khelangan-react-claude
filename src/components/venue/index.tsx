@@ -20,9 +20,14 @@ function sendWhatsApp(phone: string | undefined, message: string) {
   Linking.openURL(`https://wa.me/${cleaned}?text=${encodeURIComponent(message)}`).catch(() => {});
 }
 
-function waBookingMsg(b: { status: string; sport: string; venueName: string; date: string; startTime: string; endTime: string; id: string }): string {
+type TabCtx = 'today' | 'upcoming' | 'completed';
+
+function waBookingMsg(b: { status: string; sport: string; venueName: string; date: string; startTime: string; endTime: string; id: string }, tabCtx?: TabCtx): string {
   const sportName = getSportName(b.sport);
   const details = `${sportName} at ${b.venueName}\nDate: ${b.date}  •  ${b.startTime}–${b.endTime}\nBooking #${b.id}`;
+  if (tabCtx === 'today')     return `Hi! Just a reminder — my booking is today:\n${details}`;
+  if (tabCtx === 'upcoming')  return `Hi! I have an upcoming booking:\n${details}`;
+  if (tabCtx === 'completed') return `Hi! Thanks for the great session!\n${details}`;
   switch (b.status) {
     case 'pending':   return `Hi! I sent a booking request:\n${details}\n\nCould you please accept it?`;
     case 'confirmed': return `Hi! I have a confirmed booking:\n${details}`;
@@ -31,13 +36,36 @@ function waBookingMsg(b: { status: string; sport: string; venueName: string; dat
   }
 }
 
-function waGroupMsg(group: BookingGroup, slotTimes: string): string {
+function waOwnerBookingMsg(b: { playerName: string; venueName: string; date: string; startTime: string; endTime: string; status: string }, tabCtx?: TabCtx): string {
+  const details = `${b.venueName}\n📅 ${b.date}  •  ${b.startTime}–${b.endTime}`;
+  if (tabCtx === 'today')     return `Score-Adda Reminder !!! \n Hi ${b.playerName}!!! \n — your booking is today:\n${details}`;
+  if (tabCtx === 'upcoming')  return `Score-Adda Reminder !!! \n Hi ${b.playerName}!!! \n Your upcoming booking:\n${details}`;
+  if (tabCtx === 'completed') return `Score-Adda Reminder !!! \n Hi ${b.playerName}!!! \n Thanks for visiting us!\n${details}\n\nHope you had a great game!`;
+  return `Hi ${b.playerName}! Your booking at ${b.venueName}:\n📅 ${b.date}  •  ${b.startTime}–${b.endTime}\nStatus: ${b.status}`;
+}
+
+function waGroupMsg(group: BookingGroup, slotTimes: string, tabCtx?: TabCtx): string {
   const sportName = getSportName(group.sport);
   const details = `${sportName} at ${group.venueName}\nDate: ${group.date}  •  ${slotTimes}\nTotal: ₹${group.totalAmount}`;
+  if (tabCtx === 'today')     return `Hi ${group.playerName}! Reminder — your booking is today:\n${details}`;
+  if (tabCtx === 'upcoming')  return `Hi ${group.playerName}! Your upcoming booking:\n${details}`;
+  if (tabCtx === 'completed') return `Hi ${group.playerName}! Thanks for visiting us!\n${details}\n\nHope you had a great game!`;
   switch (group.status) {
     case 'pending':   return `Hi ${group.playerName}! Your booking request:\n${details}\n\nWe'll confirm shortly.`;
     case 'confirmed': return `Hi ${group.playerName}! Your booking is confirmed:\n${details}`;
     default:          return `Hi ${group.playerName}! Regarding your booking:\n${details}`;
+  }
+}
+
+function waPlayerGroupMsg(group: BookingGroup, slotTimes: string, tabCtx?: TabCtx): string {
+  const sportName = getSportName(group.sport);
+  const details = `${sportName} at ${group.venueName}\nDate: ${group.date}  •  ${slotTimes}\nTotal: ₹${group.totalAmount}`;
+  if (tabCtx === 'today')     return `Hi! Just a reminder — my booking is today:\n${details}`;
+  if (tabCtx === 'upcoming')  return `Hi! I have an upcoming booking:\n${details}`;
+  if (tabCtx === 'completed') return `Hi! Thanks for the great experience!\n${details}`;
+  switch (group.status) {
+    case 'confirmed': return `Hi! I have a confirmed booking:\n${details}`;
+    default:          return `Hi! Regarding my booking:\n${details}`;
   }
 }
 
@@ -374,12 +402,14 @@ interface BookingCardProps {
   onRebook?: () => void;
   onCheckIn?: () => void;
   viewAs?: 'player' | 'owner';
+  showContact?: boolean;
+  tabCtx?: TabCtx;
 }
-export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, onCheckIn, viewAs = 'player' }: BookingCardProps) {
+export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, onCheckIn, viewAs = 'player', showContact, tabCtx }: BookingCardProps) {
   const counterpartPhone = viewAs === 'owner' ? booking.playerPhone : booking.venuePhone;
   const waMsg = viewAs === 'owner'
-    ? `Hi ${booking.playerName}! Your booking at ${booking.venueName}:\n📅 ${booking.date}  •  ${booking.startTime}–${booking.endTime}\nStatus: ${booking.status}`
-    : waBookingMsg(booking);
+    ? waOwnerBookingMsg(booking, tabCtx)
+    : waBookingMsg(booking, tabCtx);
   const hasActions = onCancel || onReview || onRebook || onCheckIn;
 
   return (
@@ -406,7 +436,7 @@ export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, on
           {viewAs === 'owner' && (
             <View style={[styles.bcRow, { marginTop: 4 }]}>
               <Text style={[styles.bookingMeta, { marginTop: 0, flex: 1 }]} numberOfLines={1}>👤 {booking.playerName}</Text>
-              <ContactBtns phone={counterpartPhone} waMsg={waMsg} />
+              {showContact && <ContactBtns phone={counterpartPhone} waMsg={waMsg} />}
             </View>
           )}
 
@@ -414,7 +444,7 @@ export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, on
           {viewAs === 'player' && (
             <View style={[styles.bcRow, { marginTop: 4 }]}>
               <Text style={styles.bookingAmount}>₹{booking.amount}</Text>
-              <ContactBtns phone={counterpartPhone} waMsg={waMsg} />
+              {showContact && <ContactBtns phone={counterpartPhone} waMsg={waMsg} />}
             </View>
           )}
 
@@ -455,11 +485,14 @@ interface GroupedBookingCardProps {
   acceptPending?: boolean;
   rejectPending?: boolean;
   checkInPending?: boolean;
+  showContact?: boolean;
+  tabCtx?: TabCtx;
 }
 export function GroupedBookingCard({
   group, viewAs = 'player', onPress,
   onAcceptAll, onRejectAll, onCancelAll, onCheckInAll,
   acceptPending, rejectPending, checkInPending,
+  showContact, tabCtx,
 }: GroupedBookingCardProps) {
   const sorted = group.bookings.slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
   const isContiguous =
@@ -472,7 +505,9 @@ export function GroupedBookingCard({
   const canAct = group.status === 'pending';
   const canCheckIn = group.status === 'confirmed' && !!onCheckInAll;
   const counterpartPhone = viewAs === 'owner' ? group.playerPhone : group.venuePhone;
-  const waMsg = waGroupMsg(group, slotTimes);
+  const waMsg = viewAs === 'owner'
+    ? waGroupMsg(group, slotTimes, tabCtx)
+    : waPlayerGroupMsg(group, slotTimes, tabCtx);
 
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={[gbStyles.card, shadow.card]}>
@@ -502,12 +537,12 @@ export function GroupedBookingCard({
       {viewAs === 'owner' && (
         <View style={[gbStyles.row, { marginTop: 6 }]}>
           <Text style={[gbStyles.playerText, { flex: 1 }]} numberOfLines={1}>👤 {group.playerName}</Text>
-          <ContactBtns phone={counterpartPhone} waMsg={waMsg} />
+          {showContact && <ContactBtns phone={counterpartPhone} waMsg={waMsg} />}
         </View>
       )}
 
       {/* Row 4 (player): Contact buttons aligned right */}
-      {viewAs === 'player' && counterpartPhone && (
+      {viewAs === 'player' && showContact && counterpartPhone && (
         <View style={[gbStyles.row, { marginTop: 6, justifyContent: 'flex-end' }]}>
           <ContactBtns phone={counterpartPhone} waMsg={waMsg} />
         </View>

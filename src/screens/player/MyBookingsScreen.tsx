@@ -108,12 +108,16 @@ export default function MyBookingsScreen({ navigation }: any) {
           <EmptyState icon="📅" title="No bookings here" subtitle="Your bookings will appear in this tab" />
         ) : (
           items.map((item) => {
+            const showContact = tab === 'upcoming' || tab === 'completed';
+            const tabCtx = (tab === 'upcoming' || tab === 'completed') ? tab as 'upcoming' | 'completed' : undefined;
             if (isGroup(item)) {
               return (
                 <GroupedBookingCard
                   key={item.groupId}
                   group={item}
                   viewAs="player"
+                  showContact={showContact}
+                  tabCtx={tabCtx}
                   onCancelAll={() => handleCancelGroup(item)}
                 />
               );
@@ -122,6 +126,8 @@ export default function MyBookingsScreen({ navigation }: any) {
               <BookingCard
                 key={item.id}
                 booking={item}
+                showContact={showContact}
+                tabCtx={tabCtx}
                 onPress={() => navigation.navigate('BookingDetail', { bookingId: item.id })}
                 onCancel={() => setCancelTarget(item)}
                 onReview={() => navigation.navigate('RateReview', { bookingId: item.id })}
