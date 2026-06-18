@@ -751,6 +751,28 @@ const NOTIF_ICONS: Record<string, string> = {
   booking: '📋', payment: '💰', offer: '🎉', review: '⭐', system: '🔔',
 };
 
+// Parses the booking date (and optionally the last slot end time) from a
+// notification body like "…on 2026-06-10 (05:00–06:00, 06:00–07:00)…"
+// and returns true when the slot has already passed.
+function isNotifSlotPast(body: string, todayStr: string, nowMins: number): boolean {
+  const dateMatch = body.match(/\bon (\d{4}-\d{2}-\d{2})\b/);
+  if (!dateMatch) return false;
+
+  const bookingDate = dateMatch[1];
+  if (bookingDate < todayStr) return true;
+
+  if (bookingDate === todayStr) {
+    const bracketMatch = body.match(/\(([^)]+)\)/);
+    if (bracketMatch) {
+      const times = bracketMatch[1].match(/\d{2}:\d{2}/g);
+      if (times && times.length > 0) {
+        const [h, m] = times[times.length - 1].split(':').map(Number);
+        return h * 60 + m <= nowMins;
+      }
+    }
+  }
+  return false;
+}
 
 export function OwnerNotificationsScreen({ navigation }: any) {
   useNow();
@@ -842,18 +864,34 @@ export function OwnerNotificationsScreen({ navigation }: any) {
     }
   };
 
+  // Computed once per render; useNow() above ensures re-render every 30 s.
+  const _now = new Date();
+  const todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}-${String(_now.getDate()).padStart(2, '0')}`;
+  const nowMins = _now.getHours() * 60 + _now.getMinutes();
+
   // Show action buttons only when:
-  //   • it's a pending booking notification
+  //   • it's an unread "New Booking Request" notification
   //   • not yet actioned this session (in-memory fast path)
-  //   • not already read on the server (persists across reloads — once accepted/
-  //     rejected markAllSiblingNotifs marks the notification as read, so after the
-  //     next refetch isRead is true and buttons stay gone even with actionedRefs empty)
+  //   • not already read on the server (once accepted/rejected, markAllSiblingNotifs
+  //     marks it read so buttons stay gone after the next refetch)
+  //   • the booking's slot time has NOT yet passed
   const isActionable = (n: AppNotification) =>
     n.type === 'booking' &&
     !!n.referenceId &&
     n.title === 'New Booking Request' &&
     !n.isRead &&
-    !actionedRefs.has(n.referenceId!);
+    !actionedRefs.has(n.referenceId!) &&
+    !isNotifSlotPast(n.body, todayStr, nowMins);
+
+  // Unread "New Booking Request" whose slot time has already passed — no action
+  // is possible; we show an informational badge instead of Accept / Reject.
+  const isExpiredRequest = (n: AppNotification) =>
+    n.type === 'booking' &&
+    !!n.referenceId &&
+    n.title === 'New Booking Request' &&
+    !n.isRead &&
+    !actionedRefs.has(n.referenceId!) &&
+    isNotifSlotPast(n.body, todayStr, nowMins);
 
   const hasViewLink = (n: AppNotification) => n.type === 'booking' && !!n.referenceId;
 
@@ -876,6 +914,7 @@ export function OwnerNotificationsScreen({ navigation }: any) {
         ) : (
           notifications.map((n) => {
             const actionable = isActionable(n);
+            const expired = isExpiredRequest(n);
             const isThisLoading = loadingRef === n.referenceId;
 
             return (
@@ -931,8 +970,21 @@ export function OwnerNotificationsScreen({ navigation }: any) {
                   </View>
                 )}
 
-                {/* View-only link for non-actionable booking notifications */}
-                {!actionable && hasViewLink(n) && !isThisLoading && (
+                {/* Expired-slot banner — slot time has passed; no action needed */}
+                {expired && !isThisLoading && (
+                  <View style={nfStyles.expiredBanner}>
+                    <Text style={nfStyles.expiredLabel}>⏰ Slot time has already passed</Text>
+                    <Text style={nfStyles.expiredSub}>
+                      This request has expired — you can no longer accept or reject it.
+                    </Text>
+                    <TouchableOpacity style={{ marginTop: spacing.xs }} onPress={() => handleView(n)}>
+                      <Text style={nfStyles.viewText}>View Booking →</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* View-only link for non-actionable, non-expired booking notifications */}
+                {!actionable && !expired && hasViewLink(n) && !isThisLoading && (
                   <TouchableOpacity style={{ marginTop: spacing.sm }} onPress={() => handleView(n)}>
                     <Text style={nfStyles.viewText}>View Booking →</Text>
                   </TouchableOpacity>
@@ -977,6 +1029,16 @@ const nfStyles = StyleSheet.create({
   acceptText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: '#fff' },
   rejectText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: '#fff' },
   viewText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.primary },
+  expiredBanner: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+  },
+  expiredLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: '#92400e' },
+  expiredSub: { fontSize: fontSize.xs, color: '#b45309', marginTop: 2, lineHeight: 16 },
 });
 
 /* ───────────────── OwnerSettingsScreen ───────────────── */
