@@ -508,6 +508,7 @@ export interface DashboardEarningsDto {
 }
 
 export interface DashboardBookingCountsDto {
+  requests: number;
   today: number;
   upcoming: number;
   completedLast30Days: number;

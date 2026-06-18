@@ -344,7 +344,7 @@ export function OwnerBookingDetailScreen({ navigation, route }: any) {
 }
 
 /* ───────────────── EarningsScreen ───────────────── */
-export function EarningsScreen() {
+export function EarningsScreen({ navigation }: any) {
   const { data: stats, refetch: refetchStats } = useOwnerStats();
   const { data, refetch: refetchPayouts } = useOwnerPayouts();
   const payouts = data?.payouts ?? [];
@@ -356,7 +356,7 @@ export function EarningsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="Earnings" />
+      <AppHeader title="Earnings" onBack={() => navigation.goBack()} />
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
@@ -398,7 +398,7 @@ export function EarningsScreen() {
 }
 
 /* ───────────────── ReviewsManagementScreen ───────────────── */
-export function ReviewsManagementScreen() {
+export function ReviewsManagementScreen({ navigation }: any) {
   const { data, isLoading, refetch } = useOwnerReviews();
   const reviews = data?.reviews ?? [];
   const [refreshing, setRefreshing] = useState(false);
@@ -409,7 +409,7 @@ export function ReviewsManagementScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="Reviews" />
+      <AppHeader title="Reviews" onBack={() => navigation.goBack()} />
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}

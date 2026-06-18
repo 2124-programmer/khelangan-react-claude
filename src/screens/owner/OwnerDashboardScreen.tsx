@@ -139,37 +139,22 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
           <Action icon="📋" label="Requests"   onPress={() => goBookings('requests')} />
         </View>
 
+
         {/* ── Bookings overview ── */}
         <Text style={styles.sectionTitle}>Bookings</Text>
         {isLoading ? (
-          <View style={styles.placeholderGrid}>
-            {[0, 1, 2, 3].map((i) => <View key={i} style={styles.placeholder} />)}
+          <View style={styles.bsRow}>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <View key={i} style={[styles.bsCard, { backgroundColor: colors.surfaceAlt }]} />
+            ))}
           </View>
         ) : (
-          <View style={styles.metricsGrid}>
-            <MetricCard
-              title="Today"
-              value={String(bookings?.today ?? 0)}
-              onPress={() => goBookings('today')}
-            />
-            <MetricCard
-              title="Upcoming"
-              value={String(bookings?.upcoming ?? 0)}
-              accentColor={colors.owner}
-              onPress={() => goBookings('upcoming')}
-            />
-            <MetricCard
-              title="Completed (30d)"
-              value={String(bookings?.completedLast30Days ?? 0)}
-              accentColor={colors.success}
-              onPress={() => goBookings('completed')}
-            />
-            <MetricCard
-              title="Cancelled (30d)"
-              value={String(bookings?.cancelledLast30Days ?? 0)}
-              accentColor={colors.danger}
-              onPress={() => goBookings('cancelled')}
-            />
+          <View style={styles.bsRow}>
+            <BookingStatCard icon="📋" count={bookings?.requests ?? 0}            color={colors.primary}  label="Pending"   onPress={() => goBookings('requests')} />
+            <BookingStatCard icon="📅" count={bookings?.today ?? 0}               label="Today"            onPress={() => goBookings('today')} />
+            <BookingStatCard icon="⏰" count={bookings?.upcoming ?? 0}            color={colors.owner}    label="Upcoming"  onPress={() => goBookings('upcoming')} />
+            <BookingStatCard icon="✅" count={bookings?.completedLast30Days ?? 0} color={colors.success}  label="Done"      onPress={() => goBookings('completed')} />
+            <BookingStatCard icon="❌" count={bookings?.cancelledLast30Days ?? 0} color={colors.danger}   label="Cancelled" onPress={() => goBookings('cancelled')} />
           </View>
         )}
 
@@ -193,12 +178,32 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
             <MetricCard
               title="Courts"
               value={String(stats?.courtCount ?? 0)}
-              onPress={() => navigation.navigate('VenuesTab')}
+              onPress={() => navigation.navigate('VenuesTab', { screen: 'VenuesHome' })}
             />
           </View>
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function BookingStatCard({
+  icon, count, label, color, onPress,
+}: {
+  icon: string; count: number; label: string; color?: string; onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={4}
+      style={({ pressed }) => [styles.bsCard, shadow.card, { opacity: pressed ? 0.75 : 1 }]}
+    >
+      <Text style={styles.bsIcon}>{icon}</Text>
+      <Text style={[styles.bsCount, color ? { color } : undefined]}>{count}</Text>
+      <Text style={styles.bsLabel}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -236,14 +241,19 @@ const styles = StyleSheet.create({
 
   sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.xl, marginBottom: spacing.md },
 
-  actionsGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  action:       { alignItems: 'center', gap: spacing.xs, width: '18%' },
+  actionsGrid:  { flexDirection: 'row', justifyContent: 'space-between' },
+  action:       { alignItems: 'center', gap: spacing.xs },
   actionIcon:   { width: 56, height: 56, borderRadius: radius.lg, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', ...shadow.card },
   actionLabel:  { fontSize: fontSize.xs, color: colors.textMid, textAlign: 'center' },
 
-  metricsGrid:  { flexDirection: 'row', flexWrap: 'wrap' },
   metricsRow:   { flexDirection: 'row', flexWrap: 'wrap' },
 
   placeholderGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   placeholder:     { flex: 1, minWidth: '40%', height: 72, margin: spacing.xs, borderRadius: radius.lg, backgroundColor: colors.surfaceAlt },
+
+  bsRow:   { flexDirection: 'row' },
+  bsCard:  { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, paddingVertical: spacing.md, marginHorizontal: 3, borderWidth: 1, borderColor: colors.border, minHeight: 84 },
+  bsIcon:  { fontSize: 22 },
+  bsCount: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text, marginTop: 4 },
+  bsLabel: { fontSize: 9, color: colors.textDim, marginTop: 2, textAlign: 'center' },
 });
