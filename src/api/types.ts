@@ -497,6 +497,35 @@ export interface OwnerStatsDto {
   pendingPayout?: number;
 }
 
+// ─── Owner Dashboard Summary ─────────────────────────────────────────────────
+
+export interface DashboardEarningsDto {
+  todayAmount: number;
+  weekAmount: number;
+  monthAmount: number;
+  pendingAmount: number;
+  todayBookingCount: number;
+}
+
+export interface DashboardBookingCountsDto {
+  today: number;
+  upcoming: number;
+  completedLast30Days: number;
+  cancelledLast30Days: number;
+}
+
+export interface DashboardStatsDto {
+  usersConnected: number;
+  venueCount: number;
+  courtCount: number;
+}
+
+export interface OwnerDashboardSummaryDto {
+  earnings: DashboardEarningsDto;
+  bookings: DashboardBookingCountsDto;
+  stats: DashboardStatsDto;
+}
+
 // ─── Settings ────────────────────────────────────────────────────────────────
 
 export interface PlatformSettingsDto {

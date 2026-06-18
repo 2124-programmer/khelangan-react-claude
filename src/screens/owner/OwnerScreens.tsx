@@ -74,9 +74,15 @@ function tabQueryParams(tab: TabKey): { status?: string; date?: string; dateFrom
 
 const REFRESH_COOLDOWN_SECS = 12;
 
-export function BookingManagementScreen({ navigation }: any) {
-  const [tab, setTab] = useState<TabKey>('requests');
+export function BookingManagementScreen({ navigation, route }: any) {
+  const routeTab = (route?.params?.initialTab as TabKey | undefined);
+  const [tab, setTab] = useState<TabKey>(routeTab ?? 'requests');
   const [refreshing, setRefreshing] = useState(false);
+
+  // Re-sync when navigated to this screen with a different initialTab param
+  useEffect(() => {
+    if (routeTab) setTab(routeTab);
+  }, [routeTab]);
   // Counts down from REFRESH_COOLDOWN_SECS → 0; button is disabled while > 0
   const [cooldownSecs, setCooldownSecs] = useState(0);
 

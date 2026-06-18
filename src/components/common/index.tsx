@@ -2,7 +2,7 @@
 import React, { useState, forwardRef, useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
-  ActivityIndicator, Image, ScrollView, ViewStyle, Modal, Animated,
+  ActivityIndicator, Image, ScrollView, ViewStyle, Modal, Animated, Pressable,
 } from 'react-native';
 import BallOrbitLoader from '../BallOrbitLoader';
 import { useNavigation } from '@react-navigation/native';
@@ -483,6 +483,37 @@ const toastStyles = StyleSheet.create({
   x: { color: 'rgba(255,255,255,0.85)', fontSize: 16, fontWeight: 'bold' },
 });
 
+/* ───────────────── MetricCard ───────────────── */
+interface MetricCardProps {
+  title: string;
+  value: string;
+  subtitle?: string;
+  accentColor?: string;
+  onPress?: () => void;
+}
+export function MetricCard({ title, value, subtitle, accentColor, onPress }: MetricCardProps) {
+  const content = (
+    <View style={[styles.metricCard, shadow.card]}>
+      <Text style={styles.metricTitle}>{title}</Text>
+      <Text style={[styles.metricValue, accentColor ? { color: accentColor } : undefined]}>
+        {value}
+      </Text>
+      {subtitle ? <Text style={styles.metricSubtitle}>{subtitle}</Text> : null}
+    </View>
+  );
+  if (!onPress) return content;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      hitSlop={8}
+      style={({ pressed }) => [{ opacity: pressed ? 0.75 : 1 }, { flex: 1 }]}
+    >
+      {content}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   btn: {
     height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center',
@@ -606,4 +637,12 @@ const styles = StyleSheet.create({
   dropdownItemActive: { backgroundColor: colors.primaryLight },
   dropdownItemText: { fontSize: fontSize.md, color: colors.text },
   dropdownItemTextActive: { color: colors.primary, fontWeight: fontWeight.semibold },
+  metricCard: {
+    flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg,
+    padding: spacing.lg, margin: spacing.xs,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  metricTitle: { fontSize: fontSize.xs, color: colors.textMid, marginBottom: spacing.xs },
+  metricValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
+  metricSubtitle: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 2 },
 });

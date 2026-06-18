@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bookingService } from '../services/bookingService';
 import { adaptBooking } from '../adapters';
 import type { BulkCreateBookingRequest, CreateBookingRequest } from '../types';
+import { ownerDashboardKeys } from './useOwnerDashboard';
 
 export const BOOKINGS_KEY = ['bookings'] as const;
 export const ADMIN_BOOKINGS_KEY = ['admin', 'bookings'] as const;
@@ -95,6 +96,7 @@ export function useAcceptBooking() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: ['notifications'] });
+      qc.invalidateQueries({ queryKey: ownerDashboardKeys.summary() });
     },
   });
 }
@@ -106,6 +108,7 @@ export function useRejectBooking() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: ['notifications'] });
+      qc.invalidateQueries({ queryKey: ownerDashboardKeys.summary() });
     },
   });
 }
@@ -118,6 +121,7 @@ export function useAcceptBookingGroup() {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: ['slots'] });
       qc.invalidateQueries({ queryKey: ['notifications'] });
+      qc.invalidateQueries({ queryKey: ownerDashboardKeys.summary() });
     },
   });
 }
@@ -130,6 +134,7 @@ export function useRejectBookingGroup() {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: ['slots'] });
       qc.invalidateQueries({ queryKey: ['notifications'] });
+      qc.invalidateQueries({ queryKey: ownerDashboardKeys.summary() });
     },
   });
 }
