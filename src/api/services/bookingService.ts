@@ -3,7 +3,7 @@ import type { BookingDto, BulkCreateBookingRequest, CreateBookingRequest, Page }
 
 export const bookingService = {
   // Role-scoped: player sees own, owner sees venue bookings, admin sees all
-  list: (params?: { status?: string; page?: number; size?: number }) =>
+  list: (params?: { status?: string; date?: string; dateFrom?: string; page?: number; size?: number }) =>
     apiClient.get<Page<BookingDto>>('/api/v1/bookings', { params }).then((r) => r.data),
 
   getById: (id: number) =>

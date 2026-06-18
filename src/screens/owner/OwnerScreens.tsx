@@ -46,30 +46,56 @@ function FieldErr({ msg }: { msg?: string }) {
 }
 
 /* ───────────────── BookingManagementScreen ───────────────── */
-const OWNER_STATUS_MAP: Record<string, string> = {
-  requests: 'PENDING',
-  today: 'CONFIRMED',
-  upcoming: 'CONFIRMED',
-  completed: 'COMPLETED',
-  cancelled: 'CANCELLED',
-};
+
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function getTomorrowStr() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Each tab maps to the exact query params sent to the backend.
+// Different params → different React Query cache keys → tab switch always hits the API.
+type TabKey = 'requests' | 'today' | 'upcoming' | 'completed' | 'cancelled';
+
+function tabQueryParams(tab: TabKey): { status?: string; date?: string; dateFrom?: string } {
+  switch (tab) {
+    case 'requests':  return { status: 'PENDING' };
+    case 'today':     return { status: 'CONFIRMED', date: getTodayStr() };
+    case 'upcoming':  return { status: 'CONFIRMED', dateFrom: getTomorrowStr() };
+    case 'completed': return { status: 'COMPLETED' };
+    case 'cancelled': return { status: 'CANCELLED' };
+  }
+}
 
 export function BookingManagementScreen({ navigation }: any) {
-  const [tab, setTab] = useState('requests');
-
-  const todayStr = useMemo(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }, []);
-
-  const { data, isLoading, refetch } = useBookings({ status: OWNER_STATUS_MAP[tab] });
-  // Always keep PENDING in cache so the Cancelled tab can surface expired pending requests
-  const { data: pendingData } = useBookings({ status: 'PENDING' });
-
+  const [tab, setTab] = useState<TabKey>('requests');
   const [refreshing, setRefreshing] = useState(false);
+
+  const todayStr = useMemo(getTodayStr, []);
+  const params = useMemo(() => tabQueryParams(tab), [tab]);
+
+  // Primary query — params change per tab, so each tab triggers its own API call
+  const { data, isLoading, refetch } = useBookings(params);
+
+  // PENDING second query — only enabled on the Cancelled tab to surface expired pending requests
+  const { data: pendingData, refetch: refetchPending } = useBookings(
+    { status: 'PENDING' },
+    { enabled: tab === 'cancelled' }
+  );
+
   const handleRefresh = async () => {
     setRefreshing(true);
-    try { await refetch(); } finally { setRefreshing(false); }
+    try {
+      await refetch();
+      if (tab === 'cancelled') await refetchPending();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const acceptGroup = useAcceptBookingGroup();
@@ -83,20 +109,19 @@ export function BookingManagementScreen({ navigation }: any) {
     let list = [...(data?.bookings ?? [])];
 
     if (tab === 'requests') {
-      // Exclude expired pending requests — they flow to Cancelled
+      // Backend returns only PENDING; remove the few that have already expired (24 h window)
       list = list.filter((b) => !isExpiredPending(b, todayStr, nowMins));
       list.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
     } else if (tab === 'today') {
-      // Today only; Upcoming is strictly future
-      list = list.filter((b) => b.date === todayStr);
+      // Backend already filters by date=today; sort by start time
       list.sort((a, b) => a.startTime.localeCompare(b.startTime));
     } else if (tab === 'upcoming') {
-      list = list.filter((b) => b.date > todayStr);
+      // Backend already filters by dateFrom=tomorrow; sort chronologically
       list.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
     } else if (tab === 'completed') {
       list.sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
     } else if (tab === 'cancelled') {
-      // Merge explicitly cancelled with expired pending requests
+      // Merge CANCELLED + expired PENDING (fetched only when this tab is active)
       const expired = (pendingData?.bookings ?? []).filter((b) => isExpiredPending(b, todayStr, nowMins));
       list = [...list, ...expired];
       list.sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
@@ -119,8 +144,22 @@ export function BookingManagementScreen({ navigation }: any) {
           { label: 'Cancelled', value: 'cancelled' },
         ]}
         activeTab={tab}
-        onChange={setTab}
+        onChange={(t) => setTab(t as TabKey)}
       />
+      {/* Fixed refresh bar — stays visible while scrolling */}
+      <View style={styles.bmsRefreshBar}>
+        <Text style={styles.bmsRefreshLabel}>
+          {isLoading || refreshing ? 'Loading…' : `${items.length} result${items.length !== 1 ? 's' : ''}`}
+        </Text>
+        <TouchableOpacity
+          onPress={handleRefresh}
+          disabled={isLoading || refreshing}
+          style={[styles.bmsRefreshBtn, (isLoading || refreshing) && { opacity: 0.4 }]}
+        >
+          <Text style={styles.bmsRefreshIcon}>↻</Text>
+          <Text style={styles.bmsRefreshText}>Refresh</Text>
+        </TouchableOpacity>
+      </View>
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
@@ -546,7 +585,7 @@ export function EditVenueScreen({ navigation, route }: any) {
     return (
       <SafeAreaView style={styles.container}>
         <AppHeader title="Edit Venue" onBack={() => navigation.goBack()} />
-        <LoadingOverlay visible={isLoading} />
+        <LoadingOverlay visible={venueLoading} />
       </SafeAreaView>
     );
   }
@@ -1030,6 +1069,11 @@ const styles = StyleSheet.create({
   planName: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
   planPrice: { fontSize: fontSize.lg, color: colors.primary, fontWeight: fontWeight.semibold, marginTop: 4 },
   planFeature: { fontSize: fontSize.sm, color: colors.textMid, marginTop: spacing.xs },
+  bmsRefreshBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: 8, backgroundColor: colors.bg, borderBottomWidth: 1, borderBottomColor: colors.border },
+  bmsRefreshLabel: { fontSize: fontSize.xs, color: colors.textDim },
+  bmsRefreshBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.md, paddingVertical: 5, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.primary },
+  bmsRefreshIcon: { fontSize: 14, color: colors.primary },
+  bmsRefreshText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.primary },
   notifRow: { flexDirection: 'row', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   notifUnread: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
   notifTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },

@@ -6,7 +6,10 @@ import type { BulkCreateBookingRequest, CreateBookingRequest } from '../types';
 export const BOOKINGS_KEY = ['bookings'] as const;
 export const ADMIN_BOOKINGS_KEY = ['admin', 'bookings'] as const;
 
-export function useBookings(params?: { status?: string; page?: number }) {
+export function useBookings(
+  params?: { status?: string; date?: string; dateFrom?: string; page?: number; size?: number },
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: [...BOOKINGS_KEY, params],
     queryFn: async () => {
@@ -17,6 +20,7 @@ export function useBookings(params?: { status?: string; page?: number }) {
         totalElements: page.totalElements,
       };
     },
+    enabled: options?.enabled ?? true,
   });
 }
 

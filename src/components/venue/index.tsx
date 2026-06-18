@@ -14,6 +14,55 @@ function callPhone(phone: string | undefined) {
   Linking.openURL(`tel:${cleaned}`).catch(() => {});
 }
 
+function sendWhatsApp(phone: string | undefined, message: string) {
+  if (!phone) return;
+  const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+  Linking.openURL(`https://wa.me/${cleaned}?text=${encodeURIComponent(message)}`).catch(() => {});
+}
+
+function waBookingMsg(b: { status: string; sport: string; venueName: string; date: string; startTime: string; endTime: string; id: string }): string {
+  const sportName = getSportName(b.sport);
+  const details = `${sportName} at ${b.venueName}\nDate: ${b.date}  •  ${b.startTime}–${b.endTime}\nBooking #${b.id}`;
+  switch (b.status) {
+    case 'pending':   return `Hi! I sent a booking request:\n${details}\n\nCould you please accept it?`;
+    case 'confirmed': return `Hi! I have a confirmed booking:\n${details}`;
+    case 'cancelled': return `Hi! Regarding my cancelled booking:\n${details}\n\n`;
+    default:          return `Hi! Regarding my booking:\n${details}`;
+  }
+}
+
+function waGroupMsg(group: BookingGroup, slotTimes: string): string {
+  const sportName = getSportName(group.sport);
+  const details = `${sportName} at ${group.venueName}\nDate: ${group.date}  •  ${slotTimes}\nTotal: ₹${group.totalAmount}`;
+  switch (group.status) {
+    case 'pending':   return `Hi ${group.playerName}! Your booking request:\n${details}\n\nWe'll confirm shortly.`;
+    case 'confirmed': return `Hi ${group.playerName}! Your booking is confirmed:\n${details}`;
+    default:          return `Hi ${group.playerName}! Regarding your booking:\n${details}`;
+  }
+}
+
+function ContactBtns({ phone, waMsg }: { phone?: string; waMsg: string }) {
+  if (!phone) return null;
+  return (
+    <View style={cbStyles.row}>
+      <TouchableOpacity onPress={() => callPhone(phone)} style={cbStyles.callBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Text style={cbStyles.callIcon}>📞</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => sendWhatsApp(phone, waMsg)} style={cbStyles.waBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Text style={cbStyles.waText}>W</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const cbStyles = StyleSheet.create({
+  row: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  callBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  waBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#25D366', alignItems: 'center', justifyContent: 'center' },
+  callIcon: { fontSize: 14 },
+  waText: { color: '#fff', fontSize: 13, fontWeight: fontWeight.bold },
+});
+
 export { VenueImagePicker } from './VenueImagePicker';
 export type { PickedImage } from './VenueImagePicker';
 export { VenueImageCarousel } from './VenueImageCarousel';
@@ -328,6 +377,9 @@ interface BookingCardProps {
 }
 export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, onCheckIn, viewAs = 'player' }: BookingCardProps) {
   const counterpartPhone = viewAs === 'owner' ? booking.playerPhone : booking.venuePhone;
+  const waMsg = viewAs === 'owner'
+    ? `Hi ${booking.playerName}! Your booking at ${booking.venueName}:\n📅 ${booking.date}  •  ${booking.startTime}–${booking.endTime}\nStatus: ${booking.status}`
+    : waBookingMsg(booking);
   const hasActions = onCancel || onReview || onRebook || onCheckIn;
 
   return (
@@ -335,27 +387,42 @@ export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, on
       <View style={{ flexDirection: 'row' }}>
         <Image source={{ uri: booking.venuePhoto }} style={styles.bookingImg} />
         <View style={{ flex: 1, marginLeft: spacing.md }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <Text style={[styles.bookingVenue, { flex: 1, marginRight: spacing.sm }]} numberOfLines={1}>{booking.venueName}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-              {counterpartPhone && (
-                <TouchableOpacity
-                  onPress={(e) => { e.stopPropagation(); callPhone(counterpartPhone); }}
-                  style={styles.callBtn}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Text style={styles.callBtnText}>📞</Text>
-                </TouchableOpacity>
-              )}
-              <StatusBadge status={booking.status} />
-            </View>
+
+          {/* Row 1: venue name + status */}
+          <View style={styles.bcRow}>
+            <Text style={[styles.bookingVenue, { flex: 1 }]} numberOfLines={1}>{booking.venueName}</Text>
+            <StatusBadge status={booking.status} />
           </View>
-          <Text style={styles.bookingMeta}>{getSportIcon(booking.sport)} {getSportName(booking.sport)} · {booking.courtName}</Text>
-          <Text style={styles.bookingMeta}>📅 {booking.date} · {booking.startTime}–{booking.endTime}</Text>
-          {viewAs === 'owner' && <Text style={styles.bookingMeta}>👤 {booking.playerName}</Text>}
-          <Text style={styles.bookingAmount}>₹{booking.amount}</Text>
+
+          {/* Row 2: sport + court */}
+          <Text style={styles.bookingMeta}>
+            {getSportIcon(booking.sport)} {getSportName(booking.sport)} · {booking.courtName}
+          </Text>
+
+          {/* Row 3: date + time */}
+          <Text style={styles.bookingMeta}>📅 {booking.date}  •  {booking.startTime}–{booking.endTime}</Text>
+
+          {/* Row 4 (owner): player name + contact */}
+          {viewAs === 'owner' && (
+            <View style={[styles.bcRow, { marginTop: 4 }]}>
+              <Text style={[styles.bookingMeta, { marginTop: 0, flex: 1 }]} numberOfLines={1}>👤 {booking.playerName}</Text>
+              <ContactBtns phone={counterpartPhone} waMsg={waMsg} />
+            </View>
+          )}
+
+          {/* Row 4 (player): amount + contact */}
+          {viewAs === 'player' && (
+            <View style={[styles.bcRow, { marginTop: 4 }]}>
+              <Text style={styles.bookingAmount}>₹{booking.amount}</Text>
+              <ContactBtns phone={counterpartPhone} waMsg={waMsg} />
+            </View>
+          )}
+
+          {/* Amount for owner view (separate row) */}
+          {viewAs === 'owner' && <Text style={styles.bookingAmount}>₹{booking.amount}</Text>}
         </View>
       </View>
+
       {hasActions && (
         <View style={styles.actionRow}>
           {booking.status === 'confirmed' && onCheckIn && (
@@ -405,41 +472,52 @@ export function GroupedBookingCard({
   const canAct = group.status === 'pending';
   const canCheckIn = group.status === 'confirmed' && !!onCheckInAll;
   const counterpartPhone = viewAs === 'owner' ? group.playerPhone : group.venuePhone;
+  const waMsg = waGroupMsg(group, slotTimes);
 
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={[gbStyles.card, shadow.card]}>
-      <View style={gbStyles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={gbStyles.venueName} numberOfLines={1}>{group.venueName}</Text>
-          <Text style={gbStyles.meta}>{getSportIcon(group.sport)} {getSportName(group.sport)} · {group.courtName}</Text>
-          {viewAs === 'owner' && (
-            <Text style={gbStyles.meta}>👤 {group.playerName}</Text>
-          )}
-        </View>
-        <View style={{ alignItems: 'flex-end', gap: spacing.xs }}>
-          {counterpartPhone && (
-            <TouchableOpacity
-              onPress={(e) => { e.stopPropagation(); callPhone(counterpartPhone); }}
-              style={styles.callBtn}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={styles.callBtnText}>📞</Text>
-            </TouchableOpacity>
-          )}
-          <StatusBadge status={group.status} />
+
+      {/* Row 1: Venue name + Status badge */}
+      <View style={gbStyles.row}>
+        <Text style={[gbStyles.venueName, { flex: 1 }]} numberOfLines={1}>{group.venueName}</Text>
+        <StatusBadge status={group.status} />
+      </View>
+
+      {/* Row 2: Date + slot time range + slots count badge */}
+      <View style={[gbStyles.row, { marginTop: 6 }]}>
+        <Text style={gbStyles.infoText} numberOfLines={1}>
+          📅 {group.date}{'  '}{slotTimes}
+        </Text>
+        <View style={gbStyles.slotBadge}>
+          <Text style={gbStyles.slotBadgeText}>{group.bookings.length} slots</Text>
         </View>
       </View>
 
-      <View style={gbStyles.body}>
-        <View style={gbStyles.slotCountBadge}>
-          <Text style={gbStyles.slotCountText}>{group.bookings.length} slots</Text>
+      {/* Row 3: Sport icon + sport name + court */}
+      <Text style={gbStyles.sportText}>
+        {getSportIcon(group.sport)} {getSportName(group.sport)} · {group.courtName}
+      </Text>
+
+      {/* Row 4 (owner): Player name + Call + WhatsApp inline */}
+      {viewAs === 'owner' && (
+        <View style={[gbStyles.row, { marginTop: 6 }]}>
+          <Text style={[gbStyles.playerText, { flex: 1 }]} numberOfLines={1}>👤 {group.playerName}</Text>
+          <ContactBtns phone={counterpartPhone} waMsg={waMsg} />
         </View>
-        <Text style={gbStyles.dateText}>📅 {group.date}</Text>
-      </View>
+      )}
 
-      <Text style={gbStyles.times} numberOfLines={2}>{slotTimes}</Text>
+      {/* Row 4 (player): Contact buttons aligned right */}
+      {viewAs === 'player' && counterpartPhone && (
+        <View style={[gbStyles.row, { marginTop: 6, justifyContent: 'flex-end' }]}>
+          <ContactBtns phone={counterpartPhone} waMsg={waMsg} />
+        </View>
+      )}
 
-      <View style={gbStyles.footer}>
+      {/* Divider */}
+      <View style={gbStyles.divider} />
+
+      {/* Footer: Total + Actions */}
+      <View style={gbStyles.row}>
         <View>
           <Text style={gbStyles.totalLabel}>Total</Text>
           <Text style={gbStyles.totalAmount}>₹{group.totalAmount}</Text>
@@ -498,24 +576,20 @@ const gbStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: spacing.sm,
-  },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   venueName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
-  meta: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 2 },
-  body: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.sm },
-  slotCountBadge: {
+  infoText: { fontSize: fontSize.sm, color: colors.textMid, flex: 1 },
+  slotBadge: {
     backgroundColor: colors.primary,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: 3,
+    marginLeft: spacing.sm,
   },
-  slotCountText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.white },
-  dateText: { fontSize: fontSize.sm, color: colors.textMid },
-  times: { fontSize: fontSize.sm, color: colors.textMid, marginBottom: spacing.md, lineHeight: 18 },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  slotBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.white },
+  sportText: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 4 },
+  playerText: { fontSize: fontSize.xs, color: colors.textMid },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
   totalLabel: { fontSize: fontSize.xs, color: colors.textDim },
   totalAmount: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
 });
@@ -570,9 +644,8 @@ const styles = StyleSheet.create({
   bookingVenue: { flex: 1, fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
   bookingMeta: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 3 },
   bookingAmount: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text, marginTop: 4 },
+  bcRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   actionRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
-  callBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  callBtnText: { fontSize: 14 },
   priceBox: { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.lg },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
   priceLabel: { fontSize: fontSize.sm, color: colors.textMid },

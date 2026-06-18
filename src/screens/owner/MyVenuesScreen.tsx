@@ -18,11 +18,12 @@ export default function MyVenuesScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader
-        title="My Venues"
-        rightLabel="+ Add"
-        onRightPress={() => navigation.navigate('AddVenue')}
-      />
+      <AppHeader title="My Venues" />
+      <View style={styles.addBar}>
+        <TouchableOpacity onPress={() => navigation.navigate('AddVenue')} style={styles.addBtn}>
+          <Text style={styles.addBtnText}>+ Add</Text>
+        </TouchableOpacity>
+      </View>
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
@@ -82,6 +83,9 @@ export default function MyVenuesScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
+  addBar: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, backgroundColor: colors.bg, borderBottomWidth: 1, borderBottomColor: colors.border },
+  addBtn: { paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.primary },
+  addBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.primary },
   card: { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden', marginBottom: spacing.lg },
   img: { width: '100%', height: 130, backgroundColor: colors.surfaceAlt },
   body: { padding: spacing.lg },
