@@ -21,8 +21,12 @@ interface AuthState {
   login: (role: UserRole) => void;
   /** Real auth: email + password against /api/v1/auth/login */
   loginWithCredentials: (email: string, password: string) => Promise<void>;
+  /** Login without immediately setting React state. Caller applies session via updateSession. */
+  loginWithCredentialsDeferred: (email: string, password: string) => Promise<{ token: string; user: UserDto }>;
   /** Real auth: register a new user */
   registerUser: (data: Omit<RegisterRequest, 'role'> & { role: UserRole }) => Promise<void>;
+  /** Register only — saves tokens but does NOT set React state. Caller applies session via updateSession. */
+  registerUserDeferred: (data: Omit<RegisterRequest, 'role'> & { role: UserRole }) => Promise<{ token: string; user: UserDto }>;
   logout: () => Promise<void>;
   /** Update token + user after a role change — issues new JWT immediately */
   updateSession: (newToken: string, userDto: UserDto) => Promise<void>;
@@ -118,6 +122,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const loginWithCredentialsDeferred = useCallback(async (email: string, password: string) => {
+    setAuthError(null);
+    try {
+      const res = await authService.login({ email: email.trim().toLowerCase(), password });
+      if (!res.token || !res.user) throw new Error('Invalid server response');
+      await saveToken(res.token);
+      await saveRefreshToken(res.refreshToken ?? res.token);
+      return { token: res.token, user: res.user };
+    } catch (e: any) {
+      const msg = e?.response?.data?.message ?? e?.message ?? 'Login failed. Please try again.';
+      setAuthError(String(msg));
+      throw e;
+    }
+  }, []);
+
+  const registerUserDeferred = useCallback(
+    async (data: Omit<RegisterRequest, 'role'> & { role: UserRole }) => {
+      setAuthError(null);
+      try {
+        const backendRole = data.role.toUpperCase() as 'PLAYER' | 'OWNER';
+        const res = await authService.register({ ...data, role: backendRole });
+        if (!res.token || !res.user) throw new Error('Invalid server response');
+        await saveToken(res.token);
+        await saveRefreshToken(res.refreshToken ?? res.token);
+        return { token: res.token, user: res.user };
+      } catch (e: any) {
+        const msg = e?.response?.data?.message ?? e?.message ?? 'Registration failed. Please try again.';
+        setAuthError(String(msg));
+        throw e;
+      }
+    },
+    []
+  );
+
   const logout = useCallback(async () => {
     // NOTE: no server-side token revocation endpoint exists; logout is client-side only.
     // The JWT remains technically valid until its expiry (app.jwt.expiration-ms).
@@ -156,7 +194,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     authError,
     login,
     loginWithCredentials,
+    loginWithCredentialsDeferred,
     registerUser,
+    registerUserDeferred,
     logout,
     updateSession,
     updateUser,

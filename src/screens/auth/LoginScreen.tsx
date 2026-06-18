@@ -1,36 +1,44 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, TextInput,
+  TouchableOpacity, TextInput, Modal,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppInput, AppButton, AppHeader, Toast, LoadingOverlay } from '../../components/common';
 import { useAuth } from '../../store/AuthContext';
 import { extractApiError, extractFieldErrors, getHttpStatus, BASE_URL } from '../../api/client';
 import { authService } from '../../api/services/authService';
+import type { UserDto } from '../../api/types';
 import {
   validateEmail, validateLoginPassword, collectErrors,
 } from '../../utils/validation';
 
+type ScreenState = 'idle' | 'loading' | 'success';
+
 export default function LoginScreen({ navigation, route }: any) {
-  const { loginWithCredentials } = useAuth();
+  const { loginWithCredentialsDeferred, updateSession } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [screenState, setScreenState] = useState<ScreenState>('idle');
   const [otpLoading, setOtpLoading] = useState(false);
+  const pendingSession = useRef<{ token: string; user: UserDto } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
-  // Sets or clears a single field's inline error.
+  useEffect(() => {
+    return () => { if (toastTimer.current) clearTimeout(toastTimer.current); };
+  }, []);
+
   const setFieldError = (field: string, err: string | null) =>
     setFieldErrors((prev) => ({ ...prev, [field]: err ?? '' }));
 
-  // Gates the Login button — OTP button only needs a valid email.
   const isFormValid = !validateEmail(email) && !validateLoginPassword(password);
   const isEmailValid = !validateEmail(email);
+  const busy = screenState !== 'idle';
 
   const handleLogin = async () => {
     const errors = collectErrors([
@@ -44,16 +52,15 @@ export default function LoginScreen({ navigation, route }: any) {
       return;
     }
     setFieldErrors({});
-    setLoading(true);
+    setScreenState('loading');
+
+    let result: { token: string; user: UserDto } | null = null;
     try {
-      await loginWithCredentials(email.trim().toLowerCase(), password);
-      // Success: RootNavigator watches isLoggedIn and navigates automatically.
+      result = await loginWithCredentialsDeferred(email.trim().toLowerCase(), password);
     } catch (err) {
       const status = getHttpStatus(err);
       const fe = extractFieldErrors(err);
-
       if (Object.keys(fe).length) {
-        // Server returned per-field validation errors (400).
         setFieldErrors(fe);
       } else if (status === 401) {
         setToastMsg('Incorrect email or password. Please check your credentials and try again.');
@@ -62,8 +69,18 @@ export default function LoginScreen({ navigation, route }: any) {
       } else {
         setToastMsg(extractApiError(err) || 'Login failed. Please try again.');
       }
-    } finally {
-      setLoading(false);
+      setScreenState('idle');
+    }
+
+    if (result) {
+      pendingSession.current = result;
+      // Single state update: loading → success (one render, one modal transition)
+      setScreenState('success');
+      toastTimer.current = setTimeout(() => {
+        if (pendingSession.current) {
+          updateSession(pendingSession.current.token, pendingSession.current.user);
+        }
+      }, 4000);
     }
   };
 
@@ -117,10 +134,7 @@ export default function LoginScreen({ navigation, route }: any) {
             ref={emailRef}
             label="Email"
             value={email}
-            onChangeText={(v) => {
-              setEmail(v);
-              setFieldError('email', validateEmail(v));
-            }}
+            onChangeText={(v) => { setEmail(v); setFieldError('email', validateEmail(v)); }}
             onBlur={() => setFieldError('email', validateEmail(email))}
             keyboardType="email-address"
             autoCapitalize="none"
@@ -133,10 +147,7 @@ export default function LoginScreen({ navigation, route }: any) {
             ref={passwordRef}
             label="Password"
             value={password}
-            onChangeText={(v) => {
-              setPassword(v);
-              setFieldError('password', validateLoginPassword(v));
-            }}
+            onChangeText={(v) => { setPassword(v); setFieldError('password', validateLoginPassword(v)); }}
             onBlur={() => setFieldError('password', validateLoginPassword(password))}
             secureTextEntry
             error={fieldErrors.password}
@@ -155,8 +166,8 @@ export default function LoginScreen({ navigation, route }: any) {
           <AppButton
             label="Login"
             onPress={handleLogin}
-            loading={loading}
-            disabled={!isFormValid || loading}
+            loading={screenState === 'loading'}
+            disabled={!isFormValid || busy}
           />
           <View style={styles.dividerRow}>
             <View style={styles.line} />
@@ -168,7 +179,7 @@ export default function LoginScreen({ navigation, route }: any) {
             icon="📱"
             variant="secondary"
             loading={otpLoading}
-            disabled={!isEmailValid || otpLoading || loading}
+            disabled={!isEmailValid || otpLoading || busy}
             onPress={handleSendOtp}
           />
         </View>
@@ -181,7 +192,22 @@ export default function LoginScreen({ navigation, route }: any) {
         </View>
       </ScrollView>
 
-      <LoadingOverlay visible={loading} />
+      <LoadingOverlay visible={screenState === 'loading'} />
+
+      <Modal
+        visible={screenState === 'success'}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+      >
+        <View style={styles.successOverlay} pointerEvents="none">
+          <View style={styles.successCard}>
+            <Text style={styles.successIcon}>✓</Text>
+            <Text style={styles.successTitle}>Login Successful!</Text>
+            <Text style={styles.successSub}>Taking you to your account…</Text>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -192,19 +218,33 @@ const styles = StyleSheet.create({
   heading: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
   sub: { fontSize: fontSize.md, color: colors.textMid, marginTop: spacing.xs },
   link: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
-  formErrorBox: {
-    marginTop: spacing.md,
-    padding: spacing.md,
-    backgroundColor: '#FEE2E2',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  formErrorText: { color: '#B91C1C', fontSize: fontSize.sm, lineHeight: 20 },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: spacing.lg },
   line: { flex: 1, height: 1, backgroundColor: colors.border },
   or: { marginHorizontal: spacing.md, color: colors.textDim, fontSize: fontSize.xs },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.xl },
   footerText: { color: colors.textMid, fontSize: fontSize.sm },
   debugBanner: { marginTop: spacing.xs, fontSize: 10, color: '#888', fontFamily: 'monospace' },
+  successOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  successCard: {
+    backgroundColor: '#16A34A',
+    borderRadius: radius.xl,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    gap: spacing.sm,
+    maxWidth: 300,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  successIcon: { fontSize: 44, color: '#fff' },
+  successTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: '#fff', textAlign: 'center' },
+  successSub: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.85)', textAlign: 'center' },
 });

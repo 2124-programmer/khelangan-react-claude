@@ -1,43 +1,52 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Alert, TextInput,
+  TouchableOpacity, TextInput, Modal,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
-import { AppInput, AppButton, AppHeader, LoadingOverlay } from '../../components/common';
+import { AppInput, AppButton, AppHeader, LoadingOverlay, Toast } from '../../components/common';
 import { UserRole } from '../../types';
+import type { UserDto } from '../../api/types';
 import { useAuth } from '../../store/AuthContext';
 import { extractApiError, extractFieldErrors, getHttpStatus } from '../../api/client';
 import {
   validateEmail, validatePassword, validateName, validatePhone, collectErrors,
 } from '../../utils/validation';
 
+type ScreenState = 'idle' | 'loading' | 'success';
+
 export default function RegisterScreen({ navigation, route }: any) {
-  const { registerUser } = useAuth();
+  const { registerUserDeferred, updateSession } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('player');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [formError, setFormError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [errorToast, setErrorToast] = useState({ visible: false, message: '' });
+  const [screenState, setScreenState] = useState<ScreenState>('idle');
+  const pendingSession = useRef<{ token: string; user: UserDto } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const nameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
-  // Sets or clears a single field's inline error.
+  useEffect(() => {
+    return () => { if (toastTimer.current) clearTimeout(toastTimer.current); };
+  }, []);
+
   const setFieldError = (field: string, err: string | null) =>
     setFieldErrors((prev) => ({ ...prev, [field]: err ?? '' }));
 
-  // True only when every field passes its validator — gates the submit button.
   const isFormValid =
     !validateName(name) &&
     !validateEmail(email) &&
     !validatePhone(phone) &&
     !validatePassword(password);
+
+  const busy = screenState !== 'idle';
 
   const handleRegister = async () => {
     const errors = collectErrors([
@@ -48,8 +57,6 @@ export default function RegisterScreen({ navigation, route }: any) {
     ]);
     if (Object.keys(errors).length) {
       setFieldErrors(errors);
-      setFormError(null);
-      // Focus the first invalid field so the user sees it immediately.
       if (errors.name) nameRef.current?.focus();
       else if (errors.email) emailRef.current?.focus();
       else if (errors.phone) phoneRef.current?.focus();
@@ -57,36 +64,39 @@ export default function RegisterScreen({ navigation, route }: any) {
       return;
     }
     setFieldErrors({});
-    setFormError(null);
-    setLoading(true);
+    setScreenState('loading');
+
+    let result: { token: string; user: UserDto } | null = null;
     try {
-      await registerUser({
+      result = await registerUserDeferred({
         name: name.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
         password,
         role,
       });
-      // Success: RootNavigator watches isLoggedIn and navigates automatically.
     } catch (err) {
       const status = getHttpStatus(err);
       const fe = extractFieldErrors(err);
-
       if (Object.keys(fe).length) {
-        // Server returned per-field validation errors (400).
         setFieldErrors(fe);
       } else if (status === 409) {
-        // Email already registered — pin the error to the email field.
         setFieldErrors({ email: 'An account with this email already exists. Try logging in.' });
-      } else if (status === 400) {
-        // Generic bad request the server didn't break into fields.
-        setFormError(extractApiError(err));
       } else {
-        // Network error, 5xx, etc.
-        Alert.alert('Registration Failed', extractApiError(err));
+        setErrorToast({ visible: true, message: extractApiError(err) || 'Registration failed. Please try again.' });
       }
-    } finally {
-      setLoading(false);
+      setScreenState('idle');
+    }
+
+    if (result) {
+      pendingSession.current = result;
+      // Single state update: loading → success (one render, one modal transition)
+      setScreenState('success');
+      toastTimer.current = setTimeout(() => {
+        if (pendingSession.current) {
+          updateSession(pendingSession.current.token, pendingSession.current.user);
+        }
+      }, 4000);
     }
   };
 
@@ -115,10 +125,7 @@ export default function RegisterScreen({ navigation, route }: any) {
             ref={nameRef}
             label="Full Name"
             value={name}
-            onChangeText={(v) => {
-              setName(v);
-              setFieldError('name', validateName(v));
-            }}
+            onChangeText={(v) => { setName(v); setFieldError('name', validateName(v)); }}
             onBlur={() => setFieldError('name', validateName(name))}
             placeholder="Your name"
             autoCapitalize="words"
@@ -130,10 +137,7 @@ export default function RegisterScreen({ navigation, route }: any) {
             ref={emailRef}
             label="Email"
             value={email}
-            onChangeText={(v) => {
-              setEmail(v);
-              setFieldError('email', validateEmail(v));
-            }}
+            onChangeText={(v) => { setEmail(v); setFieldError('email', validateEmail(v)); }}
             onBlur={() => setFieldError('email', validateEmail(email))}
             keyboardType="email-address"
             autoCapitalize="none"
@@ -146,10 +150,7 @@ export default function RegisterScreen({ navigation, route }: any) {
             ref={phoneRef}
             label="Phone"
             value={phone}
-            onChangeText={(v) => {
-              setPhone(v);
-              setFieldError('phone', validatePhone(v));
-            }}
+            onChangeText={(v) => { setPhone(v); setFieldError('phone', validatePhone(v)); }}
             onBlur={() => setFieldError('phone', validatePhone(phone))}
             keyboardType="phone-pad"
             placeholder="9876543210"
@@ -161,10 +162,7 @@ export default function RegisterScreen({ navigation, route }: any) {
             ref={passwordRef}
             label="Password"
             value={password}
-            onChangeText={(v) => {
-              setPassword(v);
-              setFieldError('password', validatePassword(v));
-            }}
+            onChangeText={(v) => { setPassword(v); setFieldError('password', validatePassword(v)); }}
             onBlur={() => setFieldError('password', validatePassword(password))}
             secureTextEntry
             placeholder="Min 6 characters"
@@ -179,17 +177,11 @@ export default function RegisterScreen({ navigation, route }: any) {
           </View>
         </View>
 
-        {formError ? (
-          <View style={styles.formErrorBox}>
-            <Text style={styles.formErrorText}>{formError}</Text>
-          </View>
-        ) : null}
-
         <AppButton
           label="Register"
           onPress={handleRegister}
-          loading={loading}
-          disabled={!isFormValid || loading}
+          loading={screenState === 'loading'}
+          disabled={!isFormValid || busy}
           style={{ marginTop: spacing.md }}
         />
 
@@ -200,7 +192,30 @@ export default function RegisterScreen({ navigation, route }: any) {
           </TouchableOpacity>
         </View>
       </ScrollView>
-      <LoadingOverlay visible={loading} />
+
+      <LoadingOverlay visible={screenState === 'loading'} />
+
+      <Toast
+        visible={errorToast.visible}
+        message={errorToast.message}
+        type="error"
+        onHide={() => setErrorToast({ visible: false, message: '' })}
+      />
+
+      <Modal
+        visible={screenState === 'success'}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+      >
+        <View style={styles.successOverlay} pointerEvents="none">
+          <View style={styles.successCard}>
+            <Text style={styles.successIcon}>✓</Text>
+            <Text style={styles.successTitle}>Registration Successful!</Text>
+            <Text style={styles.successSub}>Taking you to your account…</Text>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -213,18 +228,32 @@ const styles = StyleSheet.create({
   roleBtn: { flex: 1, alignItems: 'center', paddingVertical: spacing.lg, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border, gap: 6 },
   roleBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   roleText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid },
-  formErrorBox: {
-    marginTop: spacing.md,
-    padding: spacing.md,
-    backgroundColor: '#FEE2E2',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  formErrorText: { color: '#B91C1C', fontSize: fontSize.sm, lineHeight: 20 },
   link: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.xl },
   footerText: { color: colors.textMid, fontSize: fontSize.sm },
   passwordRules: { marginTop: spacing.xs, gap: 2 },
   passwordRuleItem: { fontSize: fontSize.xs, color: colors.textMid },
+  successOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  successCard: {
+    backgroundColor: '#16A34A',
+    borderRadius: radius.xl,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    gap: spacing.sm,
+    maxWidth: 300,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  successIcon: { fontSize: 44, color: '#fff' },
+  successTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: '#fff', textAlign: 'center' },
+  successSub: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.85)', textAlign: 'center' },
 });

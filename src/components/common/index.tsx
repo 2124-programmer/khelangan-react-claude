@@ -443,12 +443,13 @@ export function Toast({ visible, message, type = 'error', onHide }: ToastProps) 
 
   const hide = () => {
     if (timer.current) clearTimeout(timer.current);
-    Animated.timing(slideY, { toValue: -100, duration: 250, useNativeDriver: true }).start(onHide);
+    Animated.timing(slideY, { toValue: -100, duration: 250, useNativeDriver: false }).start(onHide);
   };
 
   useEffect(() => {
     if (!visible) return;
-    Animated.timing(slideY, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+    slideY.setValue(-100);
+    Animated.timing(slideY, { toValue: 0, duration: 300, useNativeDriver: false }).start();
     timer.current = setTimeout(hide, 3500);
     return () => { if (timer.current) clearTimeout(timer.current); };
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -459,15 +460,16 @@ export function Toast({ visible, message, type = 'error', onHide }: ToastProps) 
     : '#1D4ED8';
 
   return (
-    <Animated.View
-      pointerEvents={visible ? 'auto' : 'none'}
-      style={[toastStyles.wrap, { backgroundColor: bg, transform: [{ translateY: slideY }] }]}
-    >
-      <Text style={toastStyles.msg} numberOfLines={3}>{message}</Text>
-      <TouchableOpacity onPress={hide} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <Text style={toastStyles.x}>✕</Text>
-      </TouchableOpacity>
-    </Animated.View>
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={hide}>
+      <Animated.View
+        style={[toastStyles.wrap, { backgroundColor: bg, transform: [{ translateY: slideY }] }]}
+      >
+        <Text style={toastStyles.msg} numberOfLines={3}>{message}</Text>
+        <TouchableOpacity onPress={hide} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={toastStyles.x}>✕</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </Modal>
   );
 }
 
