@@ -92,6 +92,12 @@ export function BookingManagementScreen({ navigation }: any) {
     { enabled: tab === 'cancelled' }
   );
 
+  // CHECKED_IN second query — only enabled on the Completed tab so checked-in bookings appear alongside COMPLETED ones
+  const { data: checkedInData, refetch: refetchCheckedIn } = useBookings(
+    { status: 'CHECKED_IN' },
+    { enabled: tab === 'completed' }
+  );
+
   // Tick the cooldown down by 1 every second until it reaches 0
   useEffect(() => {
     if (cooldownSecs <= 0) return;
@@ -105,6 +111,7 @@ export function BookingManagementScreen({ navigation }: any) {
     try {
       await refetch();
       if (tab === 'cancelled') await refetchPending();
+      if (tab === 'completed') await refetchCheckedIn();
     } finally {
       setRefreshing(false);
       setCooldownSecs(REFRESH_COOLDOWN_SECS);
@@ -132,6 +139,8 @@ export function BookingManagementScreen({ navigation }: any) {
       // Backend already filters by dateFrom=tomorrow; sort chronologically
       list.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
     } else if (tab === 'completed') {
+      const checkedIn = checkedInData?.bookings ?? [];
+      list = [...list, ...checkedIn];
       list.sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
     } else if (tab === 'cancelled') {
       // Merge CANCELLED + expired PENDING (fetched only when this tab is active)
@@ -141,7 +150,7 @@ export function BookingManagementScreen({ navigation }: any) {
     }
 
     return list;
-  }, [data, pendingData, tab, todayStr]);
+  }, [data, pendingData, checkedInData, tab, todayStr]);
 
   const items = groupBookingList(filteredBookings);
 
