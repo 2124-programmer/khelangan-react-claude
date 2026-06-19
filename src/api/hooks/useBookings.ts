@@ -67,6 +67,11 @@ export function useBulkCreateBooking() {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: ['slots'] });
     },
+    onError: () => {
+      // Refetch slot availability on any booking failure (e.g. 409 conflict)
+      // so the grid reflects reality and the pruning effect can clean up selection.
+      qc.invalidateQueries({ queryKey: ['slots'] });
+    },
   });
 }
 

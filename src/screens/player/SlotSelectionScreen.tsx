@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, ActivityIndicator, FlatList, Alert,
@@ -203,6 +203,18 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
     );
   }, [isToday, slots]);
 
+  // Prune stale selection whenever slot availability refetches.
+  // Defensive: ensures no already-booked/blocked slot survives in selected
+  // even if the success-path reset is somehow missed.
+  useEffect(() => {
+    if (!slots.length) return;
+    const availableIds = new Set(slots.filter((s) => s.status === 'available').map((s) => s.id));
+    setSelected((prev) => {
+      const pruned = prev.filter((s) => availableIds.has(s.id));
+      return pruned.length === prev.length ? prev : pruned;
+    });
+  }, [slots]);
+
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
   const totalPrice = useMemo(() => selected.reduce((sum, s) => sum + s.price, 0), [selected]);
 
@@ -379,6 +391,7 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
               startTimes: selected.map((s) => s.startTime),
               sport: currentSportId ?? '',
             });
+            setSelected([]);
           }}
           onDismiss={() => setShowBookingModal(false)}
           onGoToBookings={() => {
