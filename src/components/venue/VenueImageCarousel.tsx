@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  View, ScrollView, Image, Text, TouchableOpacity,
-  StyleSheet, Platform, useWindowDimensions,
+  View, ScrollView, Image, Text, TouchableOpacity, FlatList,
+  StyleSheet, Platform, useWindowDimensions, Modal, SafeAreaView,
   NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
 import { colors, spacing, radius } from '../../theme';
@@ -21,11 +21,12 @@ export function VenueImageCarousel({ images }: Props) {
   const slideWidth = screenWidth - H_PADDING * 2;
 
   const [activeIdx, setActiveIdx] = useState(0);
+  const [fullscreen, setFullscreen] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const fullRef = useRef<FlatList<VenueImage>>(null);
   const isMulti = images.length > 1;
   const isWeb = Platform.OS === 'web';
 
-  // Reset to first slide when the container width changes (e.g. browser resize)
   const prevWidth = useRef(slideWidth);
   useEffect(() => {
     if (prevWidth.current !== slideWidth) {
@@ -56,6 +57,18 @@ export function VenueImageCarousel({ images }: Props) {
     [slideWidth],
   );
 
+  const openFullscreen = useCallback(() => {
+    setFullscreen(true);
+  }, []);
+
+  const onFullscreenScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const idx = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+      setActiveIdx(Math.max(0, Math.min(idx, images.length - 1)));
+    },
+    [screenWidth, images.length],
+  );
+
   if (!images.length) {
     return (
       <View style={[styles.slide, styles.placeholder, { marginHorizontal: H_PADDING, borderRadius: radius.lg }]}>
@@ -66,29 +79,38 @@ export function VenueImageCarousel({ images }: Props) {
 
   return (
     <View>
-      {/* Slide track — clipped to border radius */}
+      {/* Slide track */}
       <View style={styles.track}>
-        <ScrollView
-          ref={scrollRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          scrollEventThrottle={16}
-          onScroll={handleScroll}
-          onMomentumScrollEnd={handleScroll}
-          style={{ width: slideWidth }}
-        >
-          {images.map((img, idx) => (
-            <Image
-              key={idx}
-              source={{ uri: img.url || undefined }}
-              style={[styles.slide, { width: slideWidth }]}
-              resizeMode="cover"
-            />
-          ))}
-        </ScrollView>
+        <TouchableOpacity activeOpacity={0.95} onPress={openFullscreen}>
+          <ScrollView
+            ref={scrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onScroll={handleScroll}
+            onMomentumScrollEnd={handleScroll}
+            style={{ width: slideWidth }}
+          >
+            {images.map((img, idx) => (
+              <Image
+                key={idx}
+                source={{ uri: img.url || undefined }}
+                style={[styles.slide, { width: slideWidth }]}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
+        </TouchableOpacity>
 
-        {/* Desktop arrow controls — only rendered on web with multiple images */}
+        {/* Image counter badge */}
+        {isMulti && (
+          <View style={styles.counter}>
+            <Text style={styles.counterText}>{activeIdx + 1}/{images.length}</Text>
+          </View>
+        )}
+
+        {/* Desktop arrow controls */}
         {isMulti && isWeb && (
           <>
             <TouchableOpacity
@@ -109,7 +131,7 @@ export function VenueImageCarousel({ images }: Props) {
         )}
       </View>
 
-      {/* Pagination dots — only shown with multiple images */}
+      {/* Pagination dots */}
       {isMulti && (
         <View style={styles.dotsRow}>
           {images.map((_, idx) => (
@@ -123,6 +145,43 @@ export function VenueImageCarousel({ images }: Props) {
           ))}
         </View>
       )}
+
+      {/* Fullscreen modal */}
+      <Modal
+        visible={fullscreen}
+        transparent={false}
+        animationType="fade"
+        onRequestClose={() => setFullscreen(false)}
+      >
+        <SafeAreaView style={styles.fsContainer}>
+          <TouchableOpacity style={styles.fsClose} onPress={() => setFullscreen(false)}>
+            <Text style={styles.fsCloseText}>✕</Text>
+          </TouchableOpacity>
+          {isMulti && (
+            <Text style={styles.fsCounter}>{activeIdx + 1}/{images.length}</Text>
+          )}
+          <FlatList
+            ref={fullRef}
+            data={images}
+            keyExtractor={(_, i) => String(i)}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onScroll={onFullscreenScroll}
+            onMomentumScrollEnd={onFullscreenScroll}
+            getItemLayout={(_, index) => ({ length: screenWidth, offset: screenWidth * index, index })}
+            initialScrollIndex={activeIdx}
+            renderItem={({ item }) => (
+              <Image
+                source={{ uri: item.url || undefined }}
+                style={{ width: screenWidth, height: '100%' }}
+                resizeMode="contain"
+              />
+            )}
+          />
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 }
@@ -143,10 +202,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  placeholderText: {
-    fontSize: 13,
-    color: colors.textDim,
+  placeholderText: { fontSize: 13, color: colors.textDim },
+
+  counter: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    right: spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
   },
+  counterText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+
   dotsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -166,6 +234,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.primary,
   },
+
   arrow: {
     position: 'absolute',
     top: ARROW_TOP,
@@ -180,11 +249,34 @@ const styles = StyleSheet.create({
   arrowLeft: { left: 10 },
   arrowRight: { right: 10 },
   arrowDisabled: { opacity: 0 },
-  arrowText: {
-    color: colors.white,
-    fontSize: 22,
-    fontWeight: '700',
-    lineHeight: 26,
-    textAlign: 'center',
+  arrowText: { color: '#fff', fontSize: 22, fontWeight: '700', lineHeight: 26, textAlign: 'center' },
+
+  // Fullscreen
+  fsContainer: { flex: 1, backgroundColor: '#000' },
+  fsClose: {
+    position: 'absolute',
+    top: spacing.xl,
+    right: spacing.xl,
+    zIndex: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fsCloseText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  fsCounter: {
+    position: 'absolute',
+    top: spacing.xl,
+    left: spacing.xl,
+    zIndex: 20,
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
   },
 });

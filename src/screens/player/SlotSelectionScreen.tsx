@@ -145,6 +145,9 @@ function CourtTabs({
 
 export default function SlotSelectionScreen({ navigation, route }: any) {
   const venueId: string = route.params.venueId;
+  const initialCourtId: string | null = route.params.courtId ?? null;
+  const initialSportId: string | null = route.params.sportId ?? null;
+
   const { data: venue, isLoading: venueLoading } = useVenueDetail(venueId);
   const { data: allCourts = [], isLoading: courtsLoading } = useCourts(Number(venueId));
   const { data: sports = [] } = useSports();
@@ -156,8 +159,8 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
 
   const bulkCreateBooking = useBulkCreateBooking();
 
-  const [activeSportId, setActiveSportId] = useState<string | null>(null);
-  const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
+  const [activeSportId, setActiveSportId] = useState<string | null>(initialSportId);
+  const [selectedCourtId, setSelectedCourtId] = useState<string | null>(initialCourtId);
   const [activeDate, setActiveDate] = useState(today);
   const [selected, setSelected] = useState<Slot[]>([]);
   const [lockExpired, setLockExpired] = useState(false);

@@ -137,7 +137,7 @@ export interface VenueDetailDto {
   pincode?: string;
   description?: string;
   contactPhone?: string;
-  contactEmail?: string;
+  contactEmail?: string; // stripped from public player-detail response; may appear on owner-facing calls
   status?: string;
   ratingAverage?: number | null;
   ratingCount?: number;

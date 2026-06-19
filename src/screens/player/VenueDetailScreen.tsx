@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, ActivityIndicator, Linking, Alert, RefreshControl,
+  TouchableOpacity, Linking, Alert, RefreshControl, Share,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, EmptyState, Toast, LoadingOverlay } from '../../components/common';
@@ -14,6 +14,7 @@ import { useVenueReviews } from '../../api/hooks/useReviews';
 import { useSports } from '../../api/hooks/useSports';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 import { haversineKm, formatDistance } from '../../utils/locationUtils';
+import { formatVenueAddress, getOpenStatus, getMapsUrl } from '../../utils/venueUtils';
 import { useAuth } from '../../store/AuthContext';
 import { setPendingNav } from '../../store/pendingNav';
 
@@ -46,15 +47,6 @@ function fmt12h(t: string): string {
   const period = h >= 12 ? 'PM' : 'AM';
   const hour = h === 0 ? 12 : h > 12 ? h - 12 : h;
   return `${hour}:${String(m ?? 0).padStart(2, '0')} ${period}`;
-}
-
-function buildFullAddress(address: string, city: string, state: string, pincode: string): string {
-  const parts = [
-    address,
-    city,
-    state && pincode ? `${state} ${pincode}` : state || pincode,
-  ].filter(Boolean);
-  return parts.join(', ');
 }
 
 export default function VenueDetailScreen({ navigation, route }: any) {
@@ -104,6 +96,14 @@ export default function VenueDetailScreen({ navigation, route }: any) {
     );
   }
 
+  const fullAddress = formatVenueAddress(venue.address, venue.city, venue.state, venue.pincode);
+  const hoursLabel = `${fmt12h(venue.openTime)} – ${fmt12h(venue.closeTime)}`;
+  const distLabel =
+    userLocation && venue.lat && venue.lng && venue.lat !== 0
+      ? formatDistance(haversineKm(userLocation.lat, userLocation.lng, venue.lat, venue.lng))
+      : null;
+  const openStatus = getOpenStatus(venue.openTime, venue.closeTime);
+
   const handleBookNow = () => {
     if (isLoggedIn) {
       if (role !== 'player') {
@@ -120,16 +120,40 @@ export default function VenueDetailScreen({ navigation, route }: any) {
     setShowLoginPrompt(true);
   };
 
-  const fullAddress = buildFullAddress(venue.address, venue.city, venue.state, venue.pincode);
-  const hoursLabel = `${fmt12h(venue.openTime)} – ${fmt12h(venue.closeTime)}`;
-  const distLabel =
-    userLocation && venue.lat && venue.lng && venue.lat !== 0
-      ? formatDistance(haversineKm(userLocation.lat, userLocation.lng, venue.lat, venue.lng))
-      : null;
+  const handleCourtTap = (courtId: string, sportId: string) => {
+    if (isLoggedIn) {
+      if (role !== 'player') {
+        Alert.alert('Player Account Required', 'Use a Player account to book.', [{ text: 'OK' }]);
+        return;
+      }
+      navigation.navigate('SlotSelection', { venueId: venue.id, courtId, sportId });
+      return;
+    }
+    setShowLoginPrompt(true);
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        title: venue.name,
+        message: `Check out ${venue.name} on Score-Adda!\n📍 ${fullAddress}\nStarting ₹${venue.pricePerHour}/hr`,
+      });
+    } catch {
+      // user cancelled — no-op
+    }
+  };
+
+  const handleDirections = () => {
+    const url = getMapsUrl(venue.lat ?? 0, venue.lng ?? 0, venue.name, fullAddress);
+    Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open maps.'));
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title={venue.name} onBack={() => navigation.goBack()} />
+      <AppHeader
+        title={venue.name}
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -140,28 +164,49 @@ export default function VenueDetailScreen({ navigation, route }: any) {
 
         <View style={styles.body}>
 
-          {/* Name + Status */}
+          {/* Name + Open/Closed badge */}
           <View style={styles.nameRow}>
             <Text style={styles.name}>{venue.name}</Text>
-            {venue.status === 'live' && (
-              <View style={styles.liveBadge}>
-                <Text style={styles.liveBadgeText}>● LIVE</Text>
-              </View>
-            )}
+            <View style={[styles.openBadge, openStatus.isOpen ? styles.openBadgeOpen : styles.openBadgeClosed]}>
+              <Text style={[styles.openBadgeText, openStatus.isOpen ? styles.openBadgeTextOpen : styles.openBadgeTextClosed]}>
+                {openStatus.isOpen ? '● Open' : '○ Closed'}
+              </Text>
+            </View>
           </View>
 
-          {/* Address + Distance */}
-          <Text style={styles.addr}>
-            📍 {fullAddress}{distLabel ? `  ·  ${distLabel}` : ''}
-          </Text>
+          {/* Tappable address → directions + Share button */}
+          <View style={styles.addrRow}>
+            <TouchableOpacity onPress={handleDirections} activeOpacity={0.7} style={{ flex: 1 }}>
+              <Text style={[styles.addr, styles.addrLink]} numberOfLines={2}>
+                📍 {fullAddress}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleShare} activeOpacity={0.7} style={styles.shareBtn}>
+              <Text style={styles.shareBtnText}>⬆ Share</Text>
+            </TouchableOpacity>
+          </View>
 
-          {/* Rating */}
-          <RatingSummary
-            ratingAverage={venue.ratingAverage}
-            ratingCount={venue.ratingCount}
-            variant="full"
-            onPress={() => navigation.navigate('VenueReviews', { venueId: venue.id })}
-          />
+          {/* Quick-facts strip */}
+          <View style={styles.factsStrip}>
+            <RatingSummary
+              ratingAverage={venue.ratingAverage}
+              ratingCount={venue.ratingCount}
+              variant="compact"
+              onPress={() => navigation.navigate('VenueReviews', { venueId: venue.id })}
+            />
+            {distLabel && (
+              <>
+                <Text style={styles.factsDot}>·</Text>
+                <Text style={styles.factsItem}>📍 {distLabel}</Text>
+              </>
+            )}
+            <Text style={styles.factsDot}>·</Text>
+            <Text style={[styles.factsItem, openStatus.isOpen ? styles.factsOpen : styles.factsClosed]}>
+              {openStatus.label}
+            </Text>
+            <Text style={styles.factsDot}>·</Text>
+            <Text style={styles.factsItem}>₹{venue.pricePerHour}/hr</Text>
+          </View>
 
           {/* Sports */}
           {venue.sports.length > 0 && (
@@ -177,24 +222,45 @@ export default function VenueDetailScreen({ navigation, route }: any) {
             </>
           )}
 
-          {/* Courts */}
+          {/* Courts — tappable, go straight to slot selection */}
           <Text style={styles.sectionTitle}>Courts</Text>
           {venue.courts.length === 0 ? (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyBoxText}>No courts have been added yet</Text>
             </View>
           ) : (
-            venue.courts.map((c) => (
-              <View key={c.id} style={[styles.courtCard, shadow.card]}>
-                <View style={styles.courtHeader}>
-                  <Text style={styles.courtName}>{c.name}</Text>
-                  <Text style={styles.courtPrice}>₹{c.effectivePricePerHour}/hr</Text>
-                </View>
-                <Text style={styles.courtMeta}>
-                  {c.type ? `${c.type}  ·  ` : ''}{fmt12h(c.effectiveOpenTime)} – {fmt12h(c.effectiveCloseTime)}
-                </Text>
-              </View>
-            ))
+            venue.courts.map((c) => {
+              const sportLabel = getSportLabel(c.sportId);
+              // Only show court hours if they differ from venue hours
+              const courtHoursDiffer =
+                c.effectiveOpenTime !== venue.openTime ||
+                c.effectiveCloseTime !== venue.closeTime;
+              const metaParts: string[] = [];
+              if (sportLabel) metaParts.push(sportLabel);
+              if (c.type) metaParts.push(c.type);
+              if (courtHoursDiffer) metaParts.push(`${fmt12h(c.effectiveOpenTime)} – ${fmt12h(c.effectiveCloseTime)}`);
+
+              return (
+                <TouchableOpacity
+                  key={c.id}
+                  style={[styles.courtCard, shadow.card]}
+                  onPress={() => handleCourtTap(c.id, c.sportId)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.courtHeader}>
+                    <Text style={styles.courtName}>{c.name}</Text>
+                    <View style={styles.courtRight}>
+                      <Text style={styles.courtPrice}>₹{c.effectivePricePerHour}/hr</Text>
+                      <Text style={styles.courtChevron}>›</Text>
+                    </View>
+                  </View>
+                  {metaParts.length > 0 && (
+                    <Text style={styles.courtMeta}>{metaParts.join('  ·  ')}</Text>
+                  )}
+                  <Text style={styles.courtCta}>Tap to view & book slots</Text>
+                </TouchableOpacity>
+              );
+            })
           )}
 
           {/* About */}
@@ -220,7 +286,7 @@ export default function VenueDetailScreen({ navigation, route }: any) {
             </>
           )}
 
-          {/* Info Card: Hours / Phone / Email */}
+          {/* Info Card: Hours / Phone */}
           <View style={[styles.infoCard, shadow.card]}>
             <View style={styles.infoRow}>
               <Text style={styles.infoIcon}>⏰</Text>
@@ -248,23 +314,15 @@ export default function VenueDetailScreen({ navigation, route }: any) {
               </>
             )}
 
-            {!!venue.contactEmail && (
-              <>
-                <View style={styles.infoDivider} />
-                <TouchableOpacity
-                  style={styles.infoRow}
-                  onPress={() => Linking.openURL(`mailto:${venue.contactEmail}`)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.infoIcon}>✉️</Text>
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Email</Text>
-                    <Text style={[styles.infoValue, styles.infoLink]}>{venue.contactEmail}</Text>
-                  </View>
-                  <Text style={styles.infoChevron}>›</Text>
-                </TouchableOpacity>
-              </>
-            )}
+            <View style={styles.infoDivider} />
+            <TouchableOpacity style={styles.infoRow} onPress={handleDirections} activeOpacity={0.7}>
+              <Text style={styles.infoIcon}>🗺️</Text>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Directions</Text>
+                <Text style={[styles.infoValue, styles.infoLink]} numberOfLines={1}>{fullAddress}</Text>
+              </View>
+              <Text style={styles.infoChevron}>›</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Location */}
@@ -370,31 +428,41 @@ const styles = StyleSheet.create({
   },
   body: { padding: spacing.lg, paddingBottom: 120 },
 
-  // Name + status
+  // Name + badge
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap', marginTop: spacing.sm },
   name: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text, flex: 1 },
-  liveBadge: { backgroundColor: '#DCFCE7', paddingHorizontal: spacing.md, paddingVertical: 3, borderRadius: radius.pill },
-  liveBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: '#15803D' },
+  openBadge: { paddingHorizontal: spacing.md, paddingVertical: 3, borderRadius: radius.pill },
+  openBadgeOpen: { backgroundColor: '#DCFCE7' },
+  openBadgeClosed: { backgroundColor: '#FEE2E2' },
+  openBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold },
+  openBadgeTextOpen: { color: '#15803D' },
+  openBadgeTextClosed: { color: '#B91C1C' },
 
-  // Address + rating
-  addr: { fontSize: fontSize.sm, color: colors.textMid, marginTop: spacing.xs, lineHeight: 20 },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm },
-  ratingText: { fontSize: fontSize.sm, color: colors.textMid },
-
-  // Info card
-  infoCard: {
-    backgroundColor: colors.surface, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    marginTop: spacing.xl, overflow: 'hidden',
+  // Address + Share row
+  addrRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
+  addr: { fontSize: fontSize.sm, color: colors.textMid, lineHeight: 20 },
+  addrLink: { color: colors.primary },
+  shareBtn: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: spacing.md, paddingVertical: 5,
+    borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  infoRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  infoDivider: { height: 1, backgroundColor: colors.border },
-  infoIcon: { fontSize: 20, width: 34, textAlign: 'center' },
-  infoContent: { flex: 1, marginLeft: spacing.sm },
-  infoLabel: { fontSize: fontSize.xs, color: colors.textDim },
-  infoValue: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text, marginTop: 1 },
-  infoLink: { color: colors.primary },
-  infoChevron: { fontSize: 20, color: colors.textDim, marginLeft: spacing.sm },
+  shareBtnText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.text },
+
+  // Quick-facts strip
+  factsStrip: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  factsDot: { fontSize: fontSize.xs, color: colors.textDim },
+  factsItem: { fontSize: fontSize.xs, color: colors.textMid },
+  factsOpen: { color: '#15803D', fontWeight: fontWeight.semibold },
+  factsClosed: { color: '#B91C1C', fontWeight: fontWeight.semibold },
 
   // Section titles
   sectionTitle: {
@@ -406,6 +474,20 @@ const styles = StyleSheet.create({
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: { backgroundColor: colors.primaryLight, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill },
   chipText: { fontSize: fontSize.sm, color: colors.primaryDark, fontWeight: fontWeight.semibold },
+
+  // Courts
+  courtCard: {
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    padding: spacing.lg, marginBottom: spacing.sm,
+  },
+  courtHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  courtName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text, flex: 1 },
+  courtRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  courtPrice: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.primary },
+  courtChevron: { fontSize: 20, color: colors.textDim },
+  courtMeta: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 4 },
+  courtCta: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 6 },
 
   // Amenity grid
   amenityGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
@@ -428,34 +510,26 @@ const styles = StyleSheet.create({
   },
   emptyBoxText: { fontSize: fontSize.sm, color: colors.textDim },
 
-  // Courts
-  courtCard: {
+  // Info card
+  infoCard: {
     backgroundColor: colors.surface, borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.border,
-    padding: spacing.lg, marginBottom: spacing.sm,
+    marginTop: spacing.xl, overflow: 'hidden',
   },
-  courtHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  courtName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
-  courtPrice: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.primary },
-  courtMeta: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 4 },
-
+  infoRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  infoDivider: { height: 1, backgroundColor: colors.border },
+  infoIcon: { fontSize: 20, width: 34, textAlign: 'center' },
+  infoContent: { flex: 1, marginLeft: spacing.sm },
+  infoLabel: { fontSize: fontSize.xs, color: colors.textDim },
+  infoValue: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text, marginTop: 1 },
+  infoLink: { color: colors.primary },
+  infoChevron: { fontSize: 20, color: colors.textDim, marginLeft: spacing.sm },
 
   // Reviews
-  reviewCard: {
-    backgroundColor: colors.surface, borderRadius: radius.md,
-    padding: spacing.lg, marginBottom: spacing.md,
-    borderWidth: 1, borderColor: colors.border,
-  },
-  reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  reviewName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
-  reviewDate: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 2 },
-  reviewText: { fontSize: fontSize.sm, color: colors.textMid, marginTop: spacing.sm, lineHeight: 20 },
-  replyBox: {
-    backgroundColor: colors.surfaceAlt, borderRadius: radius.sm,
-    padding: spacing.md, marginTop: spacing.sm,
-  },
-  replyLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textMid },
-  replyText: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2 },
+  reviewsSectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.xl, marginBottom: spacing.md },
+  writeReviewLink: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
+  seeAllBtn: { paddingVertical: spacing.md, alignItems: 'center' },
+  seeAllText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
 
   // Bottom booking bar
   bottomBar: {
@@ -467,9 +541,4 @@ const styles = StyleSheet.create({
   priceLabel: { fontSize: fontSize.xs, color: colors.textDim },
   price: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
   perSlot: { fontSize: fontSize.xs, color: colors.textDim, fontWeight: fontWeight.regular },
-
-  reviewsSectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.xl, marginBottom: spacing.md },
-  writeReviewLink: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
-  seeAllBtn: { paddingVertical: spacing.md, alignItems: 'center' },
-  seeAllText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
 });

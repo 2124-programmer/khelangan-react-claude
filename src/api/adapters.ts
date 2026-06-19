@@ -93,7 +93,6 @@ export function adaptVenueSummary(dto: VenueSummaryDto): Venue {
     pincode: dto.pincode ?? '',
     description: '',
     contactPhone: '',
-    contactEmail: '',
     openTime: dto.openTime ?? '05:00',
     closeTime: dto.closeTime ?? '23:00',
     status: (dto.status?.toLowerCase() as VenueStatus) ?? 'live',

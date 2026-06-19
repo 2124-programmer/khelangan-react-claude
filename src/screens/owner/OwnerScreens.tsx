@@ -515,7 +515,7 @@ export function EditVenueScreen({ navigation, route }: any) {
       setStateVal(venue.state);
       setPincode(venue.pincode);
       setPhone(venue.contactPhone);
-      setEmail(venue.contactEmail);
+      setEmail(venue.contactEmail ?? '');
       setSports(venue.sports);
       setAmen(venue.amenities);
       setOpenTime(venue.openTime);
