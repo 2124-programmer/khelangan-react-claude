@@ -1,8 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, TextInput, RefreshControl,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { SportChip, EmptyState, AppHeader, LoadingOverlay } from '../../components/common';
@@ -13,12 +14,18 @@ import { useVenues } from '../../api/hooks/useVenues';
 import { useLocation } from '../../store/LocationContext';
 import { consumePendingNav } from '../../store/pendingNav';
 import { useDebounce } from '../../hooks/useDebounce';
+import {
+  FilterModal, VenueFilters, DEFAULT_FILTERS, activeFilterCount, applyFilters,
+} from '../../components/venue/FilterModal';
 
 export default function PlayerHomeScreen({ navigation }: any) {
   const { user, isLoggedIn } = useAuth();
   const [activeSport, setActiveSport] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 400);
+  const [filters, setFilters] = useState<VenueFilters>(DEFAULT_FILTERS);
+  const [showFilter, setShowFilter] = useState(false);
+  const filterBadge = activeFilterCount(filters);
   const { location: userLocation, permission, isResolving } = useLocation();
 
   useFocusEffect(
@@ -53,7 +60,10 @@ export default function PlayerHomeScreen({ navigation }: any) {
   );
 
   const sports = sportsQuery.data ?? [];
-  const venues = venuesQuery.data?.venues ?? [];
+  const venues = useMemo(
+    () => applyFilters(venuesQuery.data?.venues ?? [], filters),
+    [venuesQuery.data, filters]
+  );
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -82,8 +92,16 @@ export default function PlayerHomeScreen({ navigation }: any) {
               onChangeText={setQuery}
             />
           </View>
-          <TouchableOpacity style={[styles.filterBtn, shadow.card]}>
-            <Text style={{ fontSize: 18 }}>⚙️</Text>
+          <TouchableOpacity
+            style={[styles.filterBtn, shadow.card, filterBadge > 0 && styles.filterBtnActive]}
+            onPress={() => setShowFilter(true)}
+          >
+            <Feather name="sliders" size={20} color={filterBadge > 0 ? colors.white : colors.textMid} />
+            {filterBadge > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{filterBadge}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -156,6 +174,13 @@ export default function PlayerHomeScreen({ navigation }: any) {
           )}
         </View>
       </ScrollView>
+
+      <FilterModal
+        visible={showFilter}
+        filters={filters}
+        onApply={setFilters}
+        onClose={() => setShowFilter(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -166,6 +191,9 @@ const styles = StyleSheet.create({
   searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.md, paddingHorizontal: spacing.lg, height: 50 },
   searchInput: { flex: 1, fontSize: fontSize.md, color: colors.text },
   filterBtn: { width: 50, height: 50, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  filterBtnActive: { backgroundColor: colors.primary },
+  filterBadge: { position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+  filterBadgeText: { fontSize: 9, fontWeight: fontWeight.bold, color: colors.white },
   banner: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, margin: spacing.lg, borderRadius: radius.lg, padding: spacing.lg },
   bannerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.white },
   bannerSub: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
