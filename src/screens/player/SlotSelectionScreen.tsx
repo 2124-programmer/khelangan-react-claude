@@ -376,31 +376,31 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
 
       <SlotLockExpiredModal visible={lockExpired} onGoBack={() => setLockExpired(false)} />
 
-      {selected.length > 0 && (
-        <BookingRequestModal
-          visible={showBookingModal}
-          venueName={venue.name}
-          sport={getSportLabel(currentSportId ?? '')}
-          date={activeDate}
-          slots={selected.map((s) => ({ startTime: s.startTime, endTime: s.endTime, price: s.price }))}
-          onConfirm={async () => {
-            await bulkCreateBooking.mutateAsync({
-              venueId: Number(venue.id),
-              courtId: Number(effectiveCourtId),
-              date: activeDate,
-              startTimes: selected.map((s) => s.startTime),
-              sport: currentSportId ?? '',
-            });
-            setSelected([]);
-          }}
-          onDismiss={() => setShowBookingModal(false)}
-          onGoToBookings={() => {
-            setShowBookingModal(false);
-            setSelected([]);
-            navigation.navigate('Bookings');
-          }}
-        />
-      )}
+      <BookingRequestModal
+        visible={showBookingModal}
+        venueName={venue.name}
+        sport={getSportLabel(currentSportId ?? '')}
+        date={activeDate}
+        slots={selected.map((s) => ({ startTime: s.startTime, endTime: s.endTime, price: s.price }))}
+        onConfirm={async () => {
+          await bulkCreateBooking.mutateAsync({
+            venueId: Number(venue.id),
+            courtId: Number(effectiveCourtId),
+            date: activeDate,
+            startTimes: selected.map((s) => s.startTime),
+            sport: currentSportId ?? '',
+          });
+        }}
+        onDismiss={() => {
+          setShowBookingModal(false);
+          setSelected([]);
+        }}
+        onGoToBookings={() => {
+          setShowBookingModal(false);
+          setSelected([]);
+          navigation.navigate('Bookings');
+        }}
+      />
     </SafeAreaView>
   );
 }
