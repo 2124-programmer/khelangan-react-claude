@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Linking, Alert, RefreshControl, Share,
+  TouchableOpacity, Linking, Alert, RefreshControl, Share, Platform,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, EmptyState, Toast, LoadingOverlay } from '../../components/common';
 import { VenueImageCarousel } from '../../components/venue';
@@ -133,11 +134,51 @@ export default function VenueDetailScreen({ navigation, route }: any) {
   };
 
   const handleShare = async () => {
+    const deepLink = `scoreadda://venue/${venue.id}`;
+    const playStore = `https://play.google.com/store/apps/details?id=com.turfbook.app`;
+    const shareText = [
+      `Check out ${venue.name} on Score-Adda! ⚽`,
+      `📍 ${fullAddress}`,
+      `Starting ₹${venue.pricePerHour}/hr`,
+      ``,
+      `📲 Open in Score-Adda: ${deepLink}`,
+      ``,
+      `Don't have the app? Download here: ${playStore}`,
+    ].join('\n');
+
+    if (Platform.OS === 'web') {
+      // 1. Web Share API — works on mobile Chrome over HTTPS (production)
+      if (typeof navigator !== 'undefined' && (navigator as any).share) {
+        try {
+          await (navigator as any).share({ title: `${venue.name} – Score-Adda`, text: shareText });
+          return;
+        } catch { /* cancelled or not secure context — fall through */ }
+      }
+      // 2. Clipboard API — works on HTTPS
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(shareText);
+          setSuccessToast('Copied to clipboard!');
+          return;
+        } catch { /* fall through */ }
+      }
+      // 3. execCommand fallback — works on plain HTTP (dev environment)
+      try {
+        const el = document.createElement('textarea');
+        el.value = shareText;
+        el.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+        document.body.appendChild(el);
+        el.focus();
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        setSuccessToast('Copied to clipboard!');
+      } catch { /* nothing worked */ }
+      return;
+    }
+
     try {
-      await Share.share({
-        title: venue.name,
-        message: `Check out ${venue.name} on Score-Adda!\n📍 ${fullAddress}\nStarting ₹${venue.pricePerHour}/hr`,
-      });
+      await Share.share({ title: `${venue.name} – Score-Adda`, message: shareText });
     } catch {
       // user cancelled — no-op
     }
@@ -181,8 +222,8 @@ export default function VenueDetailScreen({ navigation, route }: any) {
                 📍 {fullAddress}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleShare} activeOpacity={0.7} style={styles.shareBtn}>
-              <Text style={styles.shareBtnText}>⬆ Share</Text>
+            <TouchableOpacity onPress={handleShare} activeOpacity={0.7} style={styles.shareIconBtn}>
+              <Feather name="share-2" size={16} color={colors.textMid} />
             </TouchableOpacity>
           </View>
 
@@ -442,13 +483,12 @@ const styles = StyleSheet.create({
   addrRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
   addr: { fontSize: fontSize.sm, color: colors.textMid, lineHeight: 20 },
   addrLink: { color: colors.primary },
-  shareBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: spacing.md, paddingVertical: 5,
-    borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border,
+  shareIconBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    borderWidth: 1, borderColor: colors.border,
     backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
   },
-  shareBtnText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.text },
 
   // Quick-facts strip
   factsStrip: {

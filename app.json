@@ -3,6 +3,7 @@
     "name": "TurfBook",
     "icon": "./assets/logo/icon.png",
     "slug": "turfbook",
+    "scheme": "scoreadda",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",

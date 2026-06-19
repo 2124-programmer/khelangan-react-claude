@@ -1,5 +1,6 @@
 // Centralized design tokens for the whole app.
 // Change a value here and it updates everywhere.
+import { Platform } from 'react-native';
 
 export const colors = {
   // Brand
@@ -77,20 +78,26 @@ export const fontWeight = {
 };
 
 export const shadow = {
-  card: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  modal: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
-  },
+  card: Platform.select({
+    web: { boxShadow: '0px 2px 8px rgba(0,0,0,0.06)' },
+    default: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+  })!,
+  modal: Platform.select({
+    web: { boxShadow: '0px -2px 16px rgba(0,0,0,0.12)' },
+    default: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 16,
+      elevation: 8,
+    },
+  })!,
 };
 
 export const theme = { colors, spacing, radius, fontSize, fontWeight, shadow };
