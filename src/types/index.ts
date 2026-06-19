@@ -76,8 +76,8 @@ export interface Venue {
   openTime: string;    // "HH:00"
   closeTime: string;   // "HH:00"
   status: VenueStatus;
-  rating: number;
-  reviewCount: number;
+  ratingAverage: number | null;
+  ratingCount: number;
   distanceKm: number;
   pricePerHour: number;
   images?: VenueImage[];  // ordered list; images[0] with isPrimary is the cover; populated by adapter
@@ -147,17 +147,13 @@ export interface BookingGroup {
 
 export interface Review {
   id: string;
-  bookingId: string;
-  playerName: string;
-  playerAvatar?: string;
   venueId: string;
+  authorName: string;
   rating: number;
   comment: string;
-  cleanliness: number;
-  ground: number;
-  staff: number;
-  date: string;
-  ownerReply?: string;
+  createdAt: string;       // ISO date-time string
+  isOwn: boolean;
+  venueName?: string;      // populated on owner endpoint only
 }
 
 export interface Coupon {

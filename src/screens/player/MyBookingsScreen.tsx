@@ -130,7 +130,7 @@ export default function MyBookingsScreen({ navigation }: any) {
                 tabCtx={tabCtx}
                 onPress={() => navigation.navigate('BookingDetail', { bookingId: item.id })}
                 onCancel={() => setCancelTarget(item)}
-                onReview={() => navigation.navigate('RateReview', { bookingId: item.id })}
+                onReview={() => navigation.navigate('RateReview', { venueId: item.venueId })}
                 onRebook={() => navigation.navigate('VenueDetail', { venueId: item.venueId })}
               />
             );

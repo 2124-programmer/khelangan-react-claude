@@ -4,10 +4,11 @@ import {
   TouchableOpacity, ActivityIndicator, Linking, Alert, RefreshControl,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton, StarRating, EmptyState, Toast, LoadingOverlay } from '../../components/common';
+import { AppHeader, AppButton, EmptyState, Toast, LoadingOverlay } from '../../components/common';
 import { VenueImageCarousel } from '../../components/venue';
 import { VenueMap } from '../../components/venue/VenueMap';
-import { RatingDetailModal, ConfirmActionModal } from '../../modals';
+import { ConfirmActionModal } from '../../modals';
+import { RatingSummary, ReviewCard, ReviewsEmptyState, WriteReviewSheet } from '../../components/reviews';
 import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useVenueReviews } from '../../api/hooks/useReviews';
 import { useSports } from '../../api/hooks/useSports';
@@ -59,8 +60,8 @@ function buildFullAddress(address: string, city: string, state: string, pincode:
 export default function VenueDetailScreen({ navigation, route }: any) {
   const venueId: string = route.params.venueId;
   const { isLoggedIn, role } = useAuth();
-  const [showRating, setShowRating] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [writeReviewOpen, setWriteReviewOpen] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -155,14 +156,12 @@ export default function VenueDetailScreen({ navigation, route }: any) {
           </Text>
 
           {/* Rating */}
-          <TouchableOpacity style={styles.ratingRow} onPress={() => setShowRating(true)}>
-            <StarRating value={Math.round(venue.rating)} size={16} />
-            <Text style={styles.ratingText}>
-              {venue.rating > 0
-                ? `${venue.rating.toFixed(1)} · ${venue.reviewCount} review${venue.reviewCount !== 1 ? 's' : ''} ›`
-                : 'No ratings yet'}
-            </Text>
-          </TouchableOpacity>
+          <RatingSummary
+            ratingAverage={venue.ratingAverage}
+            ratingCount={venue.ratingCount}
+            variant="full"
+            onPress={() => navigation.navigate('VenueReviews', { venueId: venue.id })}
+          />
 
           {/* Sports */}
           {venue.sports.length > 0 && (
@@ -278,30 +277,36 @@ export default function VenueDetailScreen({ navigation, route }: any) {
           />
 
           {/* Reviews */}
-          <Text style={styles.sectionTitle}>
-            Reviews{reviews.length > 0 ? ` (${reviews.length})` : ''}
-          </Text>
+          <View style={styles.reviewsSectionHeader}>
+            <Text style={styles.sectionTitle}>
+              Reviews{venue.ratingCount > 0 ? ` (${venue.ratingCount})` : ''}
+            </Text>
+            {isLoggedIn && role === 'player' ? (
+              <TouchableOpacity onPress={() => setWriteReviewOpen(true)} activeOpacity={0.7}>
+                <Text style={styles.writeReviewLink}>
+                  {reviews.some((r) => r.isOwn) ? 'Edit your review' : 'Write a review'}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
           {reviews.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyBoxText}>No reviews yet. Be the first to review!</Text>
-            </View>
+            <ReviewsEmptyState
+              ctaLabel={isLoggedIn && role === 'player' ? 'Write a review' : undefined}
+              onCtaPress={isLoggedIn && role === 'player' ? () => setWriteReviewOpen(true) : undefined}
+            />
           ) : (
-            reviews.map((r) => (
-              <View key={r.id} style={[styles.reviewCard, shadow.card]}>
-                <View style={styles.reviewHeader}>
-                  <Text style={styles.reviewName}>{r.playerName}</Text>
-                  <StarRating value={r.rating} size={13} />
-                </View>
-                {!!r.date && <Text style={styles.reviewDate}>{r.date}</Text>}
-                <Text style={styles.reviewText}>{r.comment}</Text>
-                {r.ownerReply ? (
-                  <View style={styles.replyBox}>
-                    <Text style={styles.replyLabel}>Owner replied:</Text>
-                    <Text style={styles.replyText}>{r.ownerReply}</Text>
-                  </View>
-                ) : null}
-              </View>
-            ))
+            <>
+              {reviews.slice(0, 3).map((r) => <ReviewCard key={r.id} review={r} />)}
+              {venue.ratingCount > 3 ? (
+                <TouchableOpacity
+                  style={styles.seeAllBtn}
+                  onPress={() => navigation.navigate('VenueReviews', { venueId: venue.id })}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.seeAllText}>See all {venue.ratingCount} reviews ›</Text>
+                </TouchableOpacity>
+              ) : null}
+            </>
           )}
 
         </View>
@@ -324,16 +329,10 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         />
       </View>
 
-      <RatingDetailModal
-        visible={showRating}
-        rating={venue.rating}
-        breakdown={[
-          { label: 'Cleanliness', value: 5 },
-          { label: 'Ground Quality', value: 5 },
-          { label: 'Staff', value: 4 },
-          { label: 'Facilities', value: 4 },
-        ]}
-        onDismiss={() => setShowRating(false)}
+      <WriteReviewSheet
+        venueId={Number(venue.id)}
+        visible={writeReviewOpen}
+        onClose={() => setWriteReviewOpen(false)}
       />
 
       <ConfirmActionModal
@@ -468,4 +467,9 @@ const styles = StyleSheet.create({
   priceLabel: { fontSize: fontSize.xs, color: colors.textDim },
   price: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
   perSlot: { fontSize: fontSize.xs, color: colors.textDim, fontWeight: fontWeight.regular },
+
+  reviewsSectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.xl, marginBottom: spacing.md },
+  writeReviewLink: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
+  seeAllBtn: { paddingVertical: spacing.md, alignItems: 'center' },
+  seeAllText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
 });

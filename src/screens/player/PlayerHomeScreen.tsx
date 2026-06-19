@@ -75,13 +75,13 @@ export default function PlayerHomeScreen({ navigation }: any) {
         </TouchableOpacity>
 
         {/* Banner */}
-        <TouchableOpacity style={styles.banner} onPress={() => navigation.navigate('Offers')}>
+        {/* <TouchableOpacity style={styles.banner} onPress={() => navigation.navigate('Offers')}>
           <View style={{ flex: 1 }}>
             <Text style={styles.bannerTitle}>Get 20% OFF</Text>
             <Text style={styles.bannerSub}>On your next booking. Code: TURF20</Text>
           </View>
           <Text style={{ fontSize: 40 }}>🎉</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {/* Sport filter */}
         <Text style={styles.sectionTitle}>Choose a sport</Text>

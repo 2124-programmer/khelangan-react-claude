@@ -1,10 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { reviewService } from '../services/reviewService';
 import { adaptReview } from '../adapters';
-import type { CreateReviewRequest } from '../types';
+import { VENUES_KEY, OWNER_VENUES_KEY } from './useVenues';
+import type { CreateReviewRequest, UpdateReviewRequest } from '../types';
 
 export function venueReviewsKey(venueId: number) {
   return ['reviews', 'venue', venueId] as const;
+}
+
+export function myVenueReviewKey(venueId: number) {
+  return ['reviews', 'mine', venueId] as const;
 }
 
 export const OWNER_REVIEWS_KEY = ['owner', 'reviews'] as const;
@@ -25,6 +30,18 @@ export function useVenueReviews(venueId: string | number | undefined, params?: {
   });
 }
 
+export function useMyVenueReview(venueId: string | number | undefined) {
+  const id = Number(venueId);
+  return useQuery({
+    queryKey: myVenueReviewKey(id),
+    queryFn: async () => {
+      const dto = await reviewService.getMyReview(id);
+      return dto ? adaptReview(dto) : null;
+    },
+    enabled: !!venueId && !isNaN(id) && id > 0,
+  });
+}
+
 export function useOwnerReviews(params?: { page?: number }) {
   return useQuery({
     queryKey: [...OWNER_REVIEWS_KEY, params],
@@ -39,13 +56,47 @@ export function useOwnerReviews(params?: { page?: number }) {
   });
 }
 
+function invalidateAfterReviewMutation(
+  qc: ReturnType<typeof useQueryClient>,
+  venueId: number,
+) {
+  qc.invalidateQueries({ queryKey: venueReviewsKey(venueId) });
+  qc.invalidateQueries({ queryKey: myVenueReviewKey(venueId) });
+  qc.invalidateQueries({ queryKey: [...VENUES_KEY, venueId] });
+  qc.invalidateQueries({ queryKey: VENUES_KEY });
+  qc.invalidateQueries({ queryKey: OWNER_VENUES_KEY });
+  qc.invalidateQueries({ queryKey: OWNER_REVIEWS_KEY });
+}
+
 export function useCreateReview() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateReviewRequest) => reviewService.create(data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['reviews'] });
-      qc.invalidateQueries({ queryKey: ['bookings'] }); // hasReview flag changes
+    mutationFn: ({ venueId, data }: { venueId: number; data: CreateReviewRequest }) =>
+      reviewService.createForVenue(venueId, data),
+    onSuccess: (_result, { venueId }) => {
+      invalidateAfterReviewMutation(qc, venueId);
+    },
+  });
+}
+
+export function useUpdateReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reviewId, venueId, data }: { reviewId: number; venueId: number; data: UpdateReviewRequest }) =>
+      reviewService.update(reviewId, data),
+    onSuccess: (_result, { venueId }) => {
+      invalidateAfterReviewMutation(qc, venueId);
+    },
+  });
+}
+
+export function useDeleteReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reviewId }: { reviewId: number; venueId: number }) =>
+      reviewService.delete(reviewId),
+    onSuccess: (_result, { venueId }) => {
+      invalidateAfterReviewMutation(qc, venueId);
     },
   });
 }

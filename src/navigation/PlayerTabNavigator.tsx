@@ -14,6 +14,7 @@ import BookingSuccessScreen from '../screens/player/BookingSuccessScreen';
 import MyBookingsScreen from '../screens/player/MyBookingsScreen';
 import BookingDetailScreen from '../screens/player/BookingDetailScreen';
 import RateReviewScreen from '../screens/player/RateReviewScreen';
+import VenueReviewsScreen from '../screens/player/VenueReviewsScreen';
 import NotificationsScreen from '../screens/player/NotificationsScreen';
 import PlayerProfileScreen from '../screens/player/PlayerProfileScreen';
 import {
@@ -31,6 +32,7 @@ const SHARED = [
   { name: 'BookingSuccess', component: BookingSuccessScreen },
   { name: 'BookingDetail', component: BookingDetailScreen },
   { name: 'RateReview', component: RateReviewScreen },
+  { name: 'VenueReviews', component: VenueReviewsScreen },
   { name: 'Notifications', component: NotificationsScreen },
   { name: 'Offers', component: OffersScreen },
   { name: 'Wallet', component: WalletScreen },

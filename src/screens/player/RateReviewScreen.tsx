@@ -1,39 +1,38 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, Alert, TextInput } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
-import { AppHeader, AppButton, AppInput, StarRating, EmptyState, LoadingOverlay } from '../../components/common';
-import { ConfirmActionModal } from '../../modals';
-import { useBookingDetail } from '../../api/hooks/useBookings';
+import { AppHeader, AppButton, EmptyState, LoadingOverlay } from '../../components/common';
+import { RatingInput } from '../../components/reviews';
+import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useCreateReview } from '../../api/hooks/useReviews';
 import { extractApiError } from '../../api/client';
 
 export default function RateReviewScreen({ navigation, route }: any) {
-  const bookingId: string = route.params.bookingId;
-  const { data: booking, isLoading } = useBookingDetail(bookingId);
+  const venueId: string = route.params.venueId;
+  const { data: venue, isLoading } = useVenueDetail(venueId);
   const createReview = useCreateReview();
 
-  const [overall, setOverall] = useState(0);
-  const [cleanliness, setCleanliness] = useState(0);
-  const [ground, setGround] = useState(0);
-  const [staff, setStaff] = useState(0);
+  const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
-  const [confirm, setConfirm] = useState(false);
+  const [ratingError, setRatingError] = useState('');
 
   const handleSubmit = async () => {
-    if (!booking) return;
+    if (rating < 1) {
+      setRatingError('Please select a rating.');
+      return;
+    }
+    if (!comment.trim()) {
+      Alert.alert('Missing comment', 'Please write a short comment about your experience.');
+      return;
+    }
     try {
+      const id = Number(venueId);
       await createReview.mutateAsync({
-        bookingId: Number(bookingId),
-        rating: overall,
-        comment,
-        cleanliness,
-        ground,
-        staff,
+        venueId: id,
+        data: { venueId: id, rating, comment: comment.trim() },
       });
-      setConfirm(false);
       navigation.goBack();
     } catch (err) {
-      setConfirm(false);
       Alert.alert('Failed', extractApiError(err));
     }
   };
@@ -47,11 +46,11 @@ export default function RateReviewScreen({ navigation, route }: any) {
     );
   }
 
-  if (!booking) {
+  if (!venue) {
     return (
       <SafeAreaView style={styles.container}>
         <AppHeader title="Rate & Review" onBack={() => navigation.goBack()} />
-        <EmptyState icon="⚠️" title="Booking not found" subtitle="" />
+        <EmptyState icon="⚠️" title="Venue not found" subtitle="" />
       </SafeAreaView>
     );
   }
@@ -59,63 +58,49 @@ export default function RateReviewScreen({ navigation, route }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Rate & Review" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        <Text style={styles.venueName}>{booking.venueName}</Text>
-        <Text style={styles.sub}>{booking.sport} · {booking.date}</Text>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg }} keyboardShouldPersistTaps="handled">
+        <Text style={styles.venueName}>{venue.name}</Text>
+        <Text style={styles.sub}>{venue.city}</Text>
 
-        <View style={styles.overallBox}>
-          <Text style={styles.label}>Overall Rating</Text>
-          <StarRating value={overall} size={40} interactive onChange={setOverall} />
-        </View>
+        <Text style={styles.label}>Your rating</Text>
+        <RatingInput value={rating} onChange={(v) => { setRating(v); setRatingError(''); }} size={36} />
+        {ratingError ? <Text style={styles.fieldError}>{ratingError}</Text> : null}
 
-        <CategoryRow label="Cleanliness" value={cleanliness} onChange={setCleanliness} />
-        <CategoryRow label="Ground Quality" value={ground} onChange={setGround} />
-        <CategoryRow label="Staff Behaviour" value={staff} onChange={setStaff} />
-
-        <Text style={[styles.label, { marginTop: spacing.xl }]}>Write a review</Text>
-        <AppInput
+        <Text style={[styles.label, { marginTop: spacing.xl }]}>Your review</Text>
+        <TextInput
+          style={styles.commentInput}
           value={comment}
           onChangeText={setComment}
-          placeholder="Share your experience..."
+          placeholder="Share your experience…"
+          placeholderTextColor={colors.textDim}
           multiline
+          maxLength={1000}
+          textAlignVertical="top"
         />
+        <Text style={styles.charCount}>{comment.length}/1000</Text>
 
         <AppButton
           label={createReview.isPending ? 'Submitting…' : 'Submit Review'}
-          onPress={() => setConfirm(true)}
-          disabled={overall === 0}
+          onPress={handleSubmit}
+          disabled={createReview.isPending}
           loading={createReview.isPending}
-          style={{ marginTop: spacing.md }}
+          style={{ marginTop: spacing.xl }}
         />
       </ScrollView>
-
-      <ConfirmActionModal
-        visible={confirm}
-        title="Post Review?"
-        message="Your review will be visible to other players and the venue owner."
-        confirmLabel="Post"
-        onConfirm={handleSubmit}
-        onDismiss={() => setConfirm(false)}
-      />
     </SafeAreaView>
-  );
-}
-
-function CategoryRow({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
-  return (
-    <View style={styles.catRow}>
-      <Text style={styles.catLabel}>{label}</Text>
-      <StarRating value={value} size={22} interactive onChange={onChange} />
-    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   venueName: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  sub: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2 },
-  overallBox: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.xl, marginTop: spacing.xl, gap: spacing.md },
-  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid },
-  catRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginTop: spacing.sm, borderWidth: 1, borderColor: colors.border },
-  catLabel: { fontSize: fontSize.md, color: colors.text },
+  sub: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2, marginBottom: spacing.xl },
+  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid, marginBottom: spacing.sm },
+  fieldError: { fontSize: fontSize.xs, color: colors.danger, marginTop: 4 },
+  commentInput: {
+    borderWidth: 1, borderColor: colors.border, borderRadius: radius.md,
+    padding: spacing.md, fontSize: fontSize.md, color: colors.text,
+    height: 130, textAlignVertical: 'top', backgroundColor: colors.surface,
+  },
+  charCount: { fontSize: fontSize.xs, color: colors.textDim, textAlign: 'right', marginTop: 4 },
 });

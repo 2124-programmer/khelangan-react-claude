@@ -6,9 +6,10 @@ import {
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import {
   AppHeader, AppButton, AppInput, SectionTabBar,
-  StatusBadge, StarRating, EmptyState, SportChip, HourPickerDropdown, AvatarImage, LoadingOverlay
+  StatusBadge, EmptyState, SportChip, HourPickerDropdown, AvatarImage, LoadingOverlay
 } from '../../components/common';
 import { BookingCard, GroupedBookingCard, VenueImagePicker, PickedImage } from '../../components/venue';
+import { ReviewCard, ReviewsEmptyState } from '../../components/reviews';
 import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
 import { useBookings, useBookingDetail, useAcceptBooking, useRejectBooking, useAcceptBookingGroup, useRejectBookingGroup, useCheckInBooking, useCheckInBookingGroup } from '../../api/hooks/useBookings';
@@ -417,23 +418,9 @@ export function ReviewsManagementScreen({ navigation }: any) {
         {isLoading ? (
           <LoadingOverlay visible={isLoading} />
         ) : reviews.length === 0 ? (
-          <EmptyState icon="⭐" title="No reviews yet" subtitle="" />
+          <ReviewsEmptyState />
         ) : (
-          reviews.map((r) => (
-            <View key={r.id} style={styles.reviewCard}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={styles.reviewName}>{r.playerName}</Text>
-                <StarRating value={r.rating} size={13} />
-              </View>
-              <Text style={styles.reviewText}>{r.comment}</Text>
-              {r.ownerReply && (
-                <View style={styles.replyBox}>
-                  <Text style={styles.replyLabel}>Your reply:</Text>
-                  <Text style={styles.replyText}>{r.ownerReply}</Text>
-                </View>
-              )}
-            </View>
-          ))
+          reviews.map((r) => <ReviewCard key={r.id} review={r} showVenueName />)
         )}
       </ScrollView>
     </SafeAreaView>

@@ -114,8 +114,8 @@ export interface VenueSummaryDto {
   state?: string;
   pincode?: string;
   status?: string;         // "PENDING" | "LIVE" | "REJECTED" | "SUSPENDED"
-  rating?: number;
-  reviewCount?: number;
+  ratingAverage?: number | null;
+  ratingCount?: number;
   pricePerHour?: number;
   openTime?: string;       // "HH:00" format
   closeTime?: string;      // "HH:00" format
@@ -139,8 +139,8 @@ export interface VenueDetailDto {
   contactPhone?: string;
   contactEmail?: string;
   status?: string;
-  rating?: number;
-  reviewCount?: number;
+  ratingAverage?: number | null;
+  ratingCount?: number;
   pricePerHour?: number;
   openTime?: string;       // "HH:00" format
   closeTime?: string;      // "HH:00" format
@@ -353,26 +353,24 @@ export interface UpdateOwnerSettingsRequest {
 
 export interface ReviewDto {
   id?: number;
-  bookingId?: number;
   venueId?: number;
-  playerId?: number;
-  playerName?: string;
+  authorName?: string;
   rating?: number;
   comment?: string;
-  cleanliness?: number;
-  ground?: number;
-  staff?: number;
-  ownerReply?: string;
-  createdAt?: string;
+  createdAt?: string;      // ISO date-time
+  isOwn?: boolean;
+  venueName?: string;      // populated on owner endpoint only
 }
 
 export interface CreateReviewRequest {
-  bookingId: number;
+  venueId: number;
   rating: number;
   comment: string;
-  cleanliness: number;
-  ground: number;
-  staff: number;
+}
+
+export interface UpdateReviewRequest {
+  rating: number;
+  comment: string;
 }
 
 // ─── Coupon ──────────────────────────────────────────────────────────────────

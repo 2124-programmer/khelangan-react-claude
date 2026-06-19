@@ -4,7 +4,7 @@ import {
   Image, TouchableOpacity, RefreshControl,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton, StatusBadge, StarRating, EmptyState, LoadingOverlay } from '../../components/common';
+import { AppHeader, AppButton, StatusBadge, EmptyState, LoadingOverlay } from '../../components/common';
 import { useOwnerVenues } from '../../api/hooks/useVenues';
 
 export default function MyVenuesScreen({ navigation }: any) {
@@ -42,8 +42,9 @@ export default function MyVenuesScreen({ navigation }: any) {
                 <Text style={styles.addr}>📍 {v.address}</Text>
                 <View style={styles.metaRow}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <StarRating value={Math.round(v.rating)} size={13} />
-                    <Text style={styles.meta}>{v.rating} ({v.reviewCount})</Text>
+                    <Text style={styles.meta}>
+                      {v.ratingAverage !== null ? `★ ${v.ratingAverage.toFixed(1)} (${v.ratingCount})` : 'New'}
+                    </Text>
                   </View>
                   <Text style={styles.meta}>{v.courts.length} courts</Text>
                 </View>

@@ -7,6 +7,7 @@ import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../the
 import { Venue, Slot, Booking, BookingGroup } from '../../types';
 import { StatusBadge, AppButton } from '../common';
 import { getSportIcon, getSportName } from '../../utils/sportUtils';
+import { RatingSummary } from '../reviews';
 
 function callPhone(phone: string | undefined) {
   if (!phone) return;
@@ -97,14 +98,6 @@ export { VenueImageCarousel } from './VenueImageCarousel';
 
 /* ───────────────── VenueCard helpers ───────────────── */
 
-function RatingBadge({ rating }: { rating: number }) {
-  return (
-    <View style={vc.ratingBadge}>
-      <Text style={vc.ratingText}>⭐ {rating.toFixed(1)}</Text>
-    </View>
-  );
-}
-
 function MostBookedBadge() {
   return (
     <View style={vc.mostBookedBadge}>
@@ -158,7 +151,13 @@ export function VenueCard({ venue, onPress, userLocation }: VenueCardProps) {
         <Image source={{ uri: coverUri }} style={vc.image} resizeMode="cover" />
         <View style={vc.imageOverlay} />
         <View style={vc.imageBadgeRow}>
-          <RatingBadge rating={venue.rating} />
+          <View style={vc.ratingBadge}>
+            <RatingSummary
+              ratingAverage={venue.ratingAverage}
+              ratingCount={venue.ratingCount}
+              variant="compact"
+            />
+          </View>
           {venue.isMostBooked && <MostBookedBadge />}
         </View>
       </View>

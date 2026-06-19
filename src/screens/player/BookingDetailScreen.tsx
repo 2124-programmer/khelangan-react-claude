@@ -94,7 +94,7 @@ export default function BookingDetailScreen({ navigation, route }: any) {
           {booking.status === 'completed' && !booking.hasReview && (
             <AppButton
               label="Rate & Review"
-              onPress={() => navigation.navigate('RateReview', { bookingId: booking.id })}
+              onPress={() => navigation.navigate('RateReview', { venueId: booking.venueId })}
             />
           )}
           <AppButton

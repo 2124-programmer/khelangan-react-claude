@@ -97,8 +97,8 @@ export function adaptVenueSummary(dto: VenueSummaryDto): Venue {
     openTime: dto.openTime ?? '05:00',
     closeTime: dto.closeTime ?? '23:00',
     status: (dto.status?.toLowerCase() as VenueStatus) ?? 'live',
-    rating: dto.rating ?? 0,
-    reviewCount: dto.reviewCount ?? 0,
+    ratingAverage: dto.ratingAverage ?? null,
+    ratingCount: dto.ratingCount ?? 0,
     distanceKm: 0,
     pricePerHour: dto.pricePerHour ?? 0,
     images: buildImages(photos, coverPhoto),
@@ -131,8 +131,8 @@ export function adaptVenueDetail(dto: VenueDetailDto): Venue {
     openTime: dto.openTime ?? '05:00',
     closeTime: dto.closeTime ?? '23:00',
     status: (dto.status?.toLowerCase() as VenueStatus) ?? 'live',
-    rating: dto.rating ?? 0,
-    reviewCount: dto.reviewCount ?? 0,
+    ratingAverage: dto.ratingAverage ?? null,
+    ratingCount: dto.ratingCount ?? 0,
     distanceKm: 0,
     pricePerHour: dto.pricePerHour ?? 0,
     images: buildImages(photos, coverPhoto),
@@ -190,16 +190,13 @@ export function adaptBooking(dto: BookingDto): Booking {
 export function adaptReview(dto: ReviewDto): Review {
   return {
     id: String(dto.id ?? 0),
-    bookingId: String(dto.bookingId ?? 0),
-    playerName: dto.playerName ?? '',
     venueId: String(dto.venueId ?? 0),
+    authorName: dto.authorName ?? '',
     rating: dto.rating ?? 0,
     comment: dto.comment ?? '',
-    cleanliness: dto.cleanliness ?? 0,
-    ground: dto.ground ?? 0,
-    staff: dto.staff ?? 0,
-    ownerReply: dto.ownerReply,
-    date: dto.createdAt?.split('T')[0] ?? '',
+    createdAt: dto.createdAt ?? '',
+    isOwn: dto.isOwn ?? false,
+    venueName: dto.venueName,
   };
 }
 
