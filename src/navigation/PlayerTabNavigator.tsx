@@ -5,7 +5,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { colors } from '../theme';
 
 import PlayerHomeScreen from '../screens/player/PlayerHomeScreen';
-import SearchScreen from '../screens/player/SearchScreen';
 import VenueDetailScreen from '../screens/player/VenueDetailScreen';
 import SlotSelectionScreen from '../screens/player/SlotSelectionScreen';
 import BookingConfirmScreen from '../screens/player/BookingConfirmScreen';
@@ -41,7 +40,6 @@ const SHARED = [
   { name: 'EditProfile', component: EditProfileScreen },
   { name: 'Reschedule', component: RescheduleScreen },
   { name: 'Dispute', component: DisputeScreen },
-  { name: 'Search', component: SearchScreen },
   { name: 'RoleChange', component: RoleChangeScreen },
 ];
 
@@ -61,7 +59,6 @@ function makeStack(initialName: string, initialComponent: any) {
 }
 
 const HomeStack = makeStack('Home', PlayerHomeScreen);
-const SearchStack = makeStack('SearchHome', SearchScreen);
 const BookingsStack = makeStack('BookingsHome', MyBookingsScreen);
 const OffersStack = makeStack('OffersHome', OffersScreen);
 const ProfileStack = makeStack('ProfileHome', PlayerProfileScreen);
@@ -86,7 +83,6 @@ export default function PlayerTabNavigator() {
       }}
     >
       <Tab.Screen name="HomeTab" component={HomeStack} options={{ title: 'Home', tabBarIcon: tabIcon('🏠') }} />
-      <Tab.Screen name="Search" component={SearchStack} options={{ title: 'Search', tabBarIcon: tabIcon('🔍') }} />
       <Tab.Screen name="Bookings" component={BookingsStack} options={{ title: 'Bookings', tabBarIcon: tabIcon('📅') }} />
       <Tab.Screen name="OffersTab" component={OffersStack} options={{ title: 'Offers', tabBarIcon: tabIcon('🎟️') }} />
       <Tab.Screen name="Profile" component={ProfileStack} options={{ title: 'Profile', tabBarIcon: tabIcon('👤') }} />

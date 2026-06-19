@@ -5,7 +5,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { colors } from '../theme';
 
 import PlayerHomeScreen from '../screens/player/PlayerHomeScreen';
-import SearchScreen from '../screens/player/SearchScreen';
 import VenueDetailScreen from '../screens/player/VenueDetailScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
@@ -41,7 +40,6 @@ function makeStack(initialName: string, initialComponent: any, extra: typeof AUT
 }
 
 const HomeStack = makeStack('GuestHome', PlayerHomeScreen);
-const SearchStack = makeStack('GuestSearch', SearchScreen);
 
 // LoginTab is a dedicated stack whose initial screen is the login page
 const LoginStack = makeStack('Login', LoginScreen);
@@ -72,7 +70,6 @@ export default function GuestNavigator() {
       }}
     >
       <Tab.Screen name="GuestHomeTab" component={HomeStack} options={{ title: 'Home', tabBarIcon: tabIcon('🏠') }} />
-      <Tab.Screen name="GuestSearchTab" component={SearchStack} options={{ title: 'Search', tabBarIcon: tabIcon('🔍') }} />
       <Tab.Screen name="GuestLoginTab" component={LoginStack} options={{ title: 'Sign In', tabBarIcon: tabIcon('👤') }} />
     </Tab.Navigator>
   );

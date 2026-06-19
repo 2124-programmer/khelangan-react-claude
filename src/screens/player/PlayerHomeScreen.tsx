@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, ActivityIndicator, RefreshControl,
+  TouchableOpacity, TextInput, RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
@@ -12,10 +12,13 @@ import { useSports } from '../../api/hooks/useSports';
 import { useVenues } from '../../api/hooks/useVenues';
 import { useLocation } from '../../store/LocationContext';
 import { consumePendingNav } from '../../store/pendingNav';
+import { useDebounce } from '../../hooks/useDebounce';
 
 export default function PlayerHomeScreen({ navigation }: any) {
   const { user, isLoggedIn } = useAuth();
   const [activeSport, setActiveSport] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const debouncedQuery = useDebounce(query, 400);
   const { location: userLocation, permission, isResolving } = useLocation();
 
   useFocusEffect(
@@ -44,7 +47,9 @@ export default function PlayerHomeScreen({ navigation }: any) {
 
   const sportsQuery = useSports();
   const venuesQuery = useVenues(
-    activeSport ? { sport: activeSport } : undefined
+    activeSport || debouncedQuery
+      ? { sport: activeSport ?? undefined, search: debouncedQuery || undefined }
+      : undefined
   );
 
   const sports = sportsQuery.data ?? [];
@@ -66,13 +71,21 @@ export default function PlayerHomeScreen({ navigation }: any) {
       >
 
         {/* Search bar */}
-        <TouchableOpacity
-          style={[styles.searchBar, shadow.card]}
-          onPress={() => navigation.navigate('Search')}
-        >
-          <Text style={{ fontSize: 18 }}>🔍</Text>
-          <Text style={styles.searchPlaceholder}>Search turfs, sports, areas...</Text>
-        </TouchableOpacity>
+        <View style={styles.searchRow}>
+          <View style={[styles.searchBar, shadow.card]}>
+            <Text style={{ fontSize: 18 }}>🔍</Text>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search turfs, sports, areas..."
+              placeholderTextColor={colors.textDim}
+              value={query}
+              onChangeText={setQuery}
+            />
+          </View>
+          <TouchableOpacity style={[styles.filterBtn, shadow.card]}>
+            <Text style={{ fontSize: 18 }}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Banner */}
         {/* <TouchableOpacity style={styles.banner} onPress={() => navigation.navigate('Offers')}>
@@ -107,12 +120,7 @@ export default function PlayerHomeScreen({ navigation }: any) {
         )}
 
         {/* Venues */}
-        <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>Nearby Venues</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Search')}>
-            <Text style={styles.seeAll}>See all</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.sectionTitle}>Nearby Venues</Text>
 
         {/* Location status — visible indicator for debugging */}
         <Text style={styles.locationStatus}>
@@ -154,13 +162,13 @@ export default function PlayerHomeScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  searchBar: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, marginHorizontal: spacing.lg, borderRadius: radius.md, paddingHorizontal: spacing.lg, height: 50 },
-  searchPlaceholder: { color: colors.textDim, fontSize: fontSize.md },
+  searchRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.sm },
+  searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.md, paddingHorizontal: spacing.lg, height: 50 },
+  searchInput: { flex: 1, fontSize: fontSize.md, color: colors.text },
+  filterBtn: { width: 50, height: 50, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   banner: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, margin: spacing.lg, borderRadius: radius.lg, padding: spacing.lg },
   bannerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.white },
   bannerSub: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
   sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, paddingHorizontal: spacing.lg, marginTop: spacing.md, marginBottom: spacing.md },
-  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md },
-  seeAll: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.sm, paddingHorizontal: spacing.lg },
   locationStatus: { fontSize: fontSize.xs, color: colors.textDim, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
 });
