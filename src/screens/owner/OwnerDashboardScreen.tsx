@@ -56,9 +56,20 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
   const todaySlots = useMemo<Booking[]>(() => {
     return (todayData?.bookings ?? [])
       .filter((b) => b.status === 'confirmed' || b.status === 'completed' || b.status === 'checked_in')
-      .sort((a, b) => a.startTime.localeCompare(b.startTime))
-      .slice(0, 6);
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
   }, [todayData]);
+
+  const slotsByCourt = useMemo<Record<string, Booking[]>>(() => {
+    const groups: Record<string, Booking[]> = {};
+    todaySlots.forEach((b) => {
+      const key = b.courtName || 'Unknown Court';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(b);
+    });
+    return groups;
+  }, [todaySlots]);
+
+  const courtNames = useMemo(() => Object.keys(slotsByCourt).sort(), [slotsByCourt]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -207,17 +218,31 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
           </View>
         ) : (
           <View style={[styles.slotsCard, shadow.card]}>
-            {todaySlots.map((slot, idx) => (
-              <SlotRow
-                key={slot.id}
-                slot={slot}
-                last={idx === todaySlots.length - 1}
-                onPress={() => navigation.navigate('OwnerBookings', {
-                  screen: 'OwnerBookingsHome',
-                  params: { initialTab: slot.status === 'confirmed' ? 'today' : 'completed' },
-                })}
-              />
-            ))}
+            {courtNames.map((courtName, ci) => {
+              const slots = slotsByCourt[courtName];
+              return (
+                <View key={courtName}>
+                  <View style={[styles.courtHeader, ci > 0 && styles.courtHeaderBorder]}>
+                    <Text style={styles.courtHeaderIcon}>🏟</Text>
+                    <Text style={styles.courtHeaderName}>{courtName}</Text>
+                    <View style={styles.courtSlotBadge}>
+                      <Text style={styles.courtSlotBadgeText}>{slots.length} slot{slots.length > 1 ? 's' : ''}</Text>
+                    </View>
+                  </View>
+                  {slots.map((slot, idx) => (
+                    <CourtSlotRow
+                      key={slot.id}
+                      slot={slot}
+                      last={idx === slots.length - 1}
+                      onPress={() => navigation.navigate('OwnerBookings', {
+                        screen: 'OwnerBookingsHome',
+                        params: { initialTab: slot.status === 'confirmed' ? 'today' : 'completed' },
+                      })}
+                    />
+                  ))}
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -304,23 +329,16 @@ function BookingStatCard({
   );
 }
 
-function SlotRow({ slot, last, onPress }: { slot: Booking; last: boolean; onPress: () => void }) {
+function CourtSlotRow({ slot, last, onPress }: { slot: Booking; last: boolean; onPress: () => void }) {
   const isDone = slot.status === 'completed' || slot.status === 'checked_in';
   return (
     <TouchableOpacity onPress={onPress} style={[styles.slotRow, last && { borderBottomWidth: 0 }]}>
       <View style={[styles.slotTimePill, isDone && { backgroundColor: colors.success + '22' }]}>
-        <Text style={[styles.slotTime, isDone && { color: colors.success }]}>
-          {slot.startTime}
-        </Text>
+        <Text style={[styles.slotTime, isDone && { color: colors.success }]}>{slot.startTime}</Text>
         <Text style={[styles.slotTimeSep, isDone && { color: colors.success }]}>–</Text>
-        <Text style={[styles.slotTime, isDone && { color: colors.success }]}>
-          {slot.endTime}
-        </Text>
+        <Text style={[styles.slotTime, isDone && { color: colors.success }]}>{slot.endTime}</Text>
       </View>
-      <View style={styles.slotInfo}>
-        <Text style={styles.slotCourt} numberOfLines={1}>{slot.courtName}</Text>
-        <Text style={styles.slotPlayer} numberOfLines={1}>👤 {slot.playerName}</Text>
-      </View>
+      <Text style={styles.slotPlayer} numberOfLines={1}>👤 {slot.playerName}</Text>
       <StatusBadge status={slot.status} />
     </TouchableOpacity>
   );
@@ -382,13 +400,18 @@ const styles = StyleSheet.create({
   emptySlotsText: { fontSize: fontSize.sm, color: colors.textDim },
   slotsCard:      { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden' },
 
-  slotRow:      { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, paddingHorizontal: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.sm },
+  courtHeader:       { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.md, backgroundColor: colors.surfaceAlt, gap: spacing.xs },
+  courtHeaderBorder: { borderTopWidth: 1, borderTopColor: colors.border },
+  courtHeaderIcon:   { fontSize: 13 },
+  courtHeaderName:   { flex: 1, fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text },
+  courtSlotBadge:    { backgroundColor: colors.owner + '20', borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
+  courtSlotBadgeText:{ fontSize: 10, fontWeight: fontWeight.semibold, color: colors.owner },
+
+  slotRow:      { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.md, paddingLeft: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.sm },
   slotTimePill: { width: 88, backgroundColor: colors.owner + '18', borderRadius: radius.sm, paddingVertical: 4, paddingHorizontal: 6, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 2 },
   slotTime:     { fontSize: 11, fontWeight: fontWeight.semibold, color: colors.owner },
   slotTimeSep:  { fontSize: 11, color: colors.owner },
-  slotInfo:     { flex: 1 },
-  slotCourt:    { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
-  slotPlayer:   { fontSize: fontSize.xs, color: colors.textMid, marginTop: 2 },
+  slotPlayer:   { flex: 1, fontSize: fontSize.xs, color: colors.textMid },
 
   // Venue picker modal
   pickerOverlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
