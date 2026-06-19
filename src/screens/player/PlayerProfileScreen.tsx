@@ -5,6 +5,7 @@ import { AppHeader, AvatarImage } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
 import { useMe } from '../../api/hooks/useUser';
+import { toast } from '../../toast';
 
 const MENU = [
   { icon: '🔔', label: 'Notifications', route: 'Notifications' },
@@ -92,7 +93,7 @@ export default function PlayerProfileScreen({ navigation }: any) {
         message="You'll need to login again to access your bookings."
         confirmLabel="Logout"
         danger
-        onConfirm={() => { setShowLogout(false); logout(); }}
+        onConfirm={() => { setShowLogout(false); toast.info('Signed out successfully.'); logout(); }}
         onDismiss={() => setShowLogout(false)}
       />
     </SafeAreaView>

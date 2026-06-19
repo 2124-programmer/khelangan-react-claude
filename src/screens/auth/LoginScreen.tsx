@@ -1,7 +1,7 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, TextInput, Modal,
+  TouchableOpacity, TextInput,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppInput, AppButton, AppHeader, LoadingOverlay } from '../../components/common';
@@ -9,12 +9,11 @@ import { toast } from '../../toast';
 import { useAuth } from '../../store/AuthContext';
 import { extractApiError, extractFieldErrors, getHttpStatus, BASE_URL } from '../../api/client';
 import { authService } from '../../api/services/authService';
-import type { UserDto } from '../../api/types';
 import {
   validateEmail, validateLoginPassword, collectErrors,
 } from '../../utils/validation';
 
-type ScreenState = 'idle' | 'loading' | 'success';
+type ScreenState = 'idle' | 'loading';
 
 export default function LoginScreen({ navigation, route }: any) {
   const { loginWithCredentialsDeferred, updateSession } = useAuth();
@@ -23,15 +22,9 @@ export default function LoginScreen({ navigation, route }: any) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [screenState, setScreenState] = useState<ScreenState>('idle');
   const [otpLoading, setOtpLoading] = useState(false);
-  const pendingSession = useRef<{ token: string; user: UserDto } | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
-
-  useEffect(() => {
-    return () => { if (toastTimer.current) clearTimeout(toastTimer.current); };
-  }, []);
 
   const setFieldError = (field: string, err: string | null) =>
     setFieldErrors((prev) => ({ ...prev, [field]: err ?? '' }));
@@ -73,14 +66,9 @@ export default function LoginScreen({ navigation, route }: any) {
     }
 
     if (result) {
-      pendingSession.current = result;
-      // Single state update: loading → success (one render, one modal transition)
-      setScreenState('success');
-      toastTimer.current = setTimeout(() => {
-        if (pendingSession.current) {
-          updateSession(pendingSession.current.token, pendingSession.current.user);
-        }
-      }, 4000);
+      const firstName = result.user.name?.split(' ')[0] ?? '';
+      toast.success(firstName ? `Welcome back, ${firstName}!` : 'Login successful!');
+      await updateSession(result.token, result.user);
     }
   };
 
@@ -187,21 +175,6 @@ export default function LoginScreen({ navigation, route }: any) {
       </ScrollView>
 
       <LoadingOverlay visible={screenState === 'loading'} />
-
-      <Modal
-        visible={screenState === 'success'}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-      >
-        <View style={styles.successOverlay} pointerEvents="none">
-          <View style={styles.successCard}>
-            <Text style={styles.successIcon}>✓</Text>
-            <Text style={styles.successTitle}>Login Successful!</Text>
-            <Text style={styles.successSub}>Taking you to your account…</Text>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -218,27 +191,4 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.xl },
   footerText: { color: colors.textMid, fontSize: fontSize.sm },
   debugBanner: { marginTop: spacing.xs, fontSize: 10, color: '#888', fontFamily: 'monospace' },
-  successOverlay: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)',
-  },
-  successCard: {
-    backgroundColor: '#16A34A',
-    borderRadius: radius.xl,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: 32,
-    alignItems: 'center',
-    gap: spacing.sm,
-    maxWidth: 300,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  successIcon: { fontSize: 44, color: '#fff' },
-  successTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: '#fff', textAlign: 'center' },
-  successSub: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.85)', textAlign: 'center' },
 });

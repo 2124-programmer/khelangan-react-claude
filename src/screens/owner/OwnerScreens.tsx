@@ -22,6 +22,7 @@ import { useSports } from '../../api/hooks/useSports';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../../api/hooks/useNotifications';
 import { useMe } from '../../api/hooks/useUser';
 import { extractApiError } from '../../api/client';
+import { toast } from '../../toast';
 import { parseLatLng, formatLatLng } from '../../utils/locationUtils';
 import { formatRelativeTime, useNow } from '../../utils/dateUtils';
 import { AppNotification } from '../../types';
@@ -470,7 +471,7 @@ export function OwnerProfileScreen({ navigation }: any) {
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
         ))}
-        <AppButton label="Log Out" variant="danger" onPress={logout} style={{ marginTop: spacing.xl }} />
+        <AppButton label="Log Out" variant="danger" onPress={() => { toast.info('Signed out successfully.'); logout(); }} style={{ marginTop: spacing.xl }} />
       </ScrollView>
     </SafeAreaView>
   );

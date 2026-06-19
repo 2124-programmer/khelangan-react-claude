@@ -58,7 +58,7 @@ export default function PlayerHomeScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader
-        userName={user ? `Hi, ${user.name.split(' ')[0]} !!` : 'Welcome.!'}
+        userName={user ? `Hi, ${user.name.split(' ')[0]} !!` : ''}
       />
       <ScrollView
         showsVerticalScrollIndicator={false}

@@ -7,6 +7,7 @@ import { userService } from '../api/services/userService';
 import { adaptUser } from '../api/adapters';
 import { setSessionExpiredCallback } from '../api/client';
 import { queryClient } from '../api/queryClient';
+import { toast } from '../toast';
 import type { RegisterRequest, UserDto } from '../api/types';
 
 interface AuthState {
@@ -67,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Wire the 401-expired callback so the interceptor can trigger logout
   useEffect(() => {
     setSessionExpiredCallback(async () => {
+      toast.warning('Your session has expired. Please log in again.');
       setUser(null);
       setToken(null);
       setIsDemoMode(false);

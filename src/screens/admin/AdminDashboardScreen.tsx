@@ -4,6 +4,7 @@ import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../the
 import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
 import { useAdminStats } from '../../api/hooks/useAdmin';
+import { toast } from '../../toast';
 
 export default function AdminDashboardScreen({ navigation }: any) {
   const { user, logout } = useAuth();
@@ -113,7 +114,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
         message="You'll be signed out of the Admin panel."
         confirmLabel="Logout"
         danger
-        onConfirm={() => { setShowLogout(false); logout(); }}
+        onConfirm={() => { setShowLogout(false); toast.info('Signed out successfully.'); logout(); }}
         onDismiss={() => setShowLogout(false)}
       />
     </SafeAreaView>
