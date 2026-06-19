@@ -7,10 +7,11 @@ export function isGroup(item: BookingListItem): item is BookingGroup {
 }
 
 export function deriveGroupStatus(bookings: Booking[]): BookingStatus {
+  const isDone = (s: BookingStatus) => s === 'completed' || s === 'checked_in';
   if (bookings.every((b) => b.status === 'pending')) return 'pending';
   if (bookings.every((b) => b.status === 'confirmed')) return 'confirmed';
   if (bookings.every((b) => b.status === 'cancelled')) return 'cancelled';
-  if (bookings.every((b) => b.status === 'completed')) return 'completed';
+  if (bookings.every((b) => isDone(b.status))) return 'completed';
   if (bookings.every((b) => b.status === 'rejected')) return 'rejected';
   if (bookings.some((b) => b.status === 'confirmed')) return 'confirmed';
   return bookings[0].status;

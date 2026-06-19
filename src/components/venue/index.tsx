@@ -498,7 +498,7 @@ export function GroupedBookingCard({
     sorted.length > 1 &&
     sorted.every((b, i) => i === 0 || b.startTime === sorted[i - 1].endTime);
   const slotTimes = isContiguous
-    ? `${sorted[0].startTime} to ${sorted[sorted.length - 1].endTime}`
+    ? `${sorted[0].startTime}–${sorted[sorted.length - 1].endTime}`
     : sorted.map((b) => `${b.startTime}–${b.endTime}`).join(', ');
 
   const canAct = group.status === 'pending';

@@ -147,7 +147,9 @@ export function BookingManagementScreen({ navigation, route }: any) {
       list.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
     } else if (tab === 'completed') {
       const checkedIn = checkedInData?.bookings ?? [];
-      list = [...list, ...checkedIn];
+      // Backend already includes CHECKED_IN when COMPLETED is queried — deduplicate by id
+      const seen = new Set(list.map((b) => b.id));
+      list = [...list, ...checkedIn.filter((b) => !seen.has(b.id))];
       list.sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
     } else if (tab === 'cancelled') {
       // Merge CANCELLED + expired PENDING (fetched only when this tab is active)

@@ -212,8 +212,9 @@ export function AppHeader({ title, onBack, rightLabel, onRightPress, userName }:
 type AnyStatus = BookingStatus | VenueStatus | PaymentStatus | string;
 export function StatusBadge({ status }: { status: AnyStatus }) {
   const map: Record<string, { bg: string; fg: string; label: string }> = {
-    confirmed: { bg: '#DCFCE7', fg: '#15803D', label: 'Confirmed' },
-    completed: { bg: '#E0E7FF', fg: '#4338CA', label: 'Completed' },
+    confirmed:  { bg: '#DCFCE7', fg: '#15803D', label: 'Confirmed' },
+    completed:  { bg: '#E0E7FF', fg: '#4338CA', label: 'Completed' },
+    checked_in: { bg: '#E0E7FF', fg: '#4338CA', label: 'Completed' },
     cancelled: { bg: '#FEE2E2', fg: '#B91C1C', label: 'Cancelled' },
     pending: { bg: '#FEF3C7', fg: '#B45309', label: 'Pending' },
     live: { bg: '#DCFCE7', fg: '#15803D', label: 'Live' },
@@ -290,8 +291,24 @@ interface SectionTabBarProps {
   onChange: (v: string) => void;
 }
 export function SectionTabBar({ tabs, activeTab, onChange }: SectionTabBarProps) {
+  const scrollRef = useRef<ScrollView>(null);
+  const tabOffsets = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    const x = tabOffsets.current[activeTab];
+    if (x !== undefined && scrollRef.current) {
+      scrollRef.current.scrollTo({ x: Math.max(0, x - 16), animated: true });
+    }
+  }, [activeTab]);
+
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar}>
+    <ScrollView
+      ref={scrollRef}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.tabBar}
+      contentContainerStyle={styles.tabBarContent}
+    >
       {tabs.map((t) => {
         const active = t.value === activeTab;
         return (
@@ -299,6 +316,7 @@ export function SectionTabBar({ tabs, activeTab, onChange }: SectionTabBarProps)
             key={t.value}
             onPress={() => onChange(t.value)}
             style={[styles.tab, active && styles.tabActive]}
+            onLayout={(e) => { tabOffsets.current[t.value] = e.nativeEvent.layout.x; }}
           >
             <Text style={[styles.tabText, active && styles.tabTextActive]}>{t.label}</Text>
           </TouchableOpacity>
@@ -585,10 +603,11 @@ const styles = StyleSheet.create({
   headerRight: { color: colors.primary, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
   badge: { paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.pill, alignSelf: 'flex-start' },
   badgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold },
-  tabBar: { flexGrow: 0, backgroundColor: colors.surface, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  tab: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, marginRight: spacing.sm, backgroundColor: colors.surfaceAlt, flexShrink: 0 },
+  tabBar: { flexGrow: 0, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  tabBarContent: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: spacing.xs },
+  tab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, flexShrink: 0 },
   tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid },
+  tabText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.textMid },
   tabTextActive: { color: colors.white },
   empty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80 },
   emptyTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
