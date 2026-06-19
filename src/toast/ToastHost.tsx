@@ -49,5 +49,7 @@ export function ToastHost() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    zIndex: 99999,
+    elevation: 99999,
   },
 });

@@ -122,13 +122,13 @@ export function ToastItem({ entry, index, onDismiss }: Props) {
 
   return (
     <Animated.View
-      style={[styles.container, animStyle, { top: topOffset }]}
+      style={[styles.container, animStyle, { top: topOffset, borderColor: accent, borderWidth: 1.5 }]}
       {...panResponder.panHandlers}
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
     >
       {/* Type icon */}
-      <View style={[styles.iconWrap, { backgroundColor: accentBg }]}>
+      <View style={[styles.iconWrap, { backgroundColor: accentBg, borderColor: accent, borderWidth: 1 }]}>
         <Feather name={ICON_NAME[entry.type]} size={22} color={accent} />
       </View>
 
@@ -161,13 +161,13 @@ export function ToastItem({ entry, index, onDismiss }: Props) {
 }
 
 const containerShadow = Platform.select({
-  web: { boxShadow: '0 6px 28px rgba(0,0,0,0.14)' },
+  web: { boxShadow: '0 8px 32px rgba(0,0,0,0.26)' },
   default: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.14,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 22,
+    elevation: 24,
   },
 }) as object;
 
@@ -176,10 +176,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
+    zIndex: 99999,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: radius.xl,          // 24 — nice rounded pill card
+    borderRadius: radius.xl,
     paddingVertical: 14,
     paddingHorizontal: spacing.md,
     gap: spacing.sm,

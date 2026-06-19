@@ -201,7 +201,7 @@ export function WriteReviewSheet({ venueId, visible, onClose }: WriteReviewSheet
       }
       onClose();
     } catch {
-      // Global MutationCache.onError handles the error toast — sheet stays open
+      onClose();
     }
   }
 
