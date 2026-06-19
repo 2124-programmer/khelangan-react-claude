@@ -150,6 +150,7 @@ export function WriteReviewSheet({ venueId, visible, onClose }: WriteReviewSheet
   const [comment, setComment] = useState('');
   const [ratingError, setRatingError] = useState('');
   const [commentError, setCommentError] = useState('');
+  const [submitError, setSubmitError] = useState('');
 
   const createMutation = useCreateReview();
   const updateMutation = useUpdateReview();
@@ -163,6 +164,7 @@ export function WriteReviewSheet({ venueId, visible, onClose }: WriteReviewSheet
       setComment(existing?.comment ?? '');
       setRatingError('');
       setCommentError('');
+      setSubmitError('');
     }
   }, [visible, existing]);
 
@@ -189,23 +191,31 @@ export function WriteReviewSheet({ venueId, visible, onClose }: WriteReviewSheet
 
   async function handleSubmit() {
     if (!validate()) return;
+    setSubmitError('');
     const data = { rating, comment: comment.trim() };
-    if (isEdit && existing) {
-      await updateMutation.mutateAsync({
-        reviewId: Number(existing.id),
-        venueId,
-        data,
-      });
-    } else {
-      await createMutation.mutateAsync({ venueId, data: { ...data, venueId } });
+    try {
+      if (isEdit && existing) {
+        await updateMutation.mutateAsync({ reviewId: Number(existing.id), venueId, data });
+      } else {
+        await createMutation.mutateAsync({ venueId, data: { ...data, venueId } });
+      }
+      onClose();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to submit review. Please try again.';
+      setSubmitError(msg);
     }
-    onClose();
   }
 
   async function handleDelete() {
     if (!existing) return;
-    await deleteMutation.mutateAsync({ reviewId: Number(existing.id), venueId });
-    onClose();
+    setSubmitError('');
+    try {
+      await deleteMutation.mutateAsync({ reviewId: Number(existing.id), venueId });
+      onClose();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to delete review. Please try again.';
+      setSubmitError(msg);
+    }
   }
 
   return (
@@ -249,6 +259,11 @@ export function WriteReviewSheet({ venueId, visible, onClose }: WriteReviewSheet
                 <Text style={styles.submitBtnText}>{isEdit ? 'Save changes' : 'Submit review'}</Text>
               )}
             </TouchableOpacity>
+            {submitError ? (
+              <View style={styles.submitErrorBox}>
+                <Text style={styles.submitErrorText}>{submitError}</Text>
+              </View>
+            ) : null}
 
             {isEdit ? (
               <TouchableOpacity
@@ -345,4 +360,9 @@ const styles = StyleSheet.create({
     height: 46, alignItems: 'center', justifyContent: 'center', marginTop: spacing.md,
   },
   deleteBtnText: { color: colors.danger, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
+  submitErrorBox: {
+    backgroundColor: '#FEF2F2', borderRadius: radius.md, borderWidth: 1, borderColor: '#FECACA',
+    padding: spacing.md, marginTop: spacing.md,
+  },
+  submitErrorText: { fontSize: fontSize.sm, color: colors.danger, lineHeight: 20 },
 });
