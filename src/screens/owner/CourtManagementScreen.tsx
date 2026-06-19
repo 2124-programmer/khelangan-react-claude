@@ -191,6 +191,14 @@ export default function CourtManagementScreen({ navigation, route }: any) {
         onRightPress={openCreate}
       />
 
+      {/* Venue context bar */}
+      {venue && (
+        <View style={styles.venueBar}>
+          <Text style={styles.venueBarName} numberOfLines={1}>{venue.name}</Text>
+          <Text style={styles.venueBarMeta} numberOfLines={1}>📍 {venue.address}</Text>
+        </View>
+      )}
+
       {showForm ? (
         <ScrollView contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
           <Text style={styles.formTitle}>{editing ? 'Edit Court' : 'New Court'}</Text>
@@ -408,6 +416,16 @@ export default function CourtManagementScreen({ navigation, route }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
+
+  venueBar: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  venueBarName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
+  venueBarMeta: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 2 },
 
   formContent: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
   listContent:  { padding: spacing.lg },

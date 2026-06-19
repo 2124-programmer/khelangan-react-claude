@@ -2,12 +2,14 @@ import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, RefreshControl, ActivityIndicator, Pressable,
+  Modal, Alert,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { NotificationBell, MetricCard, StatusBadge } from '../../components/common';
 import { useAuth } from '../../store/AuthContext';
 import { useOwnerDashboardSummary } from '../../api/hooks/useOwnerDashboard';
 import { useBookings } from '../../api/hooks/useBookings';
+import { useOwnerVenues } from '../../api/hooks/useVenues';
 import type { Booking } from '../../types';
 
 // ── Money formatter: ₹1234 → "₹1.2k", ₹12,34,567 → "₹12.3L"
@@ -32,6 +34,22 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
   const { user } = useAuth();
   const { data, isLoading, isError, refetch } = useOwnerDashboardSummary();
   const [refreshing, setRefreshing] = useState(false);
+
+  const { data: venuesData } = useOwnerVenues();
+  const ownerVenues = venuesData?.venues ?? [];
+  const [venuePicker, setVenuePicker] = useState(false);
+
+  function openCalendar() {
+    if (ownerVenues.length === 0) {
+      Alert.alert('No venues', 'Add a venue first before viewing the calendar.');
+      return;
+    }
+    if (ownerVenues.length === 1) {
+      navigation.navigate('VenueCalendar', { venueId: ownerVenues[0].id });
+      return;
+    }
+    setVenuePicker(true);
+  }
 
   const todayStr = useMemo(() => getTodayStr(), []);
   const { data: todayData, isLoading: todayLoading } = useBookings({ date: todayStr });
@@ -149,7 +167,7 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionsGrid}>
           <Action icon="➕" label="Add Venue"  onPress={() => navigation.navigate('AddVenue')} />
-          <Action icon="📅" label="Calendar"   onPress={() => navigation.navigate('VenueCalendar', { venueId: '1' })} />
+          <Action icon="📅" label="Calendar"   onPress={openCalendar} />
           <Action icon="💰" label="Earnings"   onPress={() => navigation.navigate('EarningsTab')} />
           <Action icon="⭐" label="Reviews"    onPress={() => navigation.navigate('ReviewsManagement')} />
           <Action icon="📋" label="Requests"   onPress={() => goBookings('requests')} />
@@ -228,6 +246,40 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
           </View>
         )}
       </ScrollView>
+
+      {/* ── Venue picker modal (Calendar quick action, multiple venues) ── */}
+      <Modal
+        visible={venuePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setVenuePicker(false)}
+      >
+        <Pressable style={styles.pickerOverlay} onPress={() => setVenuePicker(false)}>
+          <Pressable style={styles.pickerSheet} onPress={() => {}}>
+            <View style={styles.pickerHandle} />
+            <Text style={styles.pickerTitle}>Select Venue</Text>
+            {ownerVenues.map((v) => (
+              <TouchableOpacity
+                key={v.id}
+                style={styles.pickerRow}
+                onPress={() => {
+                  setVenuePicker(false);
+                  navigation.navigate('VenueCalendar', { venueId: v.id });
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pickerVenueName} numberOfLines={1}>{v.name}</Text>
+                  <Text style={styles.pickerVenueAddr} numberOfLines={1}>📍 {v.address}</Text>
+                </View>
+                <Text style={styles.pickerChevron}>›</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.pickerCancel} onPress={() => setVenuePicker(false)}>
+              <Text style={styles.pickerCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -337,4 +389,16 @@ const styles = StyleSheet.create({
   slotInfo:     { flex: 1 },
   slotCourt:    { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
   slotPlayer:   { fontSize: fontSize.xs, color: colors.textMid, marginTop: 2 },
+
+  // Venue picker modal
+  pickerOverlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  pickerSheet:      { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
+  pickerHandle:     { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginTop: spacing.md, marginBottom: spacing.lg },
+  pickerTitle:      { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.md },
+  pickerRow:        { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
+  pickerVenueName:  { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
+  pickerVenueAddr:  { fontSize: fontSize.xs, color: colors.textMid, marginTop: 2 },
+  pickerChevron:    { fontSize: 22, color: colors.textDim, paddingLeft: spacing.sm },
+  pickerCancel:     { marginTop: spacing.lg, alignItems: 'center', paddingVertical: spacing.md, backgroundColor: colors.surfaceAlt, borderRadius: radius.md },
+  pickerCancelText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid },
 });
