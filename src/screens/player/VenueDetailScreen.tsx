@@ -5,7 +5,8 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton, EmptyState, Toast, LoadingOverlay } from '../../components/common';
+import { AppHeader, AppButton, EmptyState, LoadingOverlay } from '../../components/common';
+import { toast } from '../../toast';
 import { VenueImageCarousel } from '../../components/venue';
 import { VenueMap } from '../../components/venue/VenueMap';
 import { ConfirmActionModal } from '../../modals';
@@ -55,10 +56,9 @@ export default function VenueDetailScreen({ navigation, route }: any) {
   const { isLoggedIn, role } = useAuth();
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [writeReviewOpen, setWriteReviewOpen] = useState(false);
-  const [successToast, setSuccessToast] = useState<string | null>(null);
 
   useEffect(() => {
-    if (route.params?._successToast) setSuccessToast(route.params._successToast as string);
+    if (route.params?._successToast) toast.success(route.params._successToast as string);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: venue, isLoading, isError, refetch: refetchVenue } = useVenueDetail(venueId);
@@ -158,7 +158,7 @@ export default function VenueDetailScreen({ navigation, route }: any) {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         try {
           await navigator.clipboard.writeText(shareText);
-          setSuccessToast('Copied to clipboard!');
+          toast.success('Copied to clipboard!');
           return;
         } catch { /* fall through */ }
       }
@@ -172,7 +172,7 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         el.select();
         document.execCommand('copy');
         document.body.removeChild(el);
-        setSuccessToast('Copied to clipboard!');
+        toast.success('Copied to clipboard!');
       } catch { /* nothing worked */ }
       return;
     }
@@ -450,12 +450,6 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         }}
       />
 
-      <Toast
-        visible={!!successToast}
-        message={successToast ?? ''}
-        type="success"
-        onHide={() => setSuccessToast(null)}
-      />
     </SafeAreaView>
   );
 }

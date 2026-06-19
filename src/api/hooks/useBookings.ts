@@ -62,6 +62,8 @@ export function useCreateBooking() {
 export function useBulkCreateBooking() {
   const qc = useQueryClient();
   return useMutation({
+    // BookingRequestModal owns the error phase UI — suppress global toast
+    meta: { suppressToast: true },
     mutationFn: (data: BulkCreateBookingRequest) => bookingService.bulkCreate(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });

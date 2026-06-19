@@ -11,6 +11,7 @@ import { sportService } from './src/api/services/sportService';
 import { adaptSport } from './src/api/adapters';
 import { setSportsRegistry } from './src/utils/sportUtils';
 import RootNavigator from './src/navigation/RootNavigator';
+import { ToastHost } from './src/toast';
 
 function SportsBootstrap() {
   useEffect(() => {
@@ -81,6 +82,7 @@ export default function App() {
             </NavigationContainer>
           </LocationProvider>
         </AuthProvider>
+        <ToastHost />
       </SafeAreaProvider>
     </QueryClientProvider>
   );

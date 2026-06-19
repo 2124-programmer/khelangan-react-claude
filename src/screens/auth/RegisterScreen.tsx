@@ -4,7 +4,8 @@ import {
   TouchableOpacity, TextInput, Modal,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
-import { AppInput, AppButton, AppHeader, LoadingOverlay, Toast } from '../../components/common';
+import { AppInput, AppButton, AppHeader, LoadingOverlay } from '../../components/common';
+import { toast } from '../../toast';
 import { UserRole } from '../../types';
 import type { UserDto } from '../../api/types';
 import { useAuth } from '../../store/AuthContext';
@@ -23,7 +24,6 @@ export default function RegisterScreen({ navigation, route }: any) {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('player');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [errorToast, setErrorToast] = useState({ visible: false, message: '' });
   const [screenState, setScreenState] = useState<ScreenState>('idle');
   const pendingSession = useRef<{ token: string; user: UserDto } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -83,7 +83,7 @@ export default function RegisterScreen({ navigation, route }: any) {
       } else if (status === 409) {
         setFieldErrors({ email: 'An account with this email already exists. Try logging in.' });
       } else {
-        setErrorToast({ visible: true, message: extractApiError(err) || 'Registration failed. Please try again.' });
+        toast.error(extractApiError(err) || 'Registration failed. Please try again.');
       }
       setScreenState('idle');
     }
@@ -195,12 +195,6 @@ export default function RegisterScreen({ navigation, route }: any) {
 
       <LoadingOverlay visible={screenState === 'loading'} />
 
-      <Toast
-        visible={errorToast.visible}
-        message={errorToast.message}
-        type="error"
-        onHide={() => setErrorToast({ visible: false, message: '' })}
-      />
 
       <Modal
         visible={screenState === 'success'}

@@ -4,6 +4,7 @@ import {
   TextInput, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { toast } from '../../toast';
 import { formatRelativeTime } from '../../utils/dateUtils';
 import { useMyVenueReview, useCreateReview, useUpdateReview, useDeleteReview } from '../../api/hooks/useReviews';
 import type { Review } from '../../types';
@@ -150,7 +151,6 @@ export function WriteReviewSheet({ venueId, visible, onClose }: WriteReviewSheet
   const [comment, setComment] = useState('');
   const [ratingError, setRatingError] = useState('');
   const [commentError, setCommentError] = useState('');
-  const [submitError, setSubmitError] = useState('');
 
   const createMutation = useCreateReview();
   const updateMutation = useUpdateReview();
@@ -164,7 +164,6 @@ export function WriteReviewSheet({ venueId, visible, onClose }: WriteReviewSheet
       setComment(existing?.comment ?? '');
       setRatingError('');
       setCommentError('');
-      setSubmitError('');
     }
   }, [visible, existing]);
 
@@ -191,30 +190,29 @@ export function WriteReviewSheet({ venueId, visible, onClose }: WriteReviewSheet
 
   async function handleSubmit() {
     if (!validate()) return;
-    setSubmitError('');
     const data = { rating, comment: comment.trim() };
     try {
       if (isEdit && existing) {
         await updateMutation.mutateAsync({ reviewId: Number(existing.id), venueId, data });
+        toast.success('Review updated');
       } else {
         await createMutation.mutateAsync({ venueId, data: { ...data, venueId } });
+        toast.success('Review submitted');
       }
       onClose();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to submit review. Please try again.';
-      setSubmitError(msg);
+    } catch {
+      // Global MutationCache.onError handles the error toast — sheet stays open
     }
   }
 
   async function handleDelete() {
     if (!existing) return;
-    setSubmitError('');
     try {
       await deleteMutation.mutateAsync({ reviewId: Number(existing.id), venueId });
+      toast.success('Review deleted');
       onClose();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to delete review. Please try again.';
-      setSubmitError(msg);
+    } catch {
+      // Global handler toasts the error
     }
   }
 
@@ -259,11 +257,6 @@ export function WriteReviewSheet({ venueId, visible, onClose }: WriteReviewSheet
                 <Text style={styles.submitBtnText}>{isEdit ? 'Save changes' : 'Submit review'}</Text>
               )}
             </TouchableOpacity>
-            {submitError ? (
-              <View style={styles.submitErrorBox}>
-                <Text style={styles.submitErrorText}>{submitError}</Text>
-              </View>
-            ) : null}
 
             {isEdit ? (
               <TouchableOpacity
@@ -360,9 +353,4 @@ const styles = StyleSheet.create({
     height: 46, alignItems: 'center', justifyContent: 'center', marginTop: spacing.md,
   },
   deleteBtnText: { color: colors.danger, fontWeight: fontWeight.semibold, fontSize: fontSize.sm },
-  submitErrorBox: {
-    backgroundColor: '#FEF2F2', borderRadius: radius.md, borderWidth: 1, borderColor: '#FECACA',
-    padding: spacing.md, marginTop: spacing.md,
-  },
-  submitErrorText: { fontSize: fontSize.sm, color: colors.danger, lineHeight: 20 },
 });

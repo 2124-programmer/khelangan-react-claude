@@ -4,7 +4,8 @@ import {
   TouchableOpacity, TextInput, Modal,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
-import { AppInput, AppButton, AppHeader, Toast, LoadingOverlay } from '../../components/common';
+import { AppInput, AppButton, AppHeader, LoadingOverlay } from '../../components/common';
+import { toast } from '../../toast';
 import { useAuth } from '../../store/AuthContext';
 import { extractApiError, extractFieldErrors, getHttpStatus, BASE_URL } from '../../api/client';
 import { authService } from '../../api/services/authService';
@@ -20,7 +21,6 @@ export default function LoginScreen({ navigation, route }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [screenState, setScreenState] = useState<ScreenState>('idle');
   const [otpLoading, setOtpLoading] = useState(false);
   const pendingSession = useRef<{ token: string; user: UserDto } | null>(null);
@@ -63,11 +63,11 @@ export default function LoginScreen({ navigation, route }: any) {
       if (Object.keys(fe).length) {
         setFieldErrors(fe);
       } else if (status === 401) {
-        setToastMsg('Incorrect email or password. Please check your credentials and try again.');
+        toast.error('Incorrect email or password. Please check your credentials and try again.');
       } else if (status === 403) {
-        setToastMsg('Your account has been suspended. Please contact support.');
+        toast.error('Your account has been suspended. Please contact support.');
       } else {
-        setToastMsg(extractApiError(err) || 'Login failed. Please try again.');
+        toast.error(extractApiError(err) || 'Login failed. Please try again.');
       }
       setScreenState('idle');
     }
@@ -107,7 +107,7 @@ export default function LoginScreen({ navigation, route }: any) {
       if (status === 404) {
         setFieldError('email', 'No account found with this email.');
       } else {
-        setToastMsg(extractApiError(err) || 'Could not send OTP. Please try again.');
+        toast.error(extractApiError(err) || 'Could not send OTP. Please try again.');
       }
     } finally {
       setOtpLoading(false);
@@ -116,12 +116,6 @@ export default function LoginScreen({ navigation, route }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Toast
-        visible={!!toastMsg}
-        message={toastMsg ?? ''}
-        type="error"
-        onHide={() => setToastMsg(null)}
-      />
       <AppHeader title="Login" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <Text style={styles.heading}>Welcome back</Text>
