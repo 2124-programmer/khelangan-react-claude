@@ -325,6 +325,101 @@ const brStyles = StyleSheet.create({
   },
 });
 
+/* ───────────────── CheckInConfirmModal ───────────────── */
+interface CheckInConfirmProps {
+  visible: boolean;
+  playerName: string;
+  venueName: string;
+  courtName: string;
+  date: string;
+  timeRange: string;
+  slotsCount?: number;
+  total: number;
+  onConfirm: () => void;
+  onDismiss: () => void;
+}
+export function CheckInConfirmModal({
+  visible, playerName, venueName, courtName, date, timeRange, slotsCount, total, onConfirm, onDismiss,
+}: CheckInConfirmProps) {
+  return (
+    <Modal transparent visible={visible} animationType="slide" onRequestClose={onDismiss}>
+      <View style={styles.sheetOverlay}>
+        <View style={[styles.sheet, shadow.modal]}>
+          <View style={styles.sheetHandle} />
+
+          {/* Header */}
+          <View style={ciStyles.header}>
+            <View style={ciStyles.iconCircle}>
+              <Text style={{ fontSize: 26 }}>✅</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.dialogTitle}>Confirm Check In</Text>
+              <Text style={[styles.dialogMsg, { marginTop: 2 }]}>Verify the booking before checking in</Text>
+            </View>
+          </View>
+
+          {/* Details */}
+          <View style={ciStyles.summaryBox}>
+            <CIRow icon="👤" label="Player" value={playerName} />
+            <CIRow icon="🏟" label="Venue" value={venueName} />
+            <CIRow icon="🏐" label="Court" value={courtName} />
+            <CIRow icon="📅" label="Date" value={date} />
+            <CIRow icon="⏰" label="Time" value={timeRange} />
+            {slotsCount && slotsCount > 1 && (
+              <CIRow icon="🎯" label="Slots" value={`${slotsCount} slots`} />
+            )}
+          </View>
+
+          {/* Total */}
+          <View style={ciStyles.totalRow}>
+            <Text style={ciStyles.totalLabel}>Total Amount</Text>
+            <Text style={ciStyles.totalValue}>₹{total}</Text>
+          </View>
+
+          {/* Actions */}
+          <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xl }}>
+            <AppButton label="Cancel" variant="secondary" onPress={onDismiss} style={{ flex: 1 }} />
+            <AppButton label="✓ Check In" onPress={onConfirm} style={{ flex: 1 }} />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function CIRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+  return (
+    <View style={ciStyles.row}>
+      <Text style={ciStyles.rowIcon}>{icon}</Text>
+      <Text style={ciStyles.rowLabel}>{label}</Text>
+      <Text style={ciStyles.rowValue} numberOfLines={1}>{value}</Text>
+    </View>
+  );
+}
+
+const ciStyles = StyleSheet.create({
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg },
+  iconCircle: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  summaryBox: {
+    backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md,
+  },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 7 },
+  rowIcon: { fontSize: 14, width: 22 },
+  rowLabel: { fontSize: fontSize.sm, color: colors.textMid, width: 56 },
+  rowValue: { flex: 1, fontSize: fontSize.sm, color: colors.text, fontWeight: fontWeight.semibold, textAlign: 'right' },
+  totalRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginTop: spacing.lg, paddingTop: spacing.md,
+    borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  totalLabel: { fontSize: fontSize.md, color: colors.textMid },
+  totalValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
+});
+
 /* ───────────────── RatingDetailModal ───────────────── */
 export function RatingDetailModal({ visible, rating, breakdown, onDismiss }: {
   visible: boolean; rating: number;

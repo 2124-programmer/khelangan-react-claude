@@ -10,7 +10,7 @@ import {
 } from '../../components/common';
 import { BookingCard, GroupedBookingCard, VenueImagePicker, PickedImage } from '../../components/venue';
 import { ReviewCard, ReviewsEmptyState } from '../../components/reviews';
-import { ConfirmActionModal } from '../../modals';
+import { ConfirmActionModal, CheckInConfirmModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
 import { useBookings, useBookingDetail, useAcceptBooking, useRejectBooking, useAcceptBookingGroup, useRejectBookingGroup, useCheckInBooking, useCheckInBookingGroup } from '../../api/hooks/useBookings';
 import { useOwnerSettings, useUpdateOwnerSettings } from '../../api/hooks/useSettings';
@@ -25,7 +25,7 @@ import { extractApiError } from '../../api/client';
 import { toast } from '../../toast';
 import { parseLatLng, formatLatLng } from '../../utils/locationUtils';
 import { formatRelativeTime, useNow } from '../../utils/dateUtils';
-import { AppNotification } from '../../types';
+import { AppNotification, Booking, BookingGroup } from '../../types';
 import { groupBookingList, isGroup, isExpiredPending } from '../../utils/bookingUtils';
 
 // ─── Edit-venue constants (mirror AddVenueScreen) ───────────────────────────
@@ -131,6 +131,22 @@ export function BookingManagementScreen({ navigation, route }: any) {
   const checkIn = useCheckInBooking();
   const checkInGroup = useCheckInBookingGroup();
 
+  // Check-in confirmation modal state
+  type PendingCheckIn =
+    | { kind: 'single'; booking: Booking }
+    | { kind: 'group'; group: BookingGroup; slotTimes: string };
+  const [pendingCheckIn, setPendingCheckIn] = useState<PendingCheckIn | null>(null);
+
+  const handleCheckInConfirm = async () => {
+    if (!pendingCheckIn) return;
+    if (pendingCheckIn.kind === 'single') {
+      await checkIn.mutateAsync(Number(pendingCheckIn.booking.id));
+    } else {
+      await checkInGroup.mutateAsync(pendingCheckIn.group.groupId);
+    }
+    setPendingCheckIn(null);
+  };
+
   const filteredBookings = useMemo(() => {
     const now = new Date();
     const nowMins = now.getHours() * 60 + now.getMinutes();
@@ -207,6 +223,11 @@ export function BookingManagementScreen({ navigation, route }: any) {
             const showContact = tab === 'today' || tab === 'upcoming' || tab === 'completed';
             const tabCtx = showContact ? tab as 'today' | 'upcoming' | 'completed' : undefined;
             if (isGroup(item)) {
+              const sorted = item.bookings.slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
+              const contiguous = sorted.length > 1 && sorted.every((b, i) => i === 0 || b.startTime === sorted[i - 1].endTime);
+              const slotTimes = contiguous
+                ? `${sorted[0].startTime}–${sorted[sorted.length - 1].endTime}`
+                : sorted.map((b) => `${b.startTime}–${b.endTime}`).join(', ');
               return (
                 <GroupedBookingCard
                   key={item.groupId}
@@ -216,7 +237,7 @@ export function BookingManagementScreen({ navigation, route }: any) {
                   tabCtx={tabCtx}
                   onAcceptAll={tab === 'requests' ? () => acceptGroup.mutate(item.groupId) : undefined}
                   onRejectAll={tab === 'requests' ? () => rejectGroup.mutate(item.groupId) : undefined}
-                  onCheckInAll={tab === 'today' ? () => checkInGroup.mutate(item.groupId) : undefined}
+                  onCheckInAll={tab === 'today' ? () => setPendingCheckIn({ kind: 'group', group: item, slotTimes }) : undefined}
                   acceptPending={acceptGroup.isPending && acceptGroup.variables === item.groupId}
                   rejectPending={rejectGroup.isPending && rejectGroup.variables === item.groupId}
                   checkInPending={checkInGroup.isPending && checkInGroup.variables === item.groupId}
@@ -231,12 +252,32 @@ export function BookingManagementScreen({ navigation, route }: any) {
                 showContact={showContact}
                 tabCtx={tabCtx}
                 onPress={() => navigation.navigate('OwnerBookingDetail', { bookingId: item.id })}
-                onCheckIn={tab === 'today' ? () => checkIn.mutate(Number(item.id)) : undefined}
+                onCheckIn={tab === 'today' ? () => setPendingCheckIn({ kind: 'single', booking: item }) : undefined}
               />
             );
           })
         )}
       </ScrollView>
+
+      {/* Check-in confirmation modal */}
+      {pendingCheckIn && (
+        <CheckInConfirmModal
+          visible
+          playerName={pendingCheckIn.kind === 'single' ? pendingCheckIn.booking.playerName : pendingCheckIn.group.playerName}
+          venueName={pendingCheckIn.kind === 'single' ? pendingCheckIn.booking.venueName : pendingCheckIn.group.venueName}
+          courtName={pendingCheckIn.kind === 'single' ? pendingCheckIn.booking.courtName : pendingCheckIn.group.courtName}
+          date={pendingCheckIn.kind === 'single' ? pendingCheckIn.booking.date : pendingCheckIn.group.date}
+          timeRange={
+            pendingCheckIn.kind === 'single'
+              ? `${pendingCheckIn.booking.startTime}–${pendingCheckIn.booking.endTime}`
+              : pendingCheckIn.slotTimes
+          }
+          slotsCount={pendingCheckIn.kind === 'group' ? pendingCheckIn.group.bookings.length : undefined}
+          total={pendingCheckIn.kind === 'single' ? pendingCheckIn.booking.amount : pendingCheckIn.group.totalAmount}
+          onConfirm={handleCheckInConfirm}
+          onDismiss={() => setPendingCheckIn(null)}
+        />
+      )}
     </SafeAreaView>
   );
 }
