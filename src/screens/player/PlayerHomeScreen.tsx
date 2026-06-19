@@ -23,6 +23,7 @@ export default function PlayerHomeScreen({ navigation }: any) {
   const [activeSport, setActiveSport] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 400);
+  const [searchFocused, setSearchFocused] = useState(false);
   const [filters, setFilters] = useState<VenueFilters>(DEFAULT_FILTERS);
   const [showFilter, setShowFilter] = useState(false);
   const filterBadge = activeFilterCount(filters);
@@ -82,14 +83,16 @@ export default function PlayerHomeScreen({ navigation }: any) {
 
         {/* Search bar */}
         <View style={styles.searchRow}>
-          <View style={[styles.searchBar, shadow.card]}>
+          <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
             <Text style={{ fontSize: 18 }}>🔍</Text>
             <TextInput
               style={styles.searchInput}
-              placeholder="Search turfs, sports, areas..."
+              placeholder="Search turfs, sports..."
               placeholderTextColor={colors.textDim}
               value={query}
               onChangeText={setQuery}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
             />
           </View>
           <TouchableOpacity
@@ -188,8 +191,17 @@ export default function PlayerHomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   searchRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.sm },
-  searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.md, paddingHorizontal: spacing.lg, height: 50 },
-  searchInput: { flex: 1, fontSize: fontSize.md, color: colors.text },
+  searchBar: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    paddingHorizontal: spacing.lg, height: 50,
+    borderWidth: 1.5, borderColor: colors.borderDark,
+  },
+  searchBarFocused: {
+    borderColor: colors.primary,
+    borderWidth: 2,
+  },
+  searchInput: { flex: 1, fontSize: fontSize.md, color: colors.text, outlineWidth: 0 } as any,
   filterBtn: { width: 50, height: 50, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   filterBtnActive: { backgroundColor: colors.primary },
   filterBadge: { position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },

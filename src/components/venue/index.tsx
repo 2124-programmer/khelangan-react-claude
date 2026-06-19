@@ -156,6 +156,7 @@ export function VenueCard({ venue, onPress, userLocation }: VenueCardProps) {
               ratingAverage={venue.ratingAverage}
               ratingCount={venue.ratingCount}
               variant="compact"
+              darkBg
             />
           </View>
           {venue.isMostBooked && <MostBookedBadge />}

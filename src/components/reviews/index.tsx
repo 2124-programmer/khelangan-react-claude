@@ -50,8 +50,9 @@ interface RatingSummaryProps {
   ratingCount: number;
   variant?: 'compact' | 'full';
   onPress?: () => void;
+  darkBg?: boolean;
 }
-export function RatingSummary({ ratingAverage, ratingCount, variant = 'compact', onPress }: RatingSummaryProps) {
+export function RatingSummary({ ratingAverage, ratingCount, variant = 'compact', onPress, darkBg }: RatingSummaryProps) {
   const hasRatings = ratingAverage !== null && ratingCount > 0;
 
   if (variant === 'compact') {
@@ -65,8 +66,8 @@ export function RatingSummary({ ratingAverage, ratingCount, variant = 'compact',
     const inner = (
       <View style={styles.compactBadge}>
         <Text style={styles.compactStar}>★</Text>
-        <Text style={styles.compactAvg}>{ratingAverage!.toFixed(1)}</Text>
-        <Text style={styles.compactCount}>({ratingCount})</Text>
+        <Text style={[styles.compactAvg, darkBg && { color: colors.white }]}>{ratingAverage!.toFixed(1)}</Text>
+        <Text style={[styles.compactCount, darkBg && { color: 'rgba(255,255,255,0.75)' }]}>({ratingCount})</Text>
       </View>
     );
     return onPress ? (
