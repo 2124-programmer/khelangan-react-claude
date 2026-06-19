@@ -56,7 +56,11 @@ export default function MyBookingsScreen({ navigation }: any) {
     } else if (tab === 'pending') {
       // Soonest first
       list.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
-    } else if (tab === 'completed' || tab === 'cancelled') {
+    } else if (tab === 'completed') {
+      // Include legacy checked_in rows in the completed view
+      list = list.filter((b) => b.status === 'completed' || b.status === 'checked_in');
+      list.sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
+    } else if (tab === 'cancelled') {
       // Most recent first
       list.sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
     }

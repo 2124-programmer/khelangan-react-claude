@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, RefreshControl, ActivityIndicator, Pressable,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { NotificationBell, MetricCard } from '../../components/common';
+import { NotificationBell, MetricCard, StatusBadge } from '../../components/common';
 import { useAuth } from '../../store/AuthContext';
 import { useOwnerDashboardSummary } from '../../api/hooks/useOwnerDashboard';
+import { useBookings } from '../../api/hooks/useBookings';
+import type { Booking } from '../../types';
 
 // ── Money formatter: ₹1234 → "₹1.2k", ₹12,34,567 → "₹12.3L"
 function formatAmount(paise: number): string {
@@ -21,10 +23,24 @@ type DashboardNavigation = {
   navigate: (screen: string, params?: Record<string, unknown>) => void;
 };
 
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export default function OwnerDashboardScreen({ navigation }: { navigation: DashboardNavigation }) {
   const { user } = useAuth();
   const { data, isLoading, isError, refetch } = useOwnerDashboardSummary();
   const [refreshing, setRefreshing] = useState(false);
+
+  const todayStr = useMemo(() => getTodayStr(), []);
+  const { data: todayData, isLoading: todayLoading } = useBookings({ date: todayStr });
+  const todaySlots = useMemo<Booking[]>(() => {
+    return (todayData?.bookings ?? [])
+      .filter((b) => b.status === 'confirmed' || b.status === 'completed' || b.status === 'checked_in')
+      .sort((a, b) => a.startTime.localeCompare(b.startTime))
+      .slice(0, 6);
+  }, [todayData]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -158,6 +174,35 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
           </View>
         )}
 
+        {/* ── Today's Occupied Slots ── */}
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0 }]}>Today's Slots</Text>
+          <TouchableOpacity onPress={() => goBookings('today')}>
+            <Text style={styles.seeAll}>See all</Text>
+          </TouchableOpacity>
+        </View>
+        {todayLoading ? (
+          <ActivityIndicator color={colors.owner} style={{ marginVertical: spacing.md }} />
+        ) : todaySlots.length === 0 ? (
+          <View style={styles.emptySlots}>
+            <Text style={styles.emptySlotsText}>No bookings scheduled for today</Text>
+          </View>
+        ) : (
+          <View style={[styles.slotsCard, shadow.card]}>
+            {todaySlots.map((slot, idx) => (
+              <SlotRow
+                key={slot.id}
+                slot={slot}
+                last={idx === todaySlots.length - 1}
+                onPress={() => navigation.navigate('OwnerBookings', {
+                  screen: 'OwnerBookingsHome',
+                  params: { initialTab: slot.status === 'confirmed' ? 'today' : 'completed' },
+                })}
+              />
+            ))}
+          </View>
+        )}
+
         {/* ── Account overview ── */}
         <Text style={styles.sectionTitle}>Overview</Text>
         {isLoading ? (
@@ -204,6 +249,28 @@ function BookingStatCard({
       <Text style={[styles.bsCount, color ? { color } : undefined]}>{count}</Text>
       <Text style={styles.bsLabel}>{label}</Text>
     </Pressable>
+  );
+}
+
+function SlotRow({ slot, last, onPress }: { slot: Booking; last: boolean; onPress: () => void }) {
+  const isDone = slot.status === 'completed' || slot.status === 'checked_in';
+  return (
+    <TouchableOpacity onPress={onPress} style={[styles.slotRow, last && { borderBottomWidth: 0 }]}>
+      <View style={[styles.slotTimePill, isDone && { backgroundColor: colors.success + '22' }]}>
+        <Text style={[styles.slotTime, isDone && { color: colors.success }]}>
+          {slot.startTime}
+        </Text>
+        <Text style={[styles.slotTimeSep, isDone && { color: colors.success }]}>–</Text>
+        <Text style={[styles.slotTime, isDone && { color: colors.success }]}>
+          {slot.endTime}
+        </Text>
+      </View>
+      <View style={styles.slotInfo}>
+        <Text style={styles.slotCourt} numberOfLines={1}>{slot.courtName}</Text>
+        <Text style={styles.slotPlayer} numberOfLines={1}>👤 {slot.playerName}</Text>
+      </View>
+      <StatusBadge status={slot.status} />
+    </TouchableOpacity>
   );
 }
 
@@ -256,4 +323,18 @@ const styles = StyleSheet.create({
   bsIcon:  { fontSize: 22 },
   bsCount: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text, marginTop: 4 },
   bsLabel: { fontSize: 9, color: colors.textDim, marginTop: 2, textAlign: 'center' },
+
+  sectionHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.xl, marginBottom: spacing.md },
+  seeAll:         { fontSize: fontSize.sm, color: colors.owner, fontWeight: fontWeight.semibold },
+  emptySlots:     { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, alignItems: 'center' },
+  emptySlotsText: { fontSize: fontSize.sm, color: colors.textDim },
+  slotsCard:      { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden' },
+
+  slotRow:      { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, paddingHorizontal: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.sm },
+  slotTimePill: { width: 88, backgroundColor: colors.owner + '18', borderRadius: radius.sm, paddingVertical: 4, paddingHorizontal: 6, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 2 },
+  slotTime:     { fontSize: 11, fontWeight: fontWeight.semibold, color: colors.owner },
+  slotTimeSep:  { fontSize: 11, color: colors.owner },
+  slotInfo:     { flex: 1 },
+  slotCourt:    { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
+  slotPlayer:   { fontSize: fontSize.xs, color: colors.textMid, marginTop: 2 },
 });
