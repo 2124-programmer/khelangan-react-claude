@@ -512,21 +512,21 @@ export function GroupedBookingCard({
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={[gbStyles.card, shadow.card]}>
 
-      {/* Row 1: Venue name + Status badge */}
+      {/* Row 1: Venue name + Status badge + Slots count */}
       <View style={gbStyles.row}>
         <Text style={[gbStyles.venueName, { flex: 1 }]} numberOfLines={1}>{group.venueName}</Text>
-        <StatusBadge status={group.status} />
-      </View>
-
-      {/* Row 2: Date + slot time range + slots count badge */}
-      <View style={[gbStyles.row, { marginTop: 6 }]}>
-        <Text style={gbStyles.infoText} numberOfLines={1}>
-          📅 {group.date}{'  '}{slotTimes}
-        </Text>
-        <View style={gbStyles.slotBadge}>
-          <Text style={gbStyles.slotBadgeText}>{group.bookings.length} slots</Text>
+        <View style={gbStyles.badgeGroup}>
+          <StatusBadge status={group.status} />
+          <View style={gbStyles.slotBadge}>
+            <Text style={gbStyles.slotBadgeText}>{group.bookings.length} slots</Text>
+          </View>
         </View>
       </View>
+
+      {/* Row 2: Date + slot time range */}
+      <Text style={[gbStyles.infoText, { marginTop: 6 }]} numberOfLines={1}>
+        📅 {group.date}{'  '}{slotTimes}
+      </Text>
 
       {/* Row 3: Sport icon + sport name + court */}
       <Text style={gbStyles.sportText}>
@@ -551,9 +551,9 @@ export function GroupedBookingCard({
       {/* Divider */}
       <View style={gbStyles.divider} />
 
-      {/* Footer: Total + Actions */}
-      <View style={gbStyles.row}>
-        <View>
+      {/* Footer: Total inline + Actions on same row */}
+      <View style={gbStyles.footerRow}>
+        <View style={gbStyles.totalInlineRow}>
           <Text style={gbStyles.totalLabel}>Total</Text>
           <Text style={gbStyles.totalAmount}>₹{group.totalAmount}</Text>
         </View>
@@ -585,7 +585,7 @@ export function GroupedBookingCard({
             loading={checkInPending}
             disabled={checkInPending}
             onPress={onCheckInAll}
-            style={{ height: 38, paddingHorizontal: 14 }}
+            style={{ height: 40, paddingHorizontal: 24 }}
           />
         )}
         {viewAs === 'player' && canAct && onCancelAll && (
@@ -613,18 +613,20 @@ const gbStyles = StyleSheet.create({
   },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   venueName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
-  infoText: { fontSize: fontSize.sm, color: colors.textMid, flex: 1 },
+  badgeGroup: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexShrink: 0 },
+  infoText: { fontSize: fontSize.sm, color: colors.textMid },
   slotBadge: {
     backgroundColor: colors.primary,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: 3,
-    marginLeft: spacing.sm,
   },
   slotBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.white },
   sportText: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 4 },
   playerText: { fontSize: fontSize.xs, color: colors.textMid },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
+  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  totalInlineRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
   totalLabel: { fontSize: fontSize.xs, color: colors.textDim },
   totalAmount: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
 });

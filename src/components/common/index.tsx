@@ -292,13 +292,15 @@ interface SectionTabBarProps {
 }
 export function SectionTabBar({ tabs, activeTab, onChange }: SectionTabBarProps) {
   const scrollRef = useRef<ScrollView>(null);
-  const tabOffsets = useRef<Record<string, number>>({});
+  const visibleWidth = useRef(0);
+  const tabLayouts = useRef<Record<string, { x: number; width: number }>>({});
 
   useEffect(() => {
-    const x = tabOffsets.current[activeTab];
-    if (x !== undefined && scrollRef.current) {
-      scrollRef.current.scrollTo({ x: Math.max(0, x - 16), animated: true });
-    }
+    const layout = tabLayouts.current[activeTab];
+    if (!layout || !scrollRef.current) return;
+    // Center the active tab within the visible scroll area
+    const scrollX = Math.max(0, layout.x - (visibleWidth.current - layout.width) / 2);
+    scrollRef.current.scrollTo({ x: scrollX, animated: true });
   }, [activeTab]);
 
   return (
@@ -308,6 +310,7 @@ export function SectionTabBar({ tabs, activeTab, onChange }: SectionTabBarProps)
       showsHorizontalScrollIndicator={false}
       style={styles.tabBar}
       contentContainerStyle={styles.tabBarContent}
+      onLayout={(e) => { visibleWidth.current = e.nativeEvent.layout.width; }}
     >
       {tabs.map((t) => {
         const active = t.value === activeTab;
@@ -316,7 +319,12 @@ export function SectionTabBar({ tabs, activeTab, onChange }: SectionTabBarProps)
             key={t.value}
             onPress={() => onChange(t.value)}
             style={[styles.tab, active && styles.tabActive]}
-            onLayout={(e) => { tabOffsets.current[t.value] = e.nativeEvent.layout.x; }}
+            onLayout={(e) => {
+              tabLayouts.current[t.value] = {
+                x: e.nativeEvent.layout.x,
+                width: e.nativeEvent.layout.width,
+              };
+            }}
           >
             <Text style={[styles.tabText, active && styles.tabTextActive]}>{t.label}</Text>
           </TouchableOpacity>
@@ -550,10 +558,10 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.pill, alignSelf: 'flex-start' },
   badgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold },
   tabBar: { flexGrow: 0, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  tabBarContent: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: spacing.xs },
-  tab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, flexShrink: 0 },
-  tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.textMid },
+  tabBarContent: { paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, gap: spacing.xs },
+  tab: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, flexShrink: 0, borderWidth: 1, borderColor: colors.border },
+  tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  tabText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid },
   tabTextActive: { color: colors.white },
   empty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80 },
   emptyTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
