@@ -10,7 +10,7 @@ import type {
 import type {
   User, Sport, Venue, VenueImage, Court, Slot, Booking, Review, Coupon,
   Payout, Dispute, AppNotification, UserRole, VenueStatus,
-  SlotStatus, BookingStatus, PaymentStatus, OwnerSettings,
+  SlotStatus, BookingStatus, PaymentStatus, OwnerSettings, CancellationReason,
 } from '../types';
 import { BASE_URL } from './client';
 
@@ -185,6 +185,9 @@ export function adaptBooking(dto: BookingDto): Booking {
     groupId: dto.groupId ?? undefined,
     playerPhone: dto.playerPhone,
     venuePhone: dto.venuePhone,
+    cancellationReason: dto.cancellationReason
+      ? (dto.cancellationReason.toLowerCase() as CancellationReason)
+      : undefined,
   };
 }
 

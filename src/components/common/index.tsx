@@ -210,7 +210,7 @@ export function AppHeader({ title, onBack, rightLabel, onRightPress, userName }:
 
 /* ───────────────── StatusBadge ───────────────── */
 type AnyStatus = BookingStatus | VenueStatus | PaymentStatus | string;
-export function StatusBadge({ status }: { status: AnyStatus }) {
+export function StatusBadge({ status, label: labelOverride }: { status: AnyStatus; label?: string }) {
   const map: Record<string, { bg: string; fg: string; label: string }> = {
     confirmed:  { bg: '#DCFCE7', fg: '#15803D', label: 'Confirmed' },
     completed:  { bg: '#E0E7FF', fg: '#4338CA', label: 'Completed' },
@@ -219,6 +219,7 @@ export function StatusBadge({ status }: { status: AnyStatus }) {
     pending: { bg: '#FEF3C7', fg: '#B45309', label: 'Pending' },
     live: { bg: '#DCFCE7', fg: '#15803D', label: 'Live' },
     rejected: { bg: '#FEE2E2', fg: '#B91C1C', label: 'Rejected' },
+    expired: { bg: '#F3F4F6', fg: '#6B7280', label: 'Time Expired' },
     suspended: { bg: '#F3F4F6', fg: '#6B7280', label: 'Suspended' },
     success: { bg: '#DCFCE7', fg: '#15803D', label: 'Paid' },
     failed: { bg: '#FEE2E2', fg: '#B91C1C', label: 'Failed' },
@@ -233,9 +234,10 @@ export function StatusBadge({ status }: { status: AnyStatus }) {
     verified: { bg: '#DCFCE7', fg: '#15803D', label: 'Verified' },
   };
   const s = map[status] ?? { bg: colors.surfaceAlt, fg: colors.textMid, label: status };
+  const displayLabel = labelOverride ?? s.label;
   return (
     <View style={[styles.badge, { backgroundColor: s.bg }]}>
-      <Text style={[styles.badgeText, { color: s.fg }]}>{s.label}</Text>
+      <Text style={[styles.badgeText, { color: s.fg }]}>{displayLabel}</Text>
     </View>
   );
 }

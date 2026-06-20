@@ -325,6 +325,7 @@ export interface BookingDto {
   groupId?: string;
   playerPhone?: string;    // exposed to venue owners only (server-enforced)
   venuePhone?: string;     // exposed to players (venue contact number)
+  cancellationReason?: string; // PLAYER | OWNER | TIME_OVER — null when not cancelled
 }
 
 export interface CreateBookingRequest {

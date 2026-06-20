@@ -4,7 +4,7 @@ import { View, Text, TouchableOpacity, Image, StyleSheet, Linking } from 'react-
 import { haversineKm, formatDistance } from '../../utils/locationUtils';
 import type { LatLng } from '../../store/LocationContext';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { Venue, Slot, Booking, BookingGroup } from '../../types';
+import { Venue, Slot, Booking, BookingGroup, CancellationReason } from '../../types';
 import { StatusBadge, AppButton } from '../common';
 import { getSportIcon, getSportName } from '../../utils/sportUtils';
 import { RatingSummary } from '../reviews';
@@ -393,6 +393,15 @@ function Legend({ color, label }: { color: string; label: string }) {
   );
 }
 
+/* ───────────────── Cancellation label helper ───────────────── */
+function getCancelLabel(status: Booking['status'], reason?: CancellationReason): string | undefined {
+  if (status === 'rejected' || reason === 'owner') return 'Rejected by Owner';
+  if (status === 'cancelled' && reason === 'player') return 'Cancelled by You';
+  if (status === 'cancelled' && reason === 'time_over') return 'Time Expired';
+  if (status === 'expired') return 'Time Expired';
+  return undefined;
+}
+
 /* ───────────────── BookingCard ───────────────── */
 interface BookingCardProps {
   booking: Booking;
@@ -411,6 +420,7 @@ export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, on
     ? waOwnerBookingMsg(booking, tabCtx)
     : waBookingMsg(booking, tabCtx);
   const hasActions = onCancel || onReview || onRebook || onCheckIn;
+  const cancelLabel = getCancelLabel(booking.status, booking.cancellationReason);
 
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={[styles.bookingCard, shadow.card]}>
@@ -421,7 +431,7 @@ export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, on
           {/* Row 1: venue name + status */}
           <View style={styles.bcRow}>
             <Text style={[styles.bookingVenue, { flex: 1 }]} numberOfLines={1}>{booking.venueName}</Text>
-            <StatusBadge status={booking.status} />
+            <StatusBadge status={booking.status} label={cancelLabel} />
           </View>
 
           {/* Row 2: sport + court */}
@@ -464,7 +474,7 @@ export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, on
           {booking.status === 'completed' && !booking.hasReview && onReview && (
             <AppButton label="Rate & Review" variant="ghost" fullWidth={false} onPress={onReview} style={{ flex: 1, height: 40 }} />
           )}
-          {(booking.status === 'completed' || booking.status === 'cancelled') && onRebook && (
+          {(booking.status === 'completed' || booking.status === 'cancelled' || booking.status === 'rejected' || booking.status === 'expired') && onRebook && (
             <AppButton label="Rebook" variant="secondary" fullWidth={false} onPress={onRebook} style={{ flex: 1, height: 40 }} />
           )}
         </View>
@@ -508,6 +518,7 @@ export function GroupedBookingCard({
   const waMsg = viewAs === 'owner'
     ? waGroupMsg(group, slotTimes, tabCtx)
     : waPlayerGroupMsg(group, slotTimes, tabCtx);
+  const cancelLabel = getCancelLabel(group.status, group.cancellationReason);
 
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={[gbStyles.card, shadow.card]}>
@@ -516,7 +527,7 @@ export function GroupedBookingCard({
       <View style={gbStyles.row}>
         <Text style={[gbStyles.venueName, { flex: 1 }]} numberOfLines={1}>{group.venueName}</Text>
         <View style={gbStyles.badgeGroup}>
-          <StatusBadge status={group.status} />
+          <StatusBadge status={group.status} label={cancelLabel} />
           <View style={gbStyles.slotBadge}>
             <Text style={gbStyles.slotBadgeText}>{group.bookings.length} slots</Text>
           </View>

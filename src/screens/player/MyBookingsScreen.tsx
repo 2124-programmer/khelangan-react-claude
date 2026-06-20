@@ -7,7 +7,7 @@ import { CancelBookingModal } from '../../modals';
 import { useBookings, useCancelBooking, useCancelBookingGroup } from '../../api/hooks/useBookings';
 import { Booking, BookingGroup } from '../../types';
 import { extractApiError } from '../../api/client';
-import { groupBookingList, isGroup } from '../../utils/bookingUtils';
+import { groupBookingList, isGroup, isExpiredPending } from '../../utils/bookingUtils';
 
 const STATUS_MAP: Record<string, string> = {
   pending: 'PENDING',
@@ -54,6 +54,8 @@ export default function MyBookingsScreen({ navigation }: any) {
       // Soonest first
       list.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
     } else if (tab === 'pending') {
+      // Hide bookings whose slot has already ended (scheduler will cancel them soon)
+      list = list.filter((b) => !isExpiredPending(b, todayStr, nowMins));
       // Soonest first
       list.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
     } else if (tab === 'completed') {

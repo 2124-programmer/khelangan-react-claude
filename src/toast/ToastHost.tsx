@@ -34,7 +34,6 @@ export function ToastHost() {
       visible={queue.length > 0}
       transparent
       animationType="none"
-      statusBarTranslucent
       onRequestClose={() => {}}
     >
       <View style={styles.container} pointerEvents="box-none">

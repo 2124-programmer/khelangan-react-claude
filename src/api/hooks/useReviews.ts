@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { reviewService } from '../services/reviewService';
 import { adaptReview } from '../adapters';
 import { VENUES_KEY, OWNER_VENUES_KEY } from './useVenues';
+import { useAuth } from '../../store/AuthContext';
 import type { CreateReviewRequest, UpdateReviewRequest } from '../types';
 
 export function venueReviewsKey(venueId: number) {
@@ -31,6 +32,7 @@ export function useVenueReviews(venueId: string | number | undefined, params?: {
 }
 
 export function useMyVenueReview(venueId: string | number | undefined) {
+  const { isLoggedIn } = useAuth();
   const id = Number(venueId);
   return useQuery({
     queryKey: myVenueReviewKey(id),
@@ -38,7 +40,7 @@ export function useMyVenueReview(venueId: string | number | undefined) {
       const dto = await reviewService.getMyReview(id);
       return dto ? adaptReview(dto) : null;
     },
-    enabled: !!venueId && !isNaN(id) && id > 0,
+    enabled: isLoggedIn && !!venueId && !isNaN(id) && id > 0,
   });
 }
 

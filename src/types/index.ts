@@ -11,6 +11,8 @@ export type BookingStatus =
   | 'rejected'
   | 'expired';
 
+export type CancellationReason = 'player' | 'owner' | 'time_over';
+
 export type VenueStatus = 'live' | 'pending' | 'rejected' | 'suspended';
 
 export type SlotStatus = 'available' | 'booked' | 'blocked' | 'held';
@@ -130,6 +132,7 @@ export interface Booking {
   paymentStatus: PaymentStatus;
   hasReview?: boolean;
   groupId?: string;
+  cancellationReason?: CancellationReason;
 }
 
 export interface BookingGroup {
@@ -145,6 +148,7 @@ export interface BookingGroup {
   playerName: string;
   playerPhone?: string;
   venuePhone?: string;
+  cancellationReason?: CancellationReason;
 }
 
 export interface Review {

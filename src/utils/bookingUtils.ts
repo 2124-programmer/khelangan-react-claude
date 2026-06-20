@@ -1,4 +1,4 @@
-import { Booking, BookingGroup, BookingStatus } from '../types';
+import { Booking, BookingGroup, BookingStatus, CancellationReason } from '../types';
 
 export type BookingListItem = Booking | BookingGroup;
 
@@ -44,6 +44,7 @@ export function groupBookingList(bookings: Booking[]): BookingListItem[] {
         date: b.date,
         totalAmount: grouped.reduce((sum, g) => sum + g.amount, 0),
         status: deriveGroupStatus(grouped),
+        cancellationReason: grouped[0]?.cancellationReason,
         playerId: b.playerId,
         playerName: b.playerName,
         playerPhone: b.playerPhone,
@@ -56,15 +57,15 @@ export function groupBookingList(bookings: Booking[]): BookingListItem[] {
 }
 
 /**
- * A PENDING booking whose slot start time has already passed is treated as
- * expired — it should appear in Cancelled rather than Requests.
+ * A PENDING booking is considered expired client-side once its slot endTime has passed.
+ * A booking in progress (startTime < now < endTime) is still shown as pending.
  * Pure function so it can be unit-tested independently.
  */
 export function isExpiredPending(booking: Booking, todayStr: string, nowMins: number): boolean {
   if (booking.status !== 'pending') return false;
   if (booking.date < todayStr) return true;
   if (booking.date === todayStr) {
-    const [h, m] = (booking.startTime ?? '00:00').split(':').map(Number);
+    const [h, m] = (booking.endTime ?? '23:59').split(':').map(Number);
     return h * 60 + m <= nowMins;
   }
   return false;
