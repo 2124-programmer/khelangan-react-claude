@@ -322,6 +322,7 @@ export interface BookingDto {
   couponCode?: string;
   hasReview?: boolean;
   createdAt?: string;
+  updatedAt?: string;
   groupId?: string;
   playerPhone?: string;    // exposed to venue owners only (server-enforced)
   venuePhone?: string;     // exposed to players (venue contact number)

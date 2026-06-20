@@ -37,17 +37,17 @@ export function formatRelativeTime(iso: string): string {
   // user doesn't see "Just now" for notifications that are hours / days old.
   if (diffMs < 0) {
     return d.toLocaleTimeString('en-IN', {
-      hour: 'numeric', minute: '2-digit', hour12: true,
+      hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
     });
   }
 
-  if (diffMins  <  1) return 'Just now';
+  if (diffMins  <  1) return 'just now';
   if (diffMins  < 60) return `${diffMins}m ago`;
   if (diffHrs   < 24) return `${diffHrs}h ago`;
-  if (diffDays  === 1) return 'Yesterday';
+  if (diffDays  === 1) return 'yesterday';
   if (diffDays  <  7) return `${diffDays}d ago`;
 
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' });
 }
 
 /**

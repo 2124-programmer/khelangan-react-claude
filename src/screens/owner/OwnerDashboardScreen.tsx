@@ -5,12 +5,15 @@ import {
   Modal, Alert,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { NotificationBell, MetricCard, StatusBadge } from '../../components/common';
+import { NotificationBell, MetricCard } from '../../components/common';
+import { BookingCard, GroupedBookingCard } from '../../components/venue';
+import { CheckInConfirmModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
 import { useOwnerDashboardSummary } from '../../api/hooks/useOwnerDashboard';
-import { useCheckInBooking } from '../../api/hooks/useBookings';
+import { useBookings, useCheckInBooking, useCheckInBookingGroup } from '../../api/hooks/useBookings';
 import { useOwnerVenues } from '../../api/hooks/useVenues';
-import type { DashboardSlotDto } from '../../api/types';
+import { groupBookingList, isGroup } from '../../utils/bookingUtils';
+import { Booking, BookingGroup } from '../../types';
 
 // ── Money formatter: ₹1234 → "₹1.2k", ₹12,34,567 → "₹12.3L"
 function formatAmount(paise: number): string {
@@ -49,22 +52,43 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
     }
   }
 
-  const todaySlots = data?.todaySlots ?? [];
-  const slotsByCourt = useMemo<Record<string, DashboardSlotDto[]>>(() => {
-    const groups: Record<string, DashboardSlotDto[]> = {};
-    todaySlots.forEach((b) => {
-      const key = b.courtName || 'Unknown Court';
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(b);
-    });
-    return groups;
-  }, [todaySlots]);
-  const courtNames = useMemo(() => Object.keys(slotsByCourt).sort(), [slotsByCourt]);
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+
+  const { data: todayBookingsData, refetch: refetchTodayBookings } = useBookings({ status: 'CONFIRMED', date: todayStr });
+  const todayBookingItems = useMemo(
+    () => groupBookingList(todayBookingsData?.bookings ?? []),
+    [todayBookingsData],
+  );
+
   const checkIn = useCheckInBooking();
+  const checkInGroup = useCheckInBookingGroup();
+
+  type PendingCheckIn =
+    | { kind: 'single'; booking: Booking }
+    | { kind: 'group'; group: BookingGroup; slotTimes: string };
+  const [pendingCheckIn, setPendingCheckIn] = useState<PendingCheckIn | null>(null);
+
+  const handleCheckInConfirm = async () => {
+    if (!pendingCheckIn) return;
+    try {
+      if (pendingCheckIn.kind === 'single') {
+        await checkIn.mutateAsync(Number(pendingCheckIn.booking.id));
+      } else {
+        await checkInGroup.mutateAsync(pendingCheckIn.group.groupId);
+      }
+    } catch {
+      Alert.alert('Check-in Failed', 'Could not complete check-in. Please try again.');
+    } finally {
+      setPendingCheckIn(null);
+    }
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    try { await refetch(); } finally { setRefreshing(false); }
+    try { await Promise.all([refetch(), refetchTodayBookings()]); } finally { setRefreshing(false); }
   };
 
   const goBookings = (initialTab: BookingTabKey) =>
@@ -194,48 +218,47 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
           </View>
         )}
 
-        {/* ── Today's Occupied Slots ── */}
+        {/* ── Today's Bookings ── */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0 }]}>Today's Slots</Text>
+          <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0 }]}>Today's Bookings</Text>
           <TouchableOpacity onPress={() => goBookings('today')}>
             <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
         {isLoading ? (
           <ActivityIndicator color={colors.owner} style={{ marginVertical: spacing.md }} />
-        ) : todaySlots.length === 0 ? (
+        ) : todayBookingItems.length === 0 ? (
           <View style={styles.emptySlots}>
             <Text style={styles.emptySlotsText}>No bookings scheduled for today</Text>
           </View>
         ) : (
-          <View style={[styles.slotsCard, shadow.card]}>
-            {courtNames.map((courtName, ci) => {
-              const slots = slotsByCourt[courtName];
+          todayBookingItems.map((item) => {
+            if (isGroup(item)) {
+              const sorted = item.bookings.slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
+              const contiguous = sorted.length > 1 && sorted.every((b, i) => i === 0 || b.startTime === sorted[i - 1].endTime);
+              const slotTimes = contiguous
+                ? `${sorted[0].startTime}–${sorted[sorted.length - 1].endTime}`
+                : sorted.map((b) => `${b.startTime}–${b.endTime}`).join(', ');
               return (
-                <View key={courtName}>
-                  <View style={[styles.courtHeader, ci > 0 && styles.courtHeaderBorder]}>
-                    <Text style={styles.courtHeaderIcon}>🏟</Text>
-                    <Text style={styles.courtHeaderName}>{courtName}</Text>
-                    <View style={styles.courtSlotBadge}>
-                      <Text style={styles.courtSlotBadgeText}>{slots.length} slot{slots.length > 1 ? 's' : ''}</Text>
-                    </View>
-                  </View>
-                  {slots.map((slot, idx) => (
-                    <CourtSlotRow
-                      key={slot.id}
-                      slot={slot}
-                      last={idx === slots.length - 1}
-                      onCheckIn={() => checkIn.mutate(slot.id)}
-                      onPress={() => navigation.navigate('OwnerBookings', {
-                        screen: 'OwnerBookingsHome',
-                        params: { initialTab: slot.status === 'confirmed' ? 'today' : 'completed' },
-                      })}
-                    />
-                  ))}
-                </View>
+                <GroupedBookingCard
+                  key={item.groupId}
+                  group={item}
+                  viewAs="owner"
+                  onCheckInAll={() => setPendingCheckIn({ kind: 'group', group: item, slotTimes })}
+                  checkInPending={checkInGroup.isPending && checkInGroup.variables === item.groupId}
+                />
               );
-            })}
-          </View>
+            }
+            return (
+              <BookingCard
+                key={item.id}
+                booking={item}
+                viewAs="owner"
+                onPress={() => goBookings('today')}
+                onCheckIn={() => setPendingCheckIn({ kind: 'single', booking: item })}
+              />
+            );
+          })
         )}
 
         {/* ── Account overview ── */}
@@ -297,6 +320,25 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
           </Pressable>
         </Pressable>
       </Modal>
+
+      {pendingCheckIn && (
+        <CheckInConfirmModal
+          visible
+          playerName={pendingCheckIn.kind === 'single' ? pendingCheckIn.booking.playerName : pendingCheckIn.group.playerName ?? ''}
+          venueName={pendingCheckIn.kind === 'single' ? pendingCheckIn.booking.venueName : pendingCheckIn.group.venueName}
+          courtName={pendingCheckIn.kind === 'single' ? pendingCheckIn.booking.courtName : pendingCheckIn.group.courtName}
+          date={pendingCheckIn.kind === 'single' ? pendingCheckIn.booking.date : pendingCheckIn.group.date}
+          timeRange={
+            pendingCheckIn.kind === 'single'
+              ? `${pendingCheckIn.booking.startTime}–${pendingCheckIn.booking.endTime}`
+              : pendingCheckIn.slotTimes
+          }
+          slotsCount={pendingCheckIn.kind === 'group' ? pendingCheckIn.group.bookings.length : undefined}
+          total={pendingCheckIn.kind === 'single' ? pendingCheckIn.booking.amount : pendingCheckIn.group.totalAmount}
+          onConfirm={handleCheckInConfirm}
+          onDismiss={() => setPendingCheckIn(null)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -318,44 +360,6 @@ function BookingStatCard({
       <Text style={[styles.bsCount, color ? { color } : undefined]}>{count}</Text>
       <Text style={styles.bsLabel}>{label}</Text>
     </Pressable>
-  );
-}
-
-function CourtSlotRow({
-  slot, last, onPress, onCheckIn,
-}: {
-  slot: DashboardSlotDto;
-  last: boolean;
-  onPress: () => void;
-  onCheckIn: () => void;
-}) {
-  const isDone = slot.status === 'completed' || slot.status === 'checked_in';
-  const canCheckIn = slot.status === 'confirmed';
-  return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={[styles.slotRow, last && { borderBottomWidth: 0 }]}>
-      <View style={[styles.slotTimePill, isDone && { backgroundColor: colors.success + '22' }]}>
-        <Text style={[styles.slotTime, isDone && { color: colors.success }]}>{slot.startTime}</Text>
-        <Text style={[styles.slotTimeSep, isDone && { color: colors.success }]}>–</Text>
-        <Text style={[styles.slotTime, isDone && { color: colors.success }]}>{slot.endTime}</Text>
-      </View>
-      <View style={{ flex: 1, marginLeft: spacing.xs }}>
-        <Text style={styles.slotPlayer} numberOfLines={1}>👤 {slot.playerName}</Text>
-        {!!slot.sport && (
-          <Text style={styles.slotSport} numberOfLines={1}>🏅 {slot.sport}</Text>
-        )}
-      </View>
-      {canCheckIn ? (
-        <TouchableOpacity
-          onPress={(e) => { e.stopPropagation?.(); onCheckIn(); }}
-          style={styles.checkInBtn}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.checkInBtnText}>Check In</Text>
-        </TouchableOpacity>
-      ) : (
-        <StatusBadge status={slot.status} />
-      )}
-    </TouchableOpacity>
   );
 }
 
@@ -413,23 +417,6 @@ const styles = StyleSheet.create({
   seeAll:         { fontSize: fontSize.sm, color: colors.owner, fontWeight: fontWeight.semibold },
   emptySlots:     { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, alignItems: 'center' },
   emptySlotsText: { fontSize: fontSize.sm, color: colors.textDim },
-  slotsCard:      { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden' },
-
-  courtHeader:       { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.md, backgroundColor: colors.surfaceAlt, gap: spacing.xs },
-  courtHeaderBorder: { borderTopWidth: 1, borderTopColor: colors.border },
-  courtHeaderIcon:   { fontSize: 13 },
-  courtHeaderName:   { flex: 1, fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text },
-  courtSlotBadge:    { backgroundColor: colors.owner + '20', borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
-  courtSlotBadgeText:{ fontSize: 10, fontWeight: fontWeight.semibold, color: colors.owner },
-
-  slotRow:        { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.md, paddingLeft: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.sm },
-  slotTimePill:   { width: 88, backgroundColor: colors.owner + '18', borderRadius: radius.sm, paddingVertical: 4, paddingHorizontal: 6, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 2 },
-  slotTime:       { fontSize: 11, fontWeight: fontWeight.semibold, color: colors.owner },
-  slotTimeSep:    { fontSize: 11, color: colors.owner },
-  slotPlayer:     { fontSize: fontSize.xs, color: colors.textMid },
-  slotSport:      { fontSize: 10, color: colors.textDim, marginTop: 1 },
-  checkInBtn:     { paddingHorizontal: spacing.md, paddingVertical: 5, borderRadius: radius.sm, backgroundColor: colors.primary },
-  checkInBtnText: { fontSize: 11, fontWeight: fontWeight.bold, color: colors.white },
 
   // Venue picker modal
   pickerOverlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },

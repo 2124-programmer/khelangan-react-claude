@@ -133,6 +133,8 @@ export interface Booking {
   hasReview?: boolean;
   groupId?: string;
   cancellationReason?: CancellationReason;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface BookingGroup {
@@ -149,6 +151,8 @@ export interface BookingGroup {
   playerPhone?: string;
   venuePhone?: string;
   cancellationReason?: CancellationReason;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Review {

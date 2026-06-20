@@ -188,6 +188,8 @@ export function adaptBooking(dto: BookingDto): Booking {
     cancellationReason: dto.cancellationReason
       ? (dto.cancellationReason.toLowerCase() as CancellationReason)
       : undefined,
+    createdAt: dto.createdAt ?? undefined,
+    updatedAt: dto.updatedAt ?? undefined,
   };
 }
 

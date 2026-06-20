@@ -6,6 +6,7 @@ import type { LatLng } from '../../store/LocationContext';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { Venue, Slot, Booking, BookingGroup, CancellationReason } from '../../types';
 import { StatusBadge, AppButton } from '../common';
+import { formatRelativeTime } from '../../utils/dateUtils';
 import { getSportIcon, getSportName } from '../../utils/sportUtils';
 import { RatingSummary } from '../reviews';
 
@@ -402,6 +403,28 @@ function getCancelLabel(status: Booking['status'], reason?: CancellationReason):
   return undefined;
 }
 
+/* ───────────────── Status-aware timestamp helper ───────────────── */
+// Maps each booking status to a human label + the most meaningful source timestamp.
+// Owner sees "Requested {time}" for pending items (when request arrived).
+// Player sees "Accepted {time}" once confirmed (when owner acted).
+function getBookingTimestampInfo(
+  status: Booking['status'],
+  createdAt: string | undefined,
+  updatedAt: string | undefined,
+): { label: string; ts: string } | null {
+  const effective = updatedAt ?? createdAt;
+  switch (status) {
+    case 'pending':    return createdAt ? { label: 'Requested',  ts: createdAt } : null;
+    case 'confirmed':  return effective ? { label: 'Accepted',   ts: effective } : null;
+    case 'rejected':   return effective ? { label: 'Declined',   ts: effective } : null;
+    case 'cancelled':  return effective ? { label: 'Cancelled',  ts: effective } : null;
+    case 'completed':  return effective ? { label: 'Completed',  ts: effective } : null;
+    case 'checked_in': return effective ? { label: 'Checked in', ts: effective } : null;
+    case 'expired':    return effective ? { label: 'Expired',    ts: effective } : null;
+    default:           return effective ? { label: 'Updated',    ts: effective } : null;
+  }
+}
+
 /* ───────────────── BookingCard ───────────────── */
 interface BookingCardProps {
   booking: Booking;
@@ -421,6 +444,7 @@ export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, on
     : waBookingMsg(booking, tabCtx);
   const hasActions = onCancel || onReview || onRebook || onCheckIn;
   const cancelLabel = getCancelLabel(booking.status, booking.cancellationReason);
+  const tsInfo = getBookingTimestampInfo(booking.status, booking.createdAt, booking.updatedAt);
 
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={[styles.bookingCard, shadow.card]}>
@@ -462,6 +486,10 @@ export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, on
           {viewAs === 'owner' && <Text style={styles.bookingAmount}>₹{booking.amount}</Text>}
         </View>
       </View>
+
+      {tsInfo && (
+        <Text style={styles.updatedAt}>{tsInfo.label} {formatRelativeTime(tsInfo.ts)}</Text>
+      )}
 
       {hasActions && (
         <View style={styles.actionRow}>
@@ -519,6 +547,7 @@ export function GroupedBookingCard({
     ? waGroupMsg(group, slotTimes, tabCtx)
     : waPlayerGroupMsg(group, slotTimes, tabCtx);
   const cancelLabel = getCancelLabel(group.status, group.cancellationReason);
+  const tsInfo = getBookingTimestampInfo(group.status, group.createdAt, group.updatedAt);
 
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={[gbStyles.card, shadow.card]}>
@@ -557,6 +586,11 @@ export function GroupedBookingCard({
         <View style={[gbStyles.row, { marginTop: 6, justifyContent: 'flex-end' }]}>
           <ContactBtns phone={counterpartPhone} waMsg={waMsg} />
         </View>
+      )}
+
+      {/* Status-aware timestamp */}
+      {tsInfo && (
+        <Text style={gbStyles.updatedAt}>{tsInfo.label} {formatRelativeTime(tsInfo.ts)}</Text>
       )}
 
       {/* Divider */}
@@ -636,6 +670,7 @@ const gbStyles = StyleSheet.create({
   sportText: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 4 },
   playerText: { fontSize: fontSize.xs, color: colors.textMid },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
+  updatedAt: { fontSize: 10, color: colors.textDim, marginTop: spacing.xs },
   footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   totalInlineRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
   totalLabel: { fontSize: fontSize.xs, color: colors.textDim },
@@ -689,6 +724,7 @@ const styles = StyleSheet.create({
   slotPrice: { fontSize: fontSize.xs, marginTop: 2 },
   bookingCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md },
   bookingImg: { width: 72, height: 72, borderRadius: radius.md, backgroundColor: colors.surfaceAlt },
+  updatedAt: { fontSize: 10, color: colors.textDim, marginTop: spacing.xs },
   bookingVenue: { flex: 1, fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
   bookingMeta: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 3 },
   bookingAmount: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text, marginTop: 4 },

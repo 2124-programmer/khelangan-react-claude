@@ -45,6 +45,18 @@ export function groupBookingList(bookings: Booking[]): BookingListItem[] {
         totalAmount: grouped.reduce((sum, g) => sum + g.amount, 0),
         status: deriveGroupStatus(grouped),
         cancellationReason: grouped[0]?.cancellationReason,
+        // Earliest createdAt among the group (all slots were requested at the same time)
+        createdAt: grouped.reduce<string | undefined>((earliest, g) => {
+          if (!g.createdAt) return earliest;
+          if (!earliest) return g.createdAt;
+          return g.createdAt < earliest ? g.createdAt : earliest;
+        }, undefined),
+        // Latest updatedAt among the group (last status transition wins)
+        updatedAt: grouped.reduce<string | undefined>((latest, g) => {
+          if (!g.updatedAt) return latest;
+          if (!latest) return g.updatedAt;
+          return g.updatedAt > latest ? g.updatedAt : latest;
+        }, undefined),
         playerId: b.playerId,
         playerName: b.playerName,
         playerPhone: b.playerPhone,
