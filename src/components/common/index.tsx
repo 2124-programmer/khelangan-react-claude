@@ -326,7 +326,7 @@ export function SectionTabBar({ tabs, activeTab, onChange }: SectionTabBarProps)
               };
             }}
           >
-            <Text style={[styles.tabText, active && styles.tabTextActive]}>{t.label}</Text>
+            <Text style={[styles.tabText, active && styles.tabTextActive]} numberOfLines={1}>{t.label}</Text>
           </TouchableOpacity>
         );
       })}
@@ -558,8 +558,8 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.pill, alignSelf: 'flex-start' },
   badgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold },
   tabBar: { flexGrow: 0, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  tabBarContent: { paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, gap: spacing.xs },
-  tab: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, flexShrink: 0, borderWidth: 1, borderColor: colors.border },
+  tabBarContent: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, gap: spacing.xs },
+  tab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, flexShrink: 0, borderWidth: 1, borderColor: colors.border },
   tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   tabText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid },
   tabTextActive: { color: colors.white },
