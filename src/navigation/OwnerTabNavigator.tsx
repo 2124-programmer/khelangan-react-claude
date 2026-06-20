@@ -15,8 +15,12 @@ import {
   SubscriptionScreen, OwnerNotificationsScreen, OwnerSettingsScreen,
 } from '../screens/owner/OwnerScreens';
 import { RoleChangeScreen, EditProfileScreen } from '../screens/player/MiscScreens';
+import VenueDetailScreen from '../screens/player/VenueDetailScreen';
+import VenueReviewsScreen from '../screens/player/VenueReviewsScreen';
 
 const SHARED = [
+  { name: 'VenueDetail', component: VenueDetailScreen },
+  { name: 'VenueReviews', component: VenueReviewsScreen },
   { name: 'AddVenue', component: AddVenueScreen },
   { name: 'EditVenue', component: EditVenueScreen },
   { name: 'VenueCalendar', component: VenueCalendarScreen },

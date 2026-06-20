@@ -53,6 +53,8 @@ function fmt12h(t: string): string {
 
 export default function VenueDetailScreen({ navigation, route }: any) {
   const venueId: string = route.params.venueId;
+  const mode: 'player' | 'preview' = route.params.mode ?? 'player';
+  const isPreview = mode === 'preview';
   const { isLoggedIn, role } = useAuth();
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [writeReviewOpen, setWriteReviewOpen] = useState(false);
@@ -196,6 +198,18 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         onBack={() => navigation.goBack()}
       />
 
+      {isPreview && (
+        <View style={styles.previewBanner}>
+          <Text style={styles.previewBannerText}>👁  Preview — this is how players see your venue</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('EditVenue', { venueId: venue.id })}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.previewEditLink}>Edit</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
@@ -285,20 +299,20 @@ export default function VenueDetailScreen({ navigation, route }: any) {
                 <TouchableOpacity
                   key={c.id}
                   style={[styles.courtCard, shadow.card]}
-                  onPress={() => handleCourtTap(c.id, c.sportId)}
-                  activeOpacity={0.8}
+                  onPress={isPreview ? undefined : () => handleCourtTap(c.id, c.sportId)}
+                  activeOpacity={isPreview ? 1 : 0.8}
                 >
                   <View style={styles.courtHeader}>
                     <Text style={styles.courtName}>{c.name}</Text>
                     <View style={styles.courtRight}>
                       <Text style={styles.courtPrice}>₹{c.effectivePricePerHour}/hr</Text>
-                      <Text style={styles.courtChevron}>›</Text>
+                      {!isPreview && <Text style={styles.courtChevron}>›</Text>}
                     </View>
                   </View>
                   {metaParts.length > 0 && (
                     <Text style={styles.courtMeta}>{metaParts.join('  ·  ')}</Text>
                   )}
-                  <Text style={styles.courtCta}>Tap to view & book slots</Text>
+                  {!isPreview && <Text style={styles.courtCta}>Tap to view & book slots</Text>}
                 </TouchableOpacity>
               );
             })
@@ -380,7 +394,7 @@ export default function VenueDetailScreen({ navigation, route }: any) {
             <Text style={styles.sectionTitle}>
               Reviews{venue.ratingCount > 0 ? ` (${venue.ratingCount})` : ''}
             </Text>
-            {isLoggedIn && role === 'player' ? (
+            {!isPreview && isLoggedIn && role === 'player' ? (
               <TouchableOpacity onPress={() => setWriteReviewOpen(true)} activeOpacity={0.7}>
                 <Text style={styles.writeReviewLink}>
                   {reviews.some((r) => r.isOwn) ? 'Edit your review' : 'Write a review'}
@@ -390,8 +404,8 @@ export default function VenueDetailScreen({ navigation, route }: any) {
           </View>
           {reviews.length === 0 ? (
             <ReviewsEmptyState
-              ctaLabel={isLoggedIn && role === 'player' ? 'Write a review' : undefined}
-              onCtaPress={isLoggedIn && role === 'player' ? () => setWriteReviewOpen(true) : undefined}
+              ctaLabel={!isPreview && isLoggedIn && role === 'player' ? 'Write a review' : undefined}
+              onCtaPress={!isPreview && isLoggedIn && role === 'player' ? () => setWriteReviewOpen(true) : undefined}
             />
           ) : (
             <>
@@ -411,44 +425,63 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         </View>
       </ScrollView>
 
-      {/* Sticky Booking Bar */}
-      <View style={[styles.bottomBar, shadow.modal]}>
-        <View>
-          <Text style={styles.priceLabel}>Starting from</Text>
-          <Text style={styles.price}>
-            ₹{venue.pricePerHour}
-            <Text style={styles.perSlot}>/hr</Text>
-          </Text>
+      {/* Sticky bottom bar — preview vs booking */}
+      {isPreview ? (
+        <View style={[styles.bottomBar, shadow.modal]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.previewBarLabel}>Preview Mode</Text>
+            <Text style={styles.previewBarHint}>Booking is disabled in preview</Text>
+          </View>
+          <AppButton
+            label="Edit Venue"
+            fullWidth={false}
+            variant="secondary"
+            onPress={() => navigation.navigate('EditVenue', { venueId: venue.id })}
+            style={{ paddingHorizontal: 20 }}
+          />
         </View>
-        <AppButton
-          label="Book Now"
-          fullWidth={false}
-          onPress={handleBookNow}
-          style={{ paddingHorizontal: 40 }}
-        />
-      </View>
+      ) : (
+        <View style={[styles.bottomBar, shadow.modal]}>
+          <View>
+            <Text style={styles.priceLabel}>Starting from</Text>
+            <Text style={styles.price}>
+              ₹{venue.pricePerHour}
+              <Text style={styles.perSlot}>/hr</Text>
+            </Text>
+          </View>
+          <AppButton
+            label="Book Now"
+            fullWidth={false}
+            onPress={handleBookNow}
+            style={{ paddingHorizontal: 40 }}
+          />
+        </View>
+      )}
 
-      <WriteReviewSheet
-        venueId={Number(venue.id)}
-        visible={writeReviewOpen}
-        onClose={() => setWriteReviewOpen(false)}
-      />
-
-      <ConfirmActionModal
-        visible={showLoginPrompt}
-        title="Login Required"
-        message="Login is required as a Player to book a slot. Do you want to continue?"
-        confirmLabel="Proceed"
-        onDismiss={() => setShowLoginPrompt(false)}
-        onConfirm={() => {
-          setShowLoginPrompt(false);
-          setPendingNav({
-            screen: 'VenueDetail',
-            params: { venueId: venue.id, _successToast: 'Logged in successfully! Tap Book Now to proceed.' },
-          });
-          navigation.navigate('Login');
-        }}
-      />
+      {!isPreview && (
+        <>
+          <WriteReviewSheet
+            venueId={Number(venue.id)}
+            visible={writeReviewOpen}
+            onClose={() => setWriteReviewOpen(false)}
+          />
+          <ConfirmActionModal
+            visible={showLoginPrompt}
+            title="Login Required"
+            message="Login is required as a Player to book a slot. Do you want to continue?"
+            confirmLabel="Proceed"
+            onDismiss={() => setShowLoginPrompt(false)}
+            onConfirm={() => {
+              setShowLoginPrompt(false);
+              setPendingNav({
+                screen: 'VenueDetail',
+                params: { venueId: venue.id, _successToast: 'Logged in successfully! Tap Book Now to proceed.' },
+              });
+              navigation.navigate('Login');
+            }}
+          />
+        </>
+      )}
 
     </SafeAreaView>
   );
@@ -565,6 +598,15 @@ const styles = StyleSheet.create({
   seeAllBtn: { paddingVertical: spacing.md, alignItems: 'center' },
   seeAllText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
 
+  // Preview banner
+  previewBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#EFF6FF', borderBottomWidth: 1, borderBottomColor: '#BFDBFE',
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
+  },
+  previewBannerText: { fontSize: fontSize.xs, color: '#1D4ED8', fontWeight: fontWeight.semibold, flex: 1 },
+  previewEditLink: { fontSize: fontSize.xs, color: colors.primary, fontWeight: fontWeight.bold, paddingLeft: spacing.md },
+
   // Bottom booking bar
   bottomBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -575,4 +617,6 @@ const styles = StyleSheet.create({
   priceLabel: { fontSize: fontSize.xs, color: colors.textDim },
   price: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
   perSlot: { fontSize: fontSize.xs, color: colors.textDim, fontWeight: fontWeight.regular },
+  previewBarLabel: { fontSize: fontSize.xs, color: colors.textDim, fontWeight: fontWeight.semibold },
+  previewBarHint: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 1 },
 });

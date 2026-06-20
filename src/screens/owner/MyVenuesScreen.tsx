@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   Image, TouchableOpacity, RefreshControl,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, StatusBadge, EmptyState, LoadingOverlay } from '../../components/common';
 import { useOwnerVenues } from '../../api/hooks/useVenues';
@@ -70,6 +71,13 @@ export default function MyVenuesScreen({ navigation }: any) {
                     onPress={() => navigation.navigate('EditVenue', { venueId: v.id })}
                     style={{ flex: 1, height: 40 }}
                   />
+                  <TouchableOpacity
+                    style={styles.viewBtn}
+                    onPress={() => navigation.navigate('VenueDetail', { venueId: v.id, mode: 'preview' })}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="eye" size={18} color={colors.textMid} />
+                  </TouchableOpacity>
                 </View>
               </View>
             </View>
@@ -95,4 +103,10 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
   meta: { fontSize: fontSize.xs, color: colors.textMid },
   actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  viewBtn: {
+    width: 40, height: 40, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
+  },
 });
