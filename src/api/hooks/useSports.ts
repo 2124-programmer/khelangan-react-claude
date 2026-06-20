@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { sportService } from '../services/sportService';
 import { adaptSport } from '../adapters';
+import { setSportsRegistry } from '../../utils/sportUtils';
 import type { CreateSportRequest, UpdateSportRequest } from '../types';
 
 export const SPORTS_KEY = ['sports'] as const;
@@ -10,7 +11,9 @@ export function useSports() {
     queryKey: SPORTS_KEY,
     queryFn: async () => {
       const dtos = await sportService.list();
-      return dtos.map(adaptSport);
+      const sports = dtos.map(adaptSport);
+      setSportsRegistry(sports);
+      return sports;
     },
     staleTime: 1000 * 60 * 10, // sports rarely change
   });

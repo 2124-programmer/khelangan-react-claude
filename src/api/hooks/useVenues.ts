@@ -30,7 +30,7 @@ export function useVenueDetail(venueId: string | number | undefined) {
   });
 }
 
-export function useOwnerVenues(params?: { page?: number }) {
+export function useOwnerVenues(params?: { page?: number }, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [...OWNER_VENUES_KEY, params],
     queryFn: async () => {
@@ -41,6 +41,7 @@ export function useOwnerVenues(params?: { page?: number }) {
         totalElements: page.totalElements,
       };
     },
+    enabled: options?.enabled !== false,
   });
 }
 

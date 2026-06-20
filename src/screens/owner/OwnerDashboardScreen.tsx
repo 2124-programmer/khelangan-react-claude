@@ -8,9 +8,9 @@ import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../the
 import { NotificationBell, MetricCard, StatusBadge } from '../../components/common';
 import { useAuth } from '../../store/AuthContext';
 import { useOwnerDashboardSummary } from '../../api/hooks/useOwnerDashboard';
-import { useBookings } from '../../api/hooks/useBookings';
+import { useCheckInBooking } from '../../api/hooks/useBookings';
 import { useOwnerVenues } from '../../api/hooks/useVenues';
-import type { Booking } from '../../types';
+import type { DashboardSlotDto } from '../../api/types';
 
 // ── Money formatter: ₹1234 → "₹1.2k", ₹12,34,567 → "₹12.3L"
 function formatAmount(paise: number): string {
@@ -25,42 +25,33 @@ type DashboardNavigation = {
   navigate: (screen: string, params?: Record<string, unknown>) => void;
 };
 
-function getTodayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 export default function OwnerDashboardScreen({ navigation }: { navigation: DashboardNavigation }) {
   const { user } = useAuth();
   const { data, isLoading, isError, refetch } = useOwnerDashboardSummary();
   const [refreshing, setRefreshing] = useState(false);
 
-  const { data: venuesData } = useOwnerVenues();
-  const ownerVenues = venuesData?.venues ?? [];
+  const { data: venuesData, refetch: refetchVenues } = useOwnerVenues(undefined, { enabled: false });
+  const pickerVenues = venuesData?.venues ?? [];
   const [venuePicker, setVenuePicker] = useState(false);
 
-  function openCalendar() {
-    if (ownerVenues.length === 0) {
+  async function openCalendar() {
+    const venueCount = data?.stats?.venueCount ?? 0;
+    if (venueCount === 0) {
       Alert.alert('No venues', 'Add a venue first before viewing the calendar.');
       return;
     }
-    if (ownerVenues.length === 1) {
-      navigation.navigate('VenueCalendar', { venueId: ownerVenues[0].id });
-      return;
+    const result = await refetchVenues();
+    const venues = result.data?.venues ?? [];
+    if (venues.length === 1) {
+      navigation.navigate('VenueCalendar', { venueId: venues[0].id });
+    } else {
+      setVenuePicker(true);
     }
-    setVenuePicker(true);
   }
 
-  const todayStr = useMemo(() => getTodayStr(), []);
-  const { data: todayData, isLoading: todayLoading } = useBookings({ date: todayStr });
-  const todaySlots = useMemo<Booking[]>(() => {
-    return (todayData?.bookings ?? [])
-      .filter((b) => b.status === 'confirmed' || b.status === 'completed' || b.status === 'checked_in')
-      .sort((a, b) => a.startTime.localeCompare(b.startTime));
-  }, [todayData]);
-
-  const slotsByCourt = useMemo<Record<string, Booking[]>>(() => {
-    const groups: Record<string, Booking[]> = {};
+  const todaySlots = data?.todaySlots ?? [];
+  const slotsByCourt = useMemo<Record<string, DashboardSlotDto[]>>(() => {
+    const groups: Record<string, DashboardSlotDto[]> = {};
     todaySlots.forEach((b) => {
       const key = b.courtName || 'Unknown Court';
       if (!groups[key]) groups[key] = [];
@@ -68,8 +59,8 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
     });
     return groups;
   }, [todaySlots]);
-
   const courtNames = useMemo(() => Object.keys(slotsByCourt).sort(), [slotsByCourt]);
+  const checkIn = useCheckInBooking();
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -210,7 +201,7 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
             <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
-        {todayLoading ? (
+        {isLoading ? (
           <ActivityIndicator color={colors.owner} style={{ marginVertical: spacing.md }} />
         ) : todaySlots.length === 0 ? (
           <View style={styles.emptySlots}>
@@ -234,6 +225,7 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
                       key={slot.id}
                       slot={slot}
                       last={idx === slots.length - 1}
+                      onCheckIn={() => checkIn.mutate(slot.id)}
                       onPress={() => navigation.navigate('OwnerBookings', {
                         screen: 'OwnerBookingsHome',
                         params: { initialTab: slot.status === 'confirmed' ? 'today' : 'completed' },
@@ -283,7 +275,7 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
           <Pressable style={styles.pickerSheet} onPress={() => {}}>
             <View style={styles.pickerHandle} />
             <Text style={styles.pickerTitle}>Select Venue</Text>
-            {ownerVenues.map((v) => (
+            {pickerVenues.map((v) => (
               <TouchableOpacity
                 key={v.id}
                 style={styles.pickerRow}
@@ -329,17 +321,40 @@ function BookingStatCard({
   );
 }
 
-function CourtSlotRow({ slot, last, onPress }: { slot: Booking; last: boolean; onPress: () => void }) {
+function CourtSlotRow({
+  slot, last, onPress, onCheckIn,
+}: {
+  slot: DashboardSlotDto;
+  last: boolean;
+  onPress: () => void;
+  onCheckIn: () => void;
+}) {
   const isDone = slot.status === 'completed' || slot.status === 'checked_in';
+  const canCheckIn = slot.status === 'confirmed';
   return (
-    <TouchableOpacity onPress={onPress} style={[styles.slotRow, last && { borderBottomWidth: 0 }]}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={[styles.slotRow, last && { borderBottomWidth: 0 }]}>
       <View style={[styles.slotTimePill, isDone && { backgroundColor: colors.success + '22' }]}>
         <Text style={[styles.slotTime, isDone && { color: colors.success }]}>{slot.startTime}</Text>
         <Text style={[styles.slotTimeSep, isDone && { color: colors.success }]}>–</Text>
         <Text style={[styles.slotTime, isDone && { color: colors.success }]}>{slot.endTime}</Text>
       </View>
-      <Text style={styles.slotPlayer} numberOfLines={1}>👤 {slot.playerName}</Text>
-      <StatusBadge status={slot.status} />
+      <View style={{ flex: 1, marginLeft: spacing.xs }}>
+        <Text style={styles.slotPlayer} numberOfLines={1}>👤 {slot.playerName}</Text>
+        {!!slot.sport && (
+          <Text style={styles.slotSport} numberOfLines={1}>🏅 {slot.sport}</Text>
+        )}
+      </View>
+      {canCheckIn ? (
+        <TouchableOpacity
+          onPress={(e) => { e.stopPropagation?.(); onCheckIn(); }}
+          style={styles.checkInBtn}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.checkInBtnText}>Check In</Text>
+        </TouchableOpacity>
+      ) : (
+        <StatusBadge status={slot.status} />
+      )}
     </TouchableOpacity>
   );
 }
@@ -407,11 +422,14 @@ const styles = StyleSheet.create({
   courtSlotBadge:    { backgroundColor: colors.owner + '20', borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
   courtSlotBadgeText:{ fontSize: 10, fontWeight: fontWeight.semibold, color: colors.owner },
 
-  slotRow:      { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.md, paddingLeft: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.sm },
-  slotTimePill: { width: 88, backgroundColor: colors.owner + '18', borderRadius: radius.sm, paddingVertical: 4, paddingHorizontal: 6, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 2 },
-  slotTime:     { fontSize: 11, fontWeight: fontWeight.semibold, color: colors.owner },
-  slotTimeSep:  { fontSize: 11, color: colors.owner },
-  slotPlayer:   { flex: 1, fontSize: fontSize.xs, color: colors.textMid },
+  slotRow:        { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.md, paddingLeft: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.sm },
+  slotTimePill:   { width: 88, backgroundColor: colors.owner + '18', borderRadius: radius.sm, paddingVertical: 4, paddingHorizontal: 6, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 2 },
+  slotTime:       { fontSize: 11, fontWeight: fontWeight.semibold, color: colors.owner },
+  slotTimeSep:    { fontSize: 11, color: colors.owner },
+  slotPlayer:     { fontSize: fontSize.xs, color: colors.textMid },
+  slotSport:      { fontSize: 10, color: colors.textDim, marginTop: 1 },
+  checkInBtn:     { paddingHorizontal: spacing.md, paddingVertical: 5, borderRadius: radius.sm, backgroundColor: colors.primary },
+  checkInBtnText: { fontSize: 11, fontWeight: fontWeight.bold, color: colors.white },
 
   // Venue picker modal
   pickerOverlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },

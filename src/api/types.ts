@@ -126,6 +126,7 @@ export interface VenueSummaryDto {
   ownerId?: number;
   sports?: SportDto[];
   amenities?: string[];
+  courtCount?: number;     // returned by owner list endpoint
 }
 
 export interface VenueDetailDto {
@@ -519,10 +520,21 @@ export interface DashboardStatsDto {
   courtCount: number;
 }
 
+export interface DashboardSlotDto {
+  id: number;
+  courtName: string;
+  startTime: string;    // "HH:mm"
+  endTime: string;      // "HH:mm"
+  playerName: string;
+  sport: string;
+  status: string;       // "confirmed" | "checked_in" | "completed"
+}
+
 export interface OwnerDashboardSummaryDto {
   earnings: DashboardEarningsDto;
   bookings: DashboardBookingCountsDto;
   stats: DashboardStatsDto;
+  todaySlots: DashboardSlotDto[];
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────────

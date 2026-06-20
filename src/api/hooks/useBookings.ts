@@ -153,6 +153,7 @@ export function useCheckInBooking() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: ['slots'] });
+      qc.invalidateQueries({ queryKey: ownerDashboardKeys.summary() });
     },
   });
 }

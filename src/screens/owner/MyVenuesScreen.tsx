@@ -47,7 +47,7 @@ export default function MyVenuesScreen({ navigation }: any) {
                       {v.ratingAverage !== null ? `★ ${v.ratingAverage.toFixed(1)} (${v.ratingCount})` : 'New'}
                     </Text>
                   </View>
-                  <Text style={styles.meta}>{v.courts.length} courts</Text>
+                  <Text style={styles.meta}>{v.courtCount} courts</Text>
                 </View>
                 <View style={styles.actions}>
                   <AppButton

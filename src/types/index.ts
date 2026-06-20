@@ -87,6 +87,7 @@ export interface Venue {
   sports: string[]; // sport ids
   amenities: string[];
   courts: Court[];
+  courtCount: number;  // from list endpoints; equals courts.length on detail endpoints
   isActive: boolean;
   lat: number;
   lng: number;
