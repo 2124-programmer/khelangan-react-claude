@@ -475,6 +475,7 @@ export function ReviewsManagementScreen({ navigation }: any) {
 export function OwnerProfileScreen({ navigation }: any) {
   const { user, logout } = useAuth();
   const { data: me } = useMe();
+  const [showLogout, setShowLogout] = useState(false);
 
   const displayName   = me?.name   ?? user?.name   ?? '';
   const displayEmail  = me?.email  ?? user?.email  ?? '';
@@ -499,21 +500,63 @@ export function OwnerProfileScreen({ navigation }: any) {
           <Text style={styles.profileEmail}>{displayEmail}</Text>
         </TouchableOpacity>
 
-        {[
-          { icon: '🏟', label: 'My Venues', onPress: () => navigation.navigate('VenuesTab') },
-          { icon: '💰', label: 'Bank & Payouts', onPress: () => navigation.navigate('EarningsTab') },
-          { icon: '🔔', label: 'Notifications', onPress: () => navigation.navigate('OwnerNotifications') },
-          { icon: '⚙️', label: 'Settings', onPress: () => navigation.navigate('OwnerSettings') },
-          // { icon: '👤', label: 'Switch to Player', onPress: () => navigation.navigate('RoleChange', { targetRole: 'PLAYER' }), color: colors.primary },
-        ].map((item) => (
-          <TouchableOpacity key={item.label} style={styles.menuRow} onPress={item.onPress}>
-            <Text style={{ fontSize: 20 }}>{item.icon}</Text>
-            <Text style={[styles.menuLabel, item.color ? { color: item.color } : undefined]}>{item.label}</Text>
+        <Text style={styles.oSectionHeader}>Account</Text>
+        <View style={styles.oMenuSection}>
+          {[
+            { icon: '✏️', label: 'Edit Profile', onPress: () => navigation.navigate('OwnerEditProfile') },
+            { icon: '🔒', label: 'Security', onPress: () => navigation.navigate('Security') },
+          ].map((item) => (
+            <TouchableOpacity key={item.label} style={styles.menuRow} onPress={item.onPress}>
+              <Text style={{ fontSize: 20 }}>{item.icon}</Text>
+              <Text style={styles.menuLabel}>{item.label}</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.oSectionHeader}>Business</Text>
+        <View style={styles.oMenuSection}>
+          {[
+            { icon: '🏟', label: 'My Venues', onPress: () => navigation.navigate('VenuesTab') },
+            { icon: '💰', label: 'Bank & Payouts', onPress: () => navigation.navigate('EarningsTab') },
+          ].map((item) => (
+            <TouchableOpacity key={item.label} style={styles.menuRow} onPress={item.onPress}>
+              <Text style={{ fontSize: 20 }}>{item.icon}</Text>
+              <Text style={styles.menuLabel}>{item.label}</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.oSectionHeader}>Preferences</Text>
+        <View style={styles.oMenuSection}>
+          {[
+            { icon: '🔔', label: 'Notifications', onPress: () => navigation.navigate('OwnerNotifications') },
+            { icon: '⚙️', label: 'Settings', onPress: () => navigation.navigate('OwnerSettings') },
+          ].map((item) => (
+            <TouchableOpacity key={item.label} style={styles.menuRow} onPress={item.onPress}>
+              <Text style={{ fontSize: 20 }}>{item.icon}</Text>
+              <Text style={styles.menuLabel}>{item.label}</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={styles.menuRow} onPress={() => setShowLogout(true)}>
+            <Text style={{ fontSize: 20 }}>🚪</Text>
+            <Text style={[styles.menuLabel, { color: colors.danger }]}>Logout</Text>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
-        ))}
-        <AppButton label="Log Out" variant="danger" onPress={() => { toast.info('Signed out successfully.'); logout(); }} style={{ marginTop: spacing.xl }} />
+        </View>
       </ScrollView>
+
+      <ConfirmActionModal
+        visible={showLogout}
+        title="Logout?"
+        message="You'll need to login again to access your account."
+        confirmLabel="Logout"
+        danger
+        onConfirm={() => { setShowLogout(false); toast.info('Signed out successfully.'); logout(); }}
+        onDismiss={() => setShowLogout(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -1189,6 +1232,8 @@ const styles = StyleSheet.create({
   oPencilIcon: { fontSize: 11 },
   profileName: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.md },
   profileEmail: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2 },
+  oSectionHeader: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textDim, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: spacing.lg, marginBottom: spacing.xs, marginLeft: spacing.xs },
+  oMenuSection: { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden' },
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   menuLabel: { flex: 1, fontSize: fontSize.md, color: colors.text },
   menuArrow: { fontSize: 22, color: colors.textDim },

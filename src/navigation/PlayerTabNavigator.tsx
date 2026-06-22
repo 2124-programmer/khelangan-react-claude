@@ -20,6 +20,9 @@ import {
   OffersScreen, WalletScreen, HelpSupportScreen, SettingsScreen,
   EditProfileScreen, RescheduleScreen, DisputeScreen, RoleChangeScreen,
 } from '../screens/player/MiscScreens';
+import SecurityScreen from '../screens/player/SecurityScreen';
+import ChangePasswordScreen from '../screens/player/ChangePasswordScreen';
+import EmailChangeScreen from '../screens/player/EmailChangeScreen';
 
 // Screens reachable from anywhere in the player app. Registered in every tab's
 // stack so any `navigation.navigate('X')` resolves regardless of the active tab.
@@ -41,6 +44,9 @@ const SHARED = [
   { name: 'Reschedule', component: RescheduleScreen },
   { name: 'Dispute', component: DisputeScreen },
   { name: 'RoleChange', component: RoleChangeScreen },
+  { name: 'Security', component: SecurityScreen },
+  { name: 'ChangePassword', component: ChangePasswordScreen },
+  { name: 'EmailChange', component: EmailChangeScreen },
 ];
 
 function makeStack(initialName: string, initialComponent: any) {

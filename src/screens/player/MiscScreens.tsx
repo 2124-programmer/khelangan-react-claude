@@ -3,10 +3,10 @@ import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   TouchableOpacity, Switch, Alert, ActivityIndicator, RefreshControl,
 } from 'react-native';
+import { toast } from '../../toast';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, AppInput, AvatarImage, LoadingOverlay } from '../../components/common';
-import { ConfirmActionModal } from '../../modals';
 import { useCoupons } from '../../api/hooks/useCoupons';
 import { useAuth } from '../../store/AuthContext';
 import { useMe, useUpdateProfile, useUploadAvatar } from '../../api/hooks/useUser';
@@ -107,9 +107,7 @@ export function HelpSupportScreen({ navigation }: any) {
 /* ───────────────── SettingsScreen ───────────────── */
 export function SettingsScreen({ navigation }: any) {
   const [push, setPush] = useState(true);
-  const [email, setEmail] = useState(true);
-  const [showPwd, setShowPwd] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
+  const [emailNotif, setEmailNotif] = useState(true);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -122,22 +120,15 @@ export function SettingsScreen({ navigation }: any) {
         </View>
         <View style={styles.toggleRow}>
           <Text style={styles.toggleLabel}>Email Notifications</Text>
-          <Switch value={email} onValueChange={setEmail} trackColor={{ true: colors.primary }} />
+          <Switch value={emailNotif} onValueChange={setEmailNotif} trackColor={{ true: colors.primary }} />
         </View>
 
         <Text style={styles.sectionTitle}>Account</Text>
-        <TouchableOpacity style={styles.linkRow} onPress={() => setShowPwd(true)}>
-          <Text style={styles.toggleLabel}>Change Password</Text>
-          <Text style={styles.menuArrow}>›</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.linkRow} onPress={() => setShowDelete(true)}>
-          <Text style={[styles.toggleLabel, { color: colors.danger }]}>Delete Account</Text>
+        <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate('Security')}>
+          <Text style={styles.toggleLabel}>Security</Text>
           <Text style={styles.menuArrow}>›</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      <ConfirmActionModal visible={showPwd} title="Change Password" message="A reset link will be sent to your email." confirmLabel="Send Link" onConfirm={() => setShowPwd(false)} onDismiss={() => setShowPwd(false)} />
-      <ConfirmActionModal visible={showDelete} title="Delete Account?" message="This is permanent and cannot be undone." confirmLabel="Delete" danger onConfirm={() => setShowDelete(false)} onDismiss={() => setShowDelete(false)} />
     </SafeAreaView>
   );
 }
@@ -207,9 +198,10 @@ export function EditProfileScreen({ navigation }: any) {
         phone: phone.trim() || undefined,
         avatarUrl,
       });
+      toast.success('Profile updated.');
       navigation.goBack();
     } catch (err) {
-      Alert.alert('Update Failed', extractApiError(err));
+      toast.error(extractApiError(err) || 'Update failed. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -266,6 +258,9 @@ export function EditProfileScreen({ navigation }: any) {
           keyboardType="email-address"
           editable={false}
         />
+        <TouchableOpacity onPress={() => navigation.navigate('EmailChange')} style={styles.emailChangeLink}>
+          <Text style={styles.emailChangeLinkText}>Request email change →</Text>
+        </TouchableOpacity>
         <AppInput
           label="Phone"
           value={phone}
@@ -429,4 +424,6 @@ const styles = StyleSheet.create({
   roleInfoIcon: { fontSize: 40, marginBottom: spacing.sm },
   roleInfoTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.xs },
   roleInfoBody: { fontSize: fontSize.sm, color: colors.textMid, textAlign: 'center', lineHeight: 20 },
+  emailChangeLink: { marginTop: -spacing.xs, marginBottom: spacing.md, alignSelf: 'flex-end' },
+  emailChangeLinkText: { fontSize: fontSize.xs, color: colors.primary, fontWeight: fontWeight.medium },
 });

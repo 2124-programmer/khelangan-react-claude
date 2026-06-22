@@ -7,13 +7,16 @@ import { useAuth } from '../../store/AuthContext';
 import { useMe } from '../../api/hooks/useUser';
 import { toast } from '../../toast';
 
-const MENU = [
+const ACCOUNT_MENU = [
+  { icon: '✏️', label: 'Edit Profile', route: 'EditProfile' },
+  { icon: '🔒', label: 'Security', route: 'Security' },
+];
+
+const PREFS_MENU = [
   { icon: '🔔', label: 'Notifications', route: 'Notifications' },
-  // { icon: '👛', label: 'Wallet & Payments', route: 'Wallet' },
   { icon: '🎟️', label: 'Offers & Coupons', route: 'Offers' },
   { icon: '⚙️', label: 'Settings', route: 'Settings' },
   { icon: '❓', label: 'Help & Support', route: 'HelpSupport' },
-  // { icon: '🏟', label: 'Switch to Venue Owner', route: 'RoleChange', params: { targetRole: 'OWNER' } },
 ];
 
 export default function PlayerProfileScreen({ navigation }: any) {
@@ -40,11 +43,7 @@ export default function PlayerProfileScreen({ navigation }: any) {
         contentContainerStyle={{ padding: spacing.lg }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
-        <TouchableOpacity
-          style={[styles.profileCard, shadow.card]}
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate('EditProfile')}
-        >
+        <View style={[styles.profileCard, shadow.card]}>
           <View style={styles.avatarWrapper}>
             <AvatarImage uri={displayAvatar} name={displayName} size={72} />
             <View style={styles.pencilBadge}>
@@ -54,7 +53,7 @@ export default function PlayerProfileScreen({ navigation }: any) {
           <Text style={styles.name}>{displayName}</Text>
           <Text style={styles.email}>{displayEmail}</Text>
           {isPremium && <View style={styles.premiumBadge}><Text style={styles.premiumText}>⭐ Premium Member</Text></View>}
-        </TouchableOpacity>
+        </View>
 
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
@@ -71,11 +70,23 @@ export default function PlayerProfileScreen({ navigation }: any) {
           </View>
         </View>
 
+        <Text style={styles.sectionHeader}>Account</Text>
         <View style={styles.menu}>
-          {MENU.map((m) => (
-            <TouchableOpacity key={m.label} style={styles.menuRow} onPress={() => navigation.navigate(m.route, (m as any).params)}>
+          {ACCOUNT_MENU.map((m) => (
+            <TouchableOpacity key={m.label} style={styles.menuRow} onPress={() => navigation.navigate(m.route)}>
               <Text style={{ fontSize: 20 }}>{m.icon}</Text>
-              <Text style={[styles.menuLabel, m.route === 'RoleChange' && { color: colors.owner }]}>{m.label}</Text>
+              <Text style={styles.menuLabel}>{m.label}</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.sectionHeader}>Preferences</Text>
+        <View style={styles.menu}>
+          {PREFS_MENU.map((m) => (
+            <TouchableOpacity key={m.label} style={styles.menuRow} onPress={() => navigation.navigate(m.route)}>
+              <Text style={{ fontSize: 20 }}>{m.icon}</Text>
+              <Text style={styles.menuLabel}>{m.label}</Text>
               <Text style={styles.menuArrow}>›</Text>
             </TouchableOpacity>
           ))}
@@ -114,7 +125,8 @@ const styles = StyleSheet.create({
   statBox: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, alignItems: 'center', ...shadow.card },
   statNum: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.primary },
   statLabel: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 2 },
-  menu: { backgroundColor: colors.surface, borderRadius: radius.lg, marginTop: spacing.lg, overflow: 'hidden' },
+  sectionHeader: { fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.textDim, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: spacing.lg, marginBottom: spacing.xs, marginLeft: spacing.xs },
+  menu: { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden' },
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
   menuLabel: { flex: 1, fontSize: fontSize.md, color: colors.text },
   menuArrow: { fontSize: 22, color: colors.textDim },

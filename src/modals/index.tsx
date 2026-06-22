@@ -13,9 +13,10 @@ interface ConfirmProps {
   danger?: boolean;
   onConfirm: () => void;
   onDismiss: () => void;
+  extraContent?: React.ReactNode;
 }
 export function ConfirmActionModal({
-  visible, title, message, confirmLabel = 'Confirm', danger, onConfirm, onDismiss,
+  visible, title, message, confirmLabel = 'Confirm', danger, onConfirm, onDismiss, extraContent,
 }: ConfirmProps) {
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onDismiss}>
@@ -23,6 +24,7 @@ export function ConfirmActionModal({
         <View style={[styles.dialog, shadow.modal]}>
           <Text style={styles.dialogTitle}>{title}</Text>
           <Text style={styles.dialogMsg}>{message}</Text>
+          {extraContent}
           <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }}>
             <AppButton label="Cancel" variant="secondary" onPress={onDismiss} style={{ flex: 1 }} />
             <AppButton

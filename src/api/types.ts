@@ -46,6 +46,58 @@ export interface RefreshTokenRequest {
   refreshToken: string;
 }
 
+// ─── Change Password ──────────────────────────────────────────────────────────
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+// ─── Password Reset (email OTP flow) ─────────────────────────────────────────
+
+export interface PasswordResetRequest {
+  email: string;
+}
+
+export interface PasswordResetVerifyRequest {
+  email: string;
+  otp: string;
+}
+
+export interface PasswordResetVerifyResponse {
+  resetToken: string;
+}
+
+export interface PasswordResetConfirmRequest {
+  resetToken: string;
+  newPassword: string;
+}
+
+// ─── Email Change ─────────────────────────────────────────────────────────────
+
+export interface EmailChangeCreateRequest {
+  newEmail: string;
+}
+
+export interface EmailChangeVerifyRequest {
+  otp: string;
+}
+
+export interface EmailChangeRequestDto {
+  id?: number;
+  userId?: number;
+  currentEmail?: string;
+  newEmail?: string;
+  status?: 'PENDING_VERIFICATION' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt?: string;
+  decidedAt?: string;
+  reason?: string;
+}
+
+export interface EmailChangeRejectRequest {
+  reason?: string;
+}
+
 export interface AuthResponse {
   token?: string;
   refreshToken?: string;
