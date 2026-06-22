@@ -5,13 +5,15 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { AppHeader, AppButton, EmptyState, LoadingOverlay } from '../../components/common';
+import { AppHeader, AppButton, AppInput, EmptyState, LoadingOverlay, StatusBadge } from '../../components/common';
 import { toast } from '../../toast';
 import { VenueImageCarousel } from '../../components/venue';
 import { VenueMap } from '../../components/venue/VenueMap';
 import { ConfirmActionModal } from '../../modals';
 import { RatingSummary, ReviewCard, ReviewsEmptyState, WriteReviewSheet } from '../../components/reviews';
-import { useVenueDetail } from '../../api/hooks/useVenues';
+import { useVenueDetail, useAdminVenueDetail, useUpdateVenueStatus } from '../../api/hooks/useVenues';
+import { extractApiError } from '../../api/client';
+import { formatRelativeTime } from '../../utils/dateUtils';
 import { useVenueReviews } from '../../api/hooks/useReviews';
 import { useSports } from '../../api/hooks/useSports';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation';
@@ -53,8 +55,12 @@ function fmt12h(t: string): string {
 
 export default function VenueDetailScreen({ navigation, route }: any) {
   const venueId: string = route.params.venueId;
-  const mode: 'player' | 'preview' = route.params.mode ?? 'player';
+  const mode: 'player' | 'preview' | 'review' = route.params.mode ?? 'player';
   const isPreview = mode === 'preview';
+  const isReview = mode === 'review';
+  // Booking, court taps and review-writing are all disabled when the venue is being
+  // looked at rather than booked (owner preview or admin review).
+  const readOnly = isPreview || isReview;
   const { isLoggedIn, role } = useAuth();
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [writeReviewOpen, setWriteReviewOpen] = useState(false);
@@ -63,7 +69,16 @@ export default function VenueDetailScreen({ navigation, route }: any) {
     if (route.params?._successToast) toast.success(route.params._successToast as string);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { data: venue, isLoading, isError, refetch: refetchVenue } = useVenueDetail(venueId);
+  // Admin review fetches the ADMIN-scoped detail (any status + owner context);
+  // everyone else uses the public/owner detail. Only one query is enabled at a time.
+  const playerQuery = useVenueDetail(isReview ? undefined : venueId);
+  const adminQuery = useAdminVenueDetail(isReview ? venueId : undefined);
+  const adminContext = adminQuery.data;
+  const venue = isReview ? adminContext?.venue : playerQuery.data;
+  const isLoading = isReview ? adminQuery.isLoading : playerQuery.isLoading;
+  const isError = isReview ? adminQuery.isError : playerQuery.isError;
+  const refetchVenue = isReview ? adminQuery.refetch : playerQuery.refetch;
+
   const { data: reviewsData, refetch: refetchReviews } = useVenueReviews(venueId);
   const { data: sports = [] } = useSports();
   const userLocation = useCurrentLocation();
@@ -71,6 +86,46 @@ export default function VenueDetailScreen({ navigation, route }: any) {
   const handleRefresh = async () => {
     setRefreshing(true);
     try { await Promise.all([refetchVenue(), refetchReviews()]); } finally { setRefreshing(false); }
+  };
+
+  // ─── Admin approval actions ───────────────────────────────────────────────
+  const updateStatus = useUpdateVenueStatus();
+  const [actionModal, setActionModal] = useState<null | 'approve' | 'reject' | 'sendback'>(null);
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const openAction = (action: 'approve' | 'reject' | 'sendback') => { setReason(''); setActionModal(action); };
+
+  const submitDecision = async () => {
+    if (!actionModal || !venue) return;
+    if (actionModal === 'reject' && !reason.trim()) {
+      toast.error('Add a reason so the owner knows what to fix.');
+      return;
+    }
+    if (actionModal === 'sendback' && !reason.trim()) {
+      toast.error('Add a note so the owner knows what to change.');
+      return;
+    }
+    const statusFor = { approve: 'LIVE', reject: 'REJECTED', sendback: 'CHANGES_REQUESTED' } as const;
+    setSubmitting(true);
+    try {
+      await updateStatus.mutateAsync({
+        id: Number(venue.id),
+        data: { status: statusFor[actionModal], rejectionReason: reason.trim() || undefined },
+      });
+      toast.success(
+        actionModal === 'approve' ? 'Venue approved — live on a 30-day trial.'
+          : actionModal === 'reject' ? 'Venue rejected. The owner has been notified.'
+            : 'Sent back to the owner for changes.',
+      );
+      setActionModal(null);
+      setReason('');
+      navigation.goBack();
+    } catch (err) {
+      toast.error(extractApiError(err));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const reviews = reviewsData?.reviews ?? [];
@@ -106,6 +161,22 @@ export default function VenueDetailScreen({ navigation, route }: any) {
       ? formatDistance(haversineKm(userLocation.lat, userLocation.lng, venue.lat, venue.lng))
       : null;
   const openStatus = getOpenStatus(venue.openTime, venue.closeTime);
+
+  // Admin-review derived data
+  const hasPhotos = (venue.images?.length ?? 0) > 0 || venue.photos.length > 0;
+  const checklist = [
+    { label: 'Photos added', ok: hasPhotos },
+    { label: 'At least one court', ok: venue.courts.length > 0 },
+    { label: 'Address complete', ok: !!venue.address && !!venue.city && !!venue.pincode },
+    { label: 'Contact phone', ok: !!venue.contactPhone },
+  ];
+  const completedCount = checklist.filter((c) => c.ok).length;
+  const completePct = Math.round((completedCount / checklist.length) * 100);
+  const owner = adminContext?.owner;
+  const ownerHistory = adminContext?.ownerHistory;
+  // Approval thread: admin review uses the enriched history; owner preview uses the venue's own comments.
+  const approvalThread = isReview ? (adminContext?.commentHistory ?? []) : (venue.approvalComments ?? []);
+  const intendedPlanCode = adminContext?.intendedPlanCode;
 
   const handleBookNow = () => {
     if (isLoggedIn) {
@@ -263,6 +334,103 @@ export default function VenueDetailScreen({ navigation, route }: any) {
             <Text style={styles.factsItem}>₹{venue.pricePerHour}/hr</Text>
           </View>
 
+          {/* ─── Admin review context ─── */}
+          {isReview && (
+            <View style={styles.adminBlock}>
+              {/* Status + submission age */}
+              <View style={[styles.adminCard, shadow.card]}>
+                <View style={styles.adminCardHeadRow}>
+                  <Text style={styles.adminCardTitle}>Submission</Text>
+                  <StatusBadge status={venue.status} />
+                </View>
+                <Text style={styles.adminMuted}>
+                  {venue.submittedAt
+                    ? `Submitted ${formatRelativeTime(venue.submittedAt)}`
+                    : 'Submission date unavailable'}
+                </Text>
+
+                {/* Completeness checklist */}
+                <View style={styles.completeRow}>
+                  <Text style={styles.adminCardTitle}>Completeness</Text>
+                  <Text style={[styles.completePct, completePct === 100 ? styles.okText : styles.warnText]}>
+                    {completePct}%
+                  </Text>
+                </View>
+                {checklist.map((c) => (
+                  <View key={c.label} style={styles.checkItem}>
+                    <Text style={[styles.checkMark, c.ok ? styles.okText : styles.warnText]}>
+                      {c.ok ? '✓' : '✗'}
+                    </Text>
+                    <Text style={[styles.checkLabel, !c.ok && styles.warnText]}>{c.label}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Owner block */}
+              {owner && (
+                <View style={[styles.adminCard, shadow.card]}>
+                  <Text style={styles.adminCardTitle}>Owner</Text>
+                  <Text style={styles.ownerName}>{owner.name || 'Unknown owner'}</Text>
+                  {!!owner.registeredOn && (
+                    <Text style={styles.adminMuted}>Registered {formatRelativeTime(owner.registeredOn)}</Text>
+                  )}
+                  {ownerHistory && (
+                    <Text style={styles.adminMuted}>
+                      {ownerHistory.totalVenues} venue{ownerHistory.totalVenues === 1 ? '' : 's'} total · {ownerHistory.liveVenues} live
+                    </Text>
+                  )}
+                  {!!owner.phone && (
+                    <TouchableOpacity
+                      style={styles.ownerContactRow}
+                      onPress={() => Linking.openURL(`tel:${owner.phone}`)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.ownerContactIcon}>📞</Text>
+                      <Text style={[styles.ownerContactText, styles.infoLink]}>{owner.phone}</Text>
+                      <Text style={styles.ownerCallCta}>Call</Text>
+                    </TouchableOpacity>
+                  )}
+                  {!!owner.email && (
+                    <TouchableOpacity
+                      style={styles.ownerContactRow}
+                      onPress={() => Linking.openURL(`mailto:${owner.email}`)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.ownerContactIcon}>✉️</Text>
+                      <Text style={[styles.ownerContactText, styles.infoLink]} numberOfLines={1}>{owner.email}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+
+              {/* Subscription note */}
+              <View style={[styles.adminNote]}>
+                <Text style={styles.adminNoteText}>
+                  {venue.courts.length} court{venue.courts.length === 1 ? '' : 's'}
+                  {intendedPlanCode ? ` · committed tier: ${intendedPlanCode}` : ' · free tier (Starter)'}.
+                  Approving auto-starts a 30-day free trial and makes the venue live; the owner
+                  activates a paid plan before the trial ends to stay live.
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Approval activity thread (owner preview + admin review) */}
+          {readOnly && approvalThread.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Approval activity</Text>
+              {approvalThread.map((c) => (
+                <View key={c.id} style={styles.commentRow}>
+                  <Text style={styles.commentAction}>
+                    {c.action.replace(/_/g, ' ')} · {c.authorRole}
+                    {c.createdAt ? `  ·  ${formatRelativeTime(c.createdAt)}` : ''}
+                  </Text>
+                  {!!c.comment && <Text style={styles.commentText}>{c.comment}</Text>}
+                </View>
+              ))}
+            </>
+          )}
+
           {/* Sports */}
           {venue.sports.length > 0 && (
             <>
@@ -299,20 +467,20 @@ export default function VenueDetailScreen({ navigation, route }: any) {
                 <TouchableOpacity
                   key={c.id}
                   style={[styles.courtCard, shadow.card]}
-                  onPress={isPreview ? undefined : () => handleCourtTap(c.id, c.sportId)}
-                  activeOpacity={isPreview ? 1 : 0.8}
+                  onPress={readOnly ? undefined : () => handleCourtTap(c.id, c.sportId)}
+                  activeOpacity={readOnly ? 1 : 0.8}
                 >
                   <View style={styles.courtHeader}>
                     <Text style={styles.courtName}>{c.name}</Text>
                     <View style={styles.courtRight}>
                       <Text style={styles.courtPrice}>₹{c.effectivePricePerHour}/hr</Text>
-                      {!isPreview && <Text style={styles.courtChevron}>›</Text>}
+                      {!readOnly && <Text style={styles.courtChevron}>›</Text>}
                     </View>
                   </View>
                   {metaParts.length > 0 && (
                     <Text style={styles.courtMeta}>{metaParts.join('  ·  ')}</Text>
                   )}
-                  {!isPreview && <Text style={styles.courtCta}>Tap to view & book slots</Text>}
+                  {!readOnly && <Text style={styles.courtCta}>Tap to view & book slots</Text>}
                 </TouchableOpacity>
               );
             })
@@ -394,7 +562,7 @@ export default function VenueDetailScreen({ navigation, route }: any) {
             <Text style={styles.sectionTitle}>
               Reviews{venue.ratingCount > 0 ? ` (${venue.ratingCount})` : ''}
             </Text>
-            {!isPreview && isLoggedIn && role === 'player' ? (
+            {!readOnly && isLoggedIn && role === 'player' ? (
               <TouchableOpacity onPress={() => setWriteReviewOpen(true)} activeOpacity={0.7}>
                 <Text style={styles.writeReviewLink}>
                   {reviews.some((r) => r.isOwn) ? 'Edit your review' : 'Write a review'}
@@ -404,8 +572,8 @@ export default function VenueDetailScreen({ navigation, route }: any) {
           </View>
           {reviews.length === 0 ? (
             <ReviewsEmptyState
-              ctaLabel={!isPreview && isLoggedIn && role === 'player' ? 'Write a review' : undefined}
-              onCtaPress={!isPreview && isLoggedIn && role === 'player' ? () => setWriteReviewOpen(true) : undefined}
+              ctaLabel={!readOnly && isLoggedIn && role === 'player' ? 'Write a review' : undefined}
+              onCtaPress={!readOnly && isLoggedIn && role === 'player' ? () => setWriteReviewOpen(true) : undefined}
             />
           ) : (
             <>
@@ -425,8 +593,28 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         </View>
       </ScrollView>
 
-      {/* Sticky bottom bar — preview vs booking */}
-      {isPreview ? (
+      {/* Sticky bottom bar — review actions vs preview vs booking */}
+      {isReview ? (
+        <View style={[styles.bottomBar, styles.reviewBar, shadow.modal]}>
+          <AppButton
+            label="Send back"
+            variant="secondary"
+            onPress={() => openAction('sendback')}
+            style={{ flex: 1 }}
+          />
+          <AppButton
+            label="Reject"
+            variant="danger"
+            onPress={() => openAction('reject')}
+            style={{ flex: 1 }}
+          />
+          <AppButton
+            label="Approve"
+            onPress={() => openAction('approve')}
+            style={{ flex: 1 }}
+          />
+        </View>
+      ) : isPreview ? (
         <View style={[styles.bottomBar, shadow.modal]}>
           <View style={{ flex: 1 }}>
             <Text style={styles.previewBarLabel}>Preview Mode</Text>
@@ -458,7 +646,7 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         </View>
       )}
 
-      {!isPreview && (
+      {!readOnly && (
         <>
           <WriteReviewSheet
             venueId={Number(venue.id)}
@@ -481,6 +669,39 @@ export default function VenueDetailScreen({ navigation, route }: any) {
             }}
           />
         </>
+      )}
+
+      {isReview && (
+        <ConfirmActionModal
+          visible={!!actionModal}
+          title={
+            actionModal === 'approve' ? 'Approve venue?'
+              : actionModal === 'reject' ? 'Reject venue?'
+                : 'Send back for changes?'
+          }
+          message={
+            actionModal === 'approve'
+              ? 'The venue becomes publicly listable and the owner is notified.'
+              : actionModal === 'reject'
+                ? 'The owner is notified with your reason. Use this only for venues that should not exist on the platform.'
+                : 'The venue returns to the owner as a draft to edit and resubmit. Add a note on what to change.'
+          }
+          confirmLabel={submitting ? 'Working…' : actionModal === 'approve' ? 'Approve' : actionModal === 'reject' ? 'Reject' : 'Send back'}
+          danger={actionModal === 'reject'}
+          onConfirm={submitDecision}
+          onDismiss={() => { setActionModal(null); setReason(''); }}
+          extraContent={
+            actionModal && actionModal !== 'approve' ? (
+              <AppInput
+                label={actionModal === 'reject' ? 'Reason (required)' : 'What should the owner change? (optional)'}
+                value={reason}
+                onChangeText={setReason}
+                multiline
+                placeholder={actionModal === 'reject' ? 'e.g. Photos are unclear and address is incomplete' : 'e.g. Please add at least one court and clearer photos'}
+              />
+            ) : undefined
+          }
+        />
       )}
 
     </SafeAreaView>
@@ -619,4 +840,39 @@ const styles = StyleSheet.create({
   perSlot: { fontSize: fontSize.xs, color: colors.textDim, fontWeight: fontWeight.regular },
   previewBarLabel: { fontSize: fontSize.xs, color: colors.textDim, fontWeight: fontWeight.semibold },
   previewBarHint: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 1 },
+
+  // Admin review action bar (3 buttons)
+  reviewBar: { gap: spacing.sm },
+
+  // Admin review context
+  adminBlock: { marginTop: spacing.lg, gap: spacing.md },
+  adminCard: {
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border, padding: spacing.lg,
+  },
+  adminCardHeadRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  adminCardTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text },
+  adminMuted: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 4 },
+  completeRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  completePct: { fontSize: fontSize.sm, fontWeight: fontWeight.bold },
+  okText: { color: '#15803D' },
+  warnText: { color: '#B91C1C' },
+  checkItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm },
+  checkMark: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, width: 16 },
+  checkLabel: { fontSize: fontSize.sm, color: colors.textMid },
+  ownerName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text, marginTop: 4 },
+  ownerContactRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md },
+  ownerContactIcon: { fontSize: 16, width: 22, textAlign: 'center' },
+  ownerContactText: { flex: 1, fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
+  ownerCallCta: { fontSize: fontSize.xs, color: colors.primary, fontWeight: fontWeight.bold },
+  adminNote: { backgroundColor: '#EFF6FF', borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: '#BFDBFE' },
+  adminNoteText: { fontSize: fontSize.xs, color: '#1D4ED8', lineHeight: 17 },
+
+  // Approval activity thread
+  commentRow: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm },
+  commentAction: { fontSize: fontSize.xs, color: colors.textDim, fontWeight: fontWeight.semibold, textTransform: 'capitalize' },
+  commentText: { fontSize: fontSize.sm, color: colors.text, marginTop: 4, lineHeight: 19 },
 });

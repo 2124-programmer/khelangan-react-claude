@@ -399,7 +399,8 @@ export default function AddVenueScreen({ navigation }: any) {
 
             <View style={styles.infoBox}>
               <Text style={styles.infoText}>
-                10% platform commission applies. Your venue will be reviewed by admin before going live.
+                Your venue is saved as a draft. Add your courts (free), then submit it for admin
+                review from My Venues — it goes live on a 30-day free trial once approved.
               </Text>
             </View>
           </>
@@ -426,7 +427,7 @@ export default function AddVenueScreen({ navigation }: any) {
 
         <AppButton
           label={step === STEPS.length - 1
-            ? (loading ? 'Uploading & Submitting…' : 'Submit for Approval')
+            ? (loading ? 'Uploading & Saving…' : 'Save Venue')
             : 'Next →'}
           onPress={next}
           loading={loading}
@@ -437,9 +438,9 @@ export default function AddVenueScreen({ navigation }: any) {
       {/* Success modal → route to Add Court */}
       <ConfirmActionModal
         visible={successVenueId !== null}
-        title="Venue Submitted!"
-        message="Venue sent for admin review. Add your first court now so it's ready once approved."
-        confirmLabel="Add Court"
+        title="Venue Saved as Draft"
+        message="Add your courts next (free). Then submit for approval from My Venues to go live."
+        confirmLabel="Add Courts"
         onConfirm={() => {
           const vid = successVenueId;
           setSuccessVenueId(null);

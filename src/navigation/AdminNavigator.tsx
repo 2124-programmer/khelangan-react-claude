@@ -10,6 +10,7 @@ import {
 } from '../screens/admin/AdminScreens';
 import AdminEmailChangeScreen from '../screens/admin/AdminEmailChangeScreen';
 import { SubscriptionManagementScreen } from '../screens/admin/AdminSubscriptionScreens';
+import VenueDetailScreen from '../screens/player/VenueDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -18,6 +19,7 @@ export default function AdminNavigator() {
     <Stack.Navigator initialRouteName="AdminDashboard" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
       <Stack.Screen name="VenueApproval" component={VenueApprovalScreen} />
+      <Stack.Screen name="VenueDetail" component={VenueDetailScreen} />
       <Stack.Screen name="VenueManagement" component={VenueManagementScreen} />
       <Stack.Screen name="PlayerManagement" component={PlayerManagementScreen} />
       <Stack.Screen name="OwnerManagement" component={OwnerManagementScreen} />

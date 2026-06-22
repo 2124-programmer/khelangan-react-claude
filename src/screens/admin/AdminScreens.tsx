@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Switch, Alert, ActivityIndicator, RefreshControl,
+  Switch, Alert, ActivityIndicator, RefreshControl, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -11,8 +11,10 @@ import {
 import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { formatVenueAddress } from '../../utils/venueUtils';
+import { formatRelativeTime } from '../../utils/dateUtils';
 
-import { useAdminVenues, useUpdateVenueStatus } from '../../api/hooks/useVenues';
+import { useAdminVenues } from '../../api/hooks/useVenues';
 import { useAdminUsers, useBlockUser, useUnblockUser } from '../../api/hooks/useUser';
 import { useAdminBookings } from '../../api/hooks/useBookings';
 import { useAdminPayouts, useProcessPayout } from '../../api/hooks/usePayouts';
@@ -40,59 +42,108 @@ function Screen({ title, navigation, children, scroll = true, refreshControl }: 
 }
 
 /* ─── VENUE APPROVAL ───────────────────────────────────────────────── */
+const APPROVAL_TABS = [
+  { key: 'PENDING', label: 'Pending' },
+  { key: 'CHANGES_REQUESTED', label: 'Changes' },
+  { key: 'LIVE', label: 'Approved' },
+  { key: 'REJECTED', label: 'Rejected' },
+] as const;
+type ApprovalTab = (typeof APPROVAL_TABS)[number]['key'];
+
 export function VenueApprovalScreen({ navigation }: any) {
-  const { data, isLoading, refetch } = useAdminVenues({ status: 'PENDING' });
-  const updateStatus = useUpdateVenueStatus();
-  const pending = data?.venues ?? [];
-  const [modal, setModal] = useState<{ id: string; action: 'approve' | 'reject' } | null>(null);
+  const [tab, setTab] = useState<ApprovalTab>('PENDING');
+  const { data, isLoading, refetch } = useAdminVenues({ status: tab });
+  const { data: sports = [] } = useSports();
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = async () => { setRefreshing(true); try { await refetch(); } finally { setRefreshing(false); } };
 
-  const act = async () => {
-    if (!modal) return;
-    try {
-      await updateStatus.mutateAsync({
-        id: Number(modal.id),
-        data: { status: modal.action === 'approve' ? 'LIVE' : 'REJECTED' },
-      });
-    } catch (err) {
-      Alert.alert('Error', extractApiError(err));
-    }
-    setModal(null);
+  // Pending queue is worked oldest-first so the longest-waiting owner is reviewed first.
+  const venues = [...(data?.venues ?? [])].sort((a, b) => {
+    const ta = a.submittedAt ? Date.parse(a.submittedAt) : 0;
+    const tb = b.submittedAt ? Date.parse(b.submittedAt) : 0;
+    return tab === 'PENDING' ? ta - tb : tb - ta;
+  });
+
+  const sportLabel = (sportId: string) => {
+    const s = sports.find((sp) => sp.id === sportId);
+    return s ? `${s.icon} ${s.name}` : null;
+  };
+
+  const emptyCopy: Record<ApprovalTab, { icon: string; title: string; subtitle: string }> = {
+    PENDING: { icon: '✅', title: 'All caught up', subtitle: 'No venues pending approval.' },
+    CHANGES_REQUESTED: { icon: '✏️', title: 'Nothing awaiting changes', subtitle: 'Venues sent back will appear here.' },
+    LIVE: { icon: '🏟️', title: 'No approved venues', subtitle: 'Approved venues will appear here.' },
+    REJECTED: { icon: '🗂️', title: 'Nothing rejected', subtitle: 'Rejected venues will appear here.' },
   };
 
   return (
     <Screen title="Venue Approvals" navigation={navigation} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
+      <View style={styles.tabRow}>
+        {APPROVAL_TABS.map((t) => (
+          <TouchableOpacity
+            key={t.key}
+            style={[styles.tab, tab === t.key && styles.tabActive]}
+            onPress={() => setTab(t.key)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>{t.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {isLoading ? (
         <LoadingOverlay visible={isLoading} />
-      ) : pending.length === 0 ? (
-        <EmptyState icon="✅" title="All caught up" subtitle="No venues pending approval." />
+      ) : venues.length === 0 ? (
+        <EmptyState {...emptyCopy[tab]} />
       ) : (
-        pending.map((v) => (
-          <Card key={v.id} style={{ marginBottom: spacing.md }}>
-            <Text style={styles.cardTitle}>{v.name}</Text>
-            <Text style={styles.muted}>{v.address}, {v.city}</Text>
-            <Text style={styles.muted}>₹{v.pricePerHour}/hr</Text>
-            <View style={styles.rowGap}>
-              <AppButton label="Reject" variant="secondary" style={{ flex: 1 }}
-                onPress={() => setModal({ id: v.id, action: 'reject' })} />
-              <AppButton label="Approve" style={{ flex: 1 }}
-                onPress={() => setModal({ id: v.id, action: 'approve' })} />
-            </View>
-          </Card>
-        ))
+        venues.map((v) => {
+          const sportNames = v.sports.map(sportLabel).filter(Boolean) as string[];
+          const noCourts = v.courtCount === 0;
+          return (
+            <TouchableOpacity
+              key={v.id}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('VenueDetail', { venueId: v.id, mode: 'review' })}
+            >
+              <Card style={{ marginBottom: spacing.md }}>
+                <View style={styles.venueRow}>
+                  {v.coverPhoto ? (
+                    <Image source={{ uri: v.coverPhoto }} style={styles.thumb} />
+                  ) : (
+                    <View style={[styles.thumb, styles.thumbPlaceholder]}>
+                      <Text style={styles.thumbPlaceholderText}>{(v.name || '?').charAt(0).toUpperCase()}</Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.rowBetween}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>{v.name}</Text>
+                      <Text style={styles.chevron}>›</Text>
+                    </View>
+                    <Text style={styles.muted} numberOfLines={2}>
+                      📍 {formatVenueAddress(v.address, v.city, v.state, v.pincode)}
+                    </Text>
+                    <Text style={styles.muted}>
+                      <Text style={noCourts ? styles.dangerText : undefined}>
+                        {v.courtCount} court{v.courtCount === 1 ? '' : 's'}
+                      </Text>
+                      {`  ·  ₹${v.pricePerHour}/hr`}
+                      {v.submittedAt ? `  ·  ${formatRelativeTime(v.submittedAt)}` : ''}
+                    </Text>
+                  </View>
+                </View>
+                {(sportNames.length > 0 || noCourts) && (
+                  <View style={styles.chipRow}>
+                    {sportNames.map((s) => (
+                      <Text key={s} style={styles.tag}>{s}</Text>
+                    ))}
+                    {noCourts && <Text style={[styles.tag, styles.tagDanger]}>No courts yet</Text>}
+                  </View>
+                )}
+              </Card>
+            </TouchableOpacity>
+          );
+        })
       )}
-      <ConfirmActionModal
-        visible={!!modal}
-        title={modal?.action === 'approve' ? 'Approve venue?' : 'Reject venue?'}
-        message={modal?.action === 'approve'
-          ? 'The venue will go live and the owner will be notified.'
-          : 'The owner will be notified with the rejection reason.'}
-        confirmLabel={modal?.action === 'approve' ? 'Approve' : 'Reject'}
-        danger={modal?.action === 'reject'}
-        onConfirm={act}
-        onDismiss={() => setModal(null)}
-      />
     </Screen>
   );
 }
@@ -609,10 +660,26 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   body: { flex: 1 },
   bodyContent: { padding: spacing.lg },
-  cardTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
+  cardTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text, flex: 1 },
   muted: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2 },
+  dangerText: { color: colors.danger, fontWeight: fontWeight.semibold },
+  chevron: { fontSize: 22, color: colors.textDim, marginLeft: spacing.sm },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
-  tag: { backgroundColor: colors.primaryLight, color: colors.primaryDark, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill, fontSize: fontSize.xs },
+  tag: { backgroundColor: colors.primaryLight, color: colors.primaryDark, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill, fontSize: fontSize.xs, overflow: 'hidden' },
+  tagDanger: { backgroundColor: '#FEE2E2', color: '#B91C1C' },
+
+  // Approval tabs
+  tabRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  tab: { flex: 1, paddingVertical: spacing.sm, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
+  tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  tabText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid },
+  tabTextActive: { color: colors.white },
+
+  // Approval venue card
+  venueRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
+  thumb: { width: 64, height: 64, borderRadius: radius.md, backgroundColor: colors.surfaceAlt },
+  thumbPlaceholder: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
+  thumbPlaceholderText: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.textDim },
   rowGap: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   rowGapSm: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

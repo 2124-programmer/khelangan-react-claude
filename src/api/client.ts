@@ -134,6 +134,26 @@ export function extractApiError(error: unknown): string {
   return 'Something went wrong. Please try again.';
 }
 
+/**
+ * Reads the structured court-limit details from a 409 COURT_LIMIT_EXCEEDED error, if present.
+ * Returns null for any other error, so callers can branch on "is this a court-limit block?".
+ */
+export function extractCourtLimit(
+  error: unknown,
+): { allowed: number; current: number; planName?: string } | null {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data;
+    if (data?.error === 'COURT_LIMIT_EXCEEDED' && data?.details) {
+      return {
+        allowed: Number(data.details.allowed ?? 0),
+        current: Number(data.details.current ?? 0),
+        planName: data.details.planName ? String(data.details.planName) : undefined,
+      };
+    }
+  }
+  return null;
+}
+
 export function extractFieldErrors(error: unknown): Record<string, string> {
   if (axios.isAxiosError(error)) {
     const fieldErrors: { field: string; message: string }[] | undefined =

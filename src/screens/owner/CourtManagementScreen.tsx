@@ -9,7 +9,8 @@ import { ConfirmActionModal } from '../../modals';
 import { useCourts, useCreateCourt, useUpdateCourt, useDeleteCourt } from '../../api/hooks/useCourts';
 import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useSports } from '../../api/hooks/useSports';
-import { extractApiError } from '../../api/client';
+import { extractApiError, extractCourtLimit } from '../../api/client';
+import { toast } from '../../toast';
 import type { Court } from '../../types';
 
 // ─── Inherit badge ────────────────────────────────────────────────────────────
@@ -154,7 +155,16 @@ export default function CourtManagementScreen({ navigation, route }: any) {
       setShowForm(false);
       setEditing(null);
     } catch (err) {
-      Alert.alert('Error', extractApiError(err));
+      // A plan court-limit block offers a direct upgrade path instead of a dead-end error.
+      const limit = extractCourtLimit(err);
+      if (limit) {
+        toast.error(
+          `Your ${limit.planName ?? 'current'} plan allows ${limit.allowed} courts (you have ${limit.current}).`,
+          { title: 'Court limit reached', action: { label: 'Upgrade', onPress: () => navigation.navigate('Subscription', { venueId }) } },
+        );
+      } else {
+        Alert.alert('Error', extractApiError(err));
+      }
     } finally {
       setSaving(false);
     }

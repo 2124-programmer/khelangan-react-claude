@@ -13,7 +13,7 @@ export type BookingStatus =
 
 export type CancellationReason = 'player' | 'owner' | 'time_over';
 
-export type VenueStatus = 'live' | 'pending' | 'rejected' | 'suspended';
+export type VenueStatus = 'draft' | 'live' | 'pending' | 'rejected' | 'suspended' | 'changes_requested';
 
 export type SlotStatus = 'available' | 'booked' | 'blocked' | 'held';
 
@@ -94,6 +94,50 @@ export interface Venue {
   lat: number;
   lng: number;
   isMostBooked?: boolean;
+  submittedAt?: string;  // ISO submission/registration timestamp (admin/owner contexts)
+  subscriptionBadge?: VenueSubscriptionBadge; // owner list only
+  approvalComments?: VenueApprovalComment[];  // owner/admin only
+}
+
+// Compact subscription badge: plan + remaining days for owner status display.
+export interface VenueSubscriptionBadge {
+  planCode: string;
+  planName: string;
+  status: string;        // TRIALING | ACTIVE | PAST_DUE | EXPIRED | CANCELED | VOIDED
+  effectiveEnd: string | null;
+  remainingDays: number;
+  expiringSoon: boolean;
+}
+
+// One entry in a venue's approval thread.
+export interface VenueApprovalComment {
+  id: string;
+  action: string;        // SUBMITTED | CHANGES_REQUESTED | REJECTED | RESUBMITTED | APPROVED
+  authorRole: string;    // ADMIN | OWNER
+  comment: string | null;
+  createdAt: string | null;
+}
+
+// Admin-only venue review context: full venue listing + owner details + history.
+export interface AdminVenueOwner {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  registeredOn?: string; // ISO date-time of owner account creation
+}
+
+export interface OwnerVenueHistory {
+  totalVenues: number;
+  liveVenues: number;
+}
+
+export interface AdminVenueDetail {
+  venue: Venue;
+  owner: AdminVenueOwner;
+  ownerHistory: OwnerVenueHistory;
+  intendedPlanCode: string | null;
+  commentHistory: VenueApprovalComment[];
 }
 
 export interface Slot {

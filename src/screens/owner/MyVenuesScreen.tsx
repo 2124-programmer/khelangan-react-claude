@@ -1,21 +1,49 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  Image, TouchableOpacity, RefreshControl,
+  Image, TouchableOpacity, RefreshControl, Modal,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, StatusBadge, EmptyState, LoadingOverlay } from '../../components/common';
-import { useOwnerVenues } from '../../api/hooks/useVenues';
+import { SubscriptionBadge } from '../../components/SubscriptionBadge';
+import { useOwnerVenues, useSubmitVenue } from '../../api/hooks/useVenues';
+import { useOwnerPlans } from '../../api/hooks/useSubscription';
+import { toast } from '../../toast';
+import { extractApiError } from '../../api/client';
+import type { Venue } from '../../types';
+
+const FREE_COURT_THRESHOLD = 2;
 
 export default function MyVenuesScreen({ navigation }: any) {
   const { data, isLoading, refetch } = useOwnerVenues();
+  const submit = useSubmitVenue();
+  const plansQ = useOwnerPlans();
   const venues = data?.venues ?? [];
   const [refreshing, setRefreshing] = useState(false);
+  const [tierVenue, setTierVenue] = useState<Venue | null>(null);
   const handleRefresh = async () => {
     setRefreshing(true);
     try { await refetch(); } finally { setRefreshing(false); }
   };
+
+  const doSubmit = async (venue: Venue, planId?: number) => {
+    try {
+      await submit.mutateAsync({ venueId: Number(venue.id), planId });
+      toast.success('Submitted for approval.');
+      setTierVenue(null);
+    } catch (err) {
+      toast.error(extractApiError(err));
+    }
+  };
+
+  // ≤2 courts submit free; above the threshold the owner picks a qualifying tier first.
+  const onSubmitPress = (venue: Venue) => {
+    if (venue.courtCount > FREE_COURT_THRESHOLD) setTierVenue(venue);
+    else doSubmit(venue);
+  };
+
+  const plans = plansQ.data ?? [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -32,58 +60,138 @@ export default function MyVenuesScreen({ navigation }: any) {
         {venues.length === 0 && !isLoading ? (
           <EmptyState icon="🏟" title="No venues yet" subtitle="Add your first venue to start accepting bookings" />
         ) : (
-          venues.map((v) => (
-            <View key={v.id} style={[styles.card, shadow.card]}>
-              <Image source={{ uri: v.coverPhoto || undefined }} style={styles.img} />
-              <View style={styles.body}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Text style={styles.name}>{v.name}</Text>
-                  <StatusBadge status={v.status} />
-                </View>
-                <Text style={styles.addr}>📍 {v.address}</Text>
-                <View style={styles.metaRow}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          venues.map((v) => {
+            const submittable = v.status === 'draft' || v.status === 'changes_requested';
+            return (
+              <View key={v.id} style={[styles.card, shadow.card]}>
+                <Image source={{ uri: v.coverPhoto || undefined }} style={styles.img} />
+                <View style={styles.body}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Text style={styles.name}>{v.name}</Text>
+                    <StatusBadge status={v.status} />
+                  </View>
+                  <Text style={styles.addr}>📍 {v.address}</Text>
+                  <View style={styles.metaRow}>
                     <Text style={styles.meta}>
                       {v.ratingAverage !== null ? `★ ${v.ratingAverage.toFixed(1)} (${v.ratingCount})` : 'New'}
                     </Text>
+                    <Text style={styles.meta}>{v.courtCount} courts</Text>
                   </View>
-                  <Text style={styles.meta}>{v.courtCount} courts</Text>
-                </View>
-                <View style={styles.actions}>
-                  <AppButton
-                    label="Courts"
-                    variant="secondary"
-                    fullWidth={false}
-                    onPress={() => navigation.navigate('CourtManagement', { venueId: v.id })}
-                    style={{ flex: 1, height: 40 }}
-                  />
-                  <AppButton
-                    label="Calendar"
-                    variant="secondary"
-                    fullWidth={false}
-                    onPress={() => navigation.navigate('VenueCalendar', { venueId: v.id })}
-                    style={{ flex: 1, height: 40 }}
-                  />
-                  <AppButton
-                    label="Edit"
-                    variant="ghost"
-                    fullWidth={false}
-                    onPress={() => navigation.navigate('EditVenue', { venueId: v.id })}
-                    style={{ flex: 1, height: 40 }}
-                  />
-                  <TouchableOpacity
-                    style={styles.viewBtn}
-                    onPress={() => navigation.navigate('VenueDetail', { venueId: v.id, mode: 'preview' })}
-                    activeOpacity={0.7}
-                  >
-                    <Feather name="eye" size={18} color={colors.textMid} />
-                  </TouchableOpacity>
+
+                  {v.subscriptionBadge && (
+                    <View style={{ marginTop: spacing.sm }}>
+                      <SubscriptionBadge
+                        badge={v.subscriptionBadge}
+                        onPress={() => navigation.navigate('Subscription', { venueId: v.id })}
+                      />
+                    </View>
+                  )}
+
+                  {v.status === 'draft' && (
+                    <View style={styles.draftNotice}>
+                      <Text style={styles.draftNoticeText}>
+                        📝 Draft — add your courts, then submit for approval.
+                      </Text>
+                    </View>
+                  )}
+
+                  {v.status === 'changes_requested' && (
+                    <View style={styles.changesNotice}>
+                      <Text style={styles.changesTitle}>Admin requested changes</Text>
+                      <Text style={styles.changesText}>
+                        Review the feedback, edit the details, then resubmit.
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => navigation.navigate('VenueDetail', { venueId: v.id, mode: 'preview' })}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.changesLink}>View admin feedback ›</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {submittable && (
+                    <AppButton
+                      label={submit.isPending ? 'Submitting…'
+                        : v.status === 'changes_requested' ? 'Resubmit for approval' : 'Submit for approval'}
+                      loading={submit.isPending}
+                      onPress={() => onSubmitPress(v)}
+                      style={{ marginTop: spacing.md, height: 42 }}
+                    />
+                  )}
+
+                  <View style={styles.actions}>
+                    <AppButton
+                      label="Courts"
+                      variant="secondary"
+                      fullWidth={false}
+                      onPress={() => navigation.navigate('CourtManagement', { venueId: v.id })}
+                      style={{ flex: 1, height: 40 }}
+                    />
+                    <AppButton
+                      label="Calendar"
+                      variant="secondary"
+                      fullWidth={false}
+                      onPress={() => navigation.navigate('VenueCalendar', { venueId: v.id })}
+                      style={{ flex: 1, height: 40 }}
+                    />
+                    <AppButton
+                      label="Edit"
+                      variant="ghost"
+                      fullWidth={false}
+                      onPress={() => navigation.navigate('EditVenue', { venueId: v.id })}
+                      style={{ flex: 1, height: 40 }}
+                    />
+                    <TouchableOpacity
+                      style={styles.viewBtn}
+                      onPress={() => navigation.navigate('VenueDetail', { venueId: v.id, mode: 'preview' })}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="eye" size={18} color={colors.textMid} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </View>
-          ))
+            );
+          })
         )}
       </ScrollView>
+
+      {/* Tier selection for venues over the free court threshold */}
+      <Modal transparent visible={!!tierVenue} animationType="fade" onRequestClose={() => setTierVenue(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, shadow.modal]}>
+            <Text style={styles.modalTitle}>Choose a plan</Text>
+            <Text style={styles.modalMsg}>
+              {tierVenue?.name} has {tierVenue?.courtCount} courts. Select a plan that supports them to submit.
+              Your venue goes live on a 30-day free trial once approved.
+            </Text>
+            <ScrollView style={{ maxHeight: 320, marginTop: spacing.md }}>
+              {plans.map((p) => {
+                const fits = p.maxCourts >= (tierVenue?.courtCount ?? 0);
+                return (
+                  <TouchableOpacity
+                    key={p.id}
+                    disabled={!fits || submit.isPending}
+                    onPress={() => tierVenue && doSubmit(tierVenue, Number(p.id))}
+                    activeOpacity={0.8}
+                    style={[styles.planRow, !fits && styles.planRowDisabled]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.planName}>{p.name}</Text>
+                      <Text style={styles.planMeta}>Up to {p.maxCourts} courts · ₹{p.priceMonthly}/mo</Text>
+                    </View>
+                    {fits
+                      ? <Text style={styles.planPick}>Select ›</Text>
+                      : <Text style={styles.planTooSmall}>Too small</Text>}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <AppButton label="Cancel" variant="secondary" onPress={() => setTierVenue(null)} style={{ marginTop: spacing.md }} />
+          </View>
+        </View>
+      </Modal>
 
       <LoadingOverlay visible={isLoading} />
     </SafeAreaView>
@@ -102,6 +210,12 @@ const styles = StyleSheet.create({
   addr: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 4 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
   meta: { fontSize: fontSize.xs, color: colors.textMid },
+  draftNotice: { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md, marginTop: spacing.md },
+  draftNoticeText: { fontSize: fontSize.xs, color: colors.textMid, lineHeight: 17 },
+  changesNotice: { backgroundColor: '#FEF3C7', borderRadius: radius.md, padding: spacing.md, marginTop: spacing.md, borderWidth: 1, borderColor: '#FDE68A' },
+  changesTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: '#B45309' },
+  changesText: { fontSize: fontSize.xs, color: '#B45309', lineHeight: 17, marginTop: 2 },
+  changesLink: { fontSize: fontSize.xs, color: colors.primary, fontWeight: fontWeight.bold, marginTop: spacing.sm },
   actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   viewBtn: {
     width: 40, height: 40, borderRadius: radius.md,
@@ -109,4 +223,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: 'center', justifyContent: 'center',
   },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  modalCard: { width: '100%', maxWidth: 400, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.xl },
+  modalTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
+  modalMsg: { fontSize: fontSize.sm, color: colors.textMid, marginTop: spacing.sm, lineHeight: 20 },
+  planRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
+  planRowDisabled: { opacity: 0.5 },
+  planName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
+  planMeta: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 2 },
+  planPick: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.bold },
+  planTooSmall: { fontSize: fontSize.xs, color: colors.textDim },
 });

@@ -218,6 +218,8 @@ export function StatusBadge({ status, label: labelOverride }: { status: AnyStatu
     cancelled: { bg: '#FEE2E2', fg: '#B91C1C', label: 'Cancelled' },
     pending: { bg: '#FEF3C7', fg: '#B45309', label: 'Pending' },
     live: { bg: '#DCFCE7', fg: '#15803D', label: 'Live' },
+    draft: { bg: '#F3F4F6', fg: '#6B7280', label: 'Draft' },
+    changes_requested: { bg: '#FEF3C7', fg: '#B45309', label: 'Changes Requested' },
     rejected: { bg: '#FEE2E2', fg: '#B91C1C', label: 'Rejected' },
     expired: { bg: '#F3F4F6', fg: '#6B7280', label: 'Time Expired' },
     suspended: { bg: '#F3F4F6', fg: '#6B7280', label: 'Suspended' },

@@ -179,6 +179,18 @@ export interface VenueSummaryDto {
   sports?: SportDto[];
   amenities?: string[];
   courtCount?: number;     // returned by owner list endpoint
+  featured?: boolean;
+  createdAt?: string;      // submission/registration timestamp (ISO); used for submission age + oldest-first
+  subscription?: VenueSubscriptionSummary; // owner list only — compact badge data
+}
+
+export interface VenueSubscriptionSummary {
+  planCode?: string;
+  planName?: string;
+  status?: string;          // TRIALING | ACTIVE | PAST_DUE | EXPIRED | CANCELED | VOIDED
+  effectiveEnd?: string;    // ISO; trialEnd when trialing else periodEnd
+  remainingDays?: number;
+  expiringSoon?: boolean;
 }
 
 export interface VenueDetailDto {
@@ -207,6 +219,19 @@ export interface VenueDetailDto {
   sports?: SportDto[];
   courts?: CourtDto[];
   createdAt?: string;
+  approvalComments?: VenueApprovalComment[]; // owner/admin-only approval thread
+}
+
+export interface VenueApprovalComment {
+  id?: number;
+  action?: string;       // SUBMITTED | CHANGES_REQUESTED | REJECTED | RESUBMITTED | APPROVED
+  authorRole?: string;   // ADMIN | OWNER
+  comment?: string;
+  createdAt?: string;
+}
+
+export interface SubmitVenueRequest {
+  planId?: number;       // required only when the venue has >2 courts
 }
 
 export interface CreateVenueRequest {
@@ -257,8 +282,31 @@ export interface ImageUploadResponse {
 }
 
 export interface VenueStatusRequest {
-  status: 'PENDING' | 'LIVE' | 'REJECTED' | 'SUSPENDED';
+  status: 'DRAFT' | 'PENDING' | 'LIVE' | 'REJECTED' | 'SUSPENDED' | 'CHANGES_REQUESTED';
   rejectionReason?: string;
+}
+
+// ─── Admin venue detail (full listing + owner context) ───────────────────────
+
+export interface AdminOwnerDto {
+  id?: number;
+  name?: string;
+  phone?: string;
+  email?: string;
+  registeredOn?: string; // ISO date-time of owner account creation
+}
+
+export interface OwnerVenueHistoryDto {
+  totalVenues?: number;
+  liveVenues?: number;
+}
+
+export interface AdminVenueDetailDto {
+  venue?: VenueDetailDto;
+  owner?: AdminOwnerDto;
+  ownerHistory?: OwnerVenueHistoryDto;
+  intendedPlanCode?: string;
+  commentHistory?: VenueApprovalComment[];
 }
 
 // ─── Court ───────────────────────────────────────────────────────────────────

@@ -1205,11 +1205,18 @@ export function SubscriptionScreen({ navigation, route }: any) {
     if (!selectedVenueId && venues.length) setSelectedVenueId(venues[0].id);
   }, [venues, selectedVenueId]);
 
+  // Honor a venueId passed in via navigation (e.g. tapping a venue's plan badge) even when the
+  // screen is already mounted, so each badge lands on its own venue's subscription.
+  useEffect(() => {
+    if (paramVenueId) setSelectedVenueId(paramVenueId);
+  }, [paramVenueId]);
+
   const subQ = useOwnerVenueSubscription(selectedVenueId);
   const plansQ = useOwnerPlans();
   const upgradeMut = useCreateUpgradeRequest(Number(selectedVenueId));
   const view = subQ.data;
   const current = view?.current ?? null;
+  const selectedVenue = venues.find((v) => v.id === selectedVenueId) ?? null;
 
   useEffect(() => {
     const st = current?.status;
@@ -1239,21 +1246,28 @@ export function SubscriptionScreen({ navigation, route }: any) {
     <SafeAreaView style={styles.container}>
       <AppHeader title="Subscription / My Plan" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        {/* Venue selector (owners can have several venues) */}
+        {/* Per-venue context: each venue has its own plan. Show the venue name always, and a
+            switcher when the owner has more than one. */}
         {venues.length > 1 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
-            {venues.map((v) => {
-              const active = v.id === selectedVenueId;
-              return (
-                <TouchableOpacity key={v.id} onPress={() => setSelectedVenueId(v.id)}
-                  style={[subStyles.venueChip, active && subStyles.venueChipActive]}>
-                  <Text style={[subStyles.venueChipText, active && { color: colors.white }]} numberOfLines={1}>
-                    {v.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+          <>
+            <Text style={subStyles.selectorLabel}>Select venue ({venues.length})</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
+              {venues.map((v) => {
+                const active = v.id === selectedVenueId;
+                return (
+                  <TouchableOpacity key={v.id} onPress={() => setSelectedVenueId(v.id)}
+                    style={[subStyles.venueChip, active && subStyles.venueChipActive]}>
+                    <Text style={[subStyles.venueChipText, active && { color: colors.white }]} numberOfLines={1}>
+                      {v.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </>
+        )}
+        {selectedVenue && (
+          <Text style={subStyles.venueHeading}>🏟  {selectedVenue.name}</Text>
         )}
 
         {subQ.isLoading ? (
@@ -1376,6 +1390,8 @@ export function SubscriptionScreen({ navigation, route }: any) {
 }
 
 const subStyles = StyleSheet.create({
+  selectorLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid, marginBottom: spacing.sm },
+  venueHeading: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.md },
   venueChip: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginRight: spacing.sm, maxWidth: 200 },
   venueChipActive: { backgroundColor: colors.owner, borderColor: colors.owner },
   venueChipText: { fontSize: fontSize.sm, color: colors.text },

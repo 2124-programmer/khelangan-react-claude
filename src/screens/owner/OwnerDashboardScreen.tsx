@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { NotificationBell, MetricCard } from '../../components/common';
+import { SubscriptionBadge } from '../../components/SubscriptionBadge';
 import { BookingCard, GroupedBookingCard } from '../../components/venue';
 import { CheckInConfirmModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
@@ -33,9 +34,17 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
   const { data, isLoading, isError, refetch } = useOwnerDashboardSummary();
   const [refreshing, setRefreshing] = useState(false);
 
-  const { data: venuesData, refetch: refetchVenues } = useOwnerVenues(undefined, { enabled: false });
+  const { data: venuesData, refetch: refetchVenues } = useOwnerVenues();
   const pickerVenues = venuesData?.venues ?? [];
   const [venuePicker, setVenuePicker] = useState(false);
+
+  // Most-urgent subscription across the owner's venues, for the header badge.
+  const urgentVenue = useMemo(() => {
+    const withBadge = pickerVenues.filter((v) => v.subscriptionBadge);
+    if (withBadge.length === 0) return null;
+    return withBadge.reduce((a, b) =>
+      a.subscriptionBadge!.remainingDays <= b.subscriptionBadge!.remainingDays ? a : b);
+  }, [pickerVenues]);
 
   async function openCalendar() {
     const venueCount = data?.stats?.venueCount ?? 0;
@@ -119,6 +128,16 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
           </View>
           <NotificationBell />
         </View>
+
+        {/* ── Most-urgent subscription badge ── */}
+        {urgentVenue?.subscriptionBadge && (
+          <View style={{ marginBottom: spacing.md }}>
+            <SubscriptionBadge
+              badge={urgentVenue.subscriptionBadge}
+              onPress={() => navigation.navigate('Subscription', { venueId: urgentVenue.id })}
+            />
+          </View>
+        )}
 
         {/* ── Error banner ── */}
         {isError && (

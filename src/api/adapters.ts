@@ -6,12 +6,36 @@ import type {
   UserDto, SportDto, VenueSummaryDto, VenueDetailDto, CourtDto,
   SlotDto, BookingDto, ReviewDto, CouponDto, PayoutDto, DisputeDto,
   NotificationDto, AdminStatsDto, OwnerStatsDto, OwnerSettingsDto,
+  AdminVenueDetailDto, VenueApprovalComment as VenueApprovalCommentDto,
 } from './types';
 import type {
   User, Sport, Venue, VenueImage, Court, Slot, Booking, Review, Coupon,
   Payout, Dispute, AppNotification, UserRole, VenueStatus,
   SlotStatus, BookingStatus, PaymentStatus, OwnerSettings, CancellationReason,
+  AdminVenueDetail, VenueApprovalComment, VenueSubscriptionBadge,
 } from '../types';
+
+function adaptSubscriptionBadge(dto: VenueSummaryDto['subscription']): VenueSubscriptionBadge | undefined {
+  if (!dto) return undefined;
+  return {
+    planCode: dto.planCode ?? '',
+    planName: dto.planName ?? '',
+    status: dto.status ?? '',
+    effectiveEnd: dto.effectiveEnd ?? null,
+    remainingDays: dto.remainingDays ?? 0,
+    expiringSoon: dto.expiringSoon ?? false,
+  };
+}
+
+function adaptApprovalComment(dto: VenueApprovalCommentDto): VenueApprovalComment {
+  return {
+    id: String(dto.id ?? 0),
+    action: dto.action ?? '',
+    authorRole: dto.authorRole ?? '',
+    comment: dto.comment ?? null,
+    createdAt: dto.createdAt ?? null,
+  };
+}
 import { BASE_URL } from './client';
 
 // Rewrites the host in a stored image URL to match the current API base URL.
@@ -110,6 +134,8 @@ export function adaptVenueSummary(dto: VenueSummaryDto): Venue {
     isActive: dto.isActive ?? true,
     lat: dto.lat ?? 0,
     lng: dto.lng ?? 0,
+    submittedAt: dto.createdAt ?? undefined,
+    subscriptionBadge: adaptSubscriptionBadge(dto.subscription),
   };
 }
 
@@ -145,6 +171,27 @@ export function adaptVenueDetail(dto: VenueDetailDto): Venue {
     isActive: dto.isActive ?? true,
     lat: dto.lat ?? 0,
     lng: dto.lng ?? 0,
+    submittedAt: dto.createdAt ?? undefined,
+    approvalComments: (dto.approvalComments ?? []).map(adaptApprovalComment),
+  };
+}
+
+export function adaptAdminVenueDetail(dto: AdminVenueDetailDto): AdminVenueDetail {
+  return {
+    venue: adaptVenueDetail(dto.venue ?? {}),
+    owner: {
+      id: String(dto.owner?.id ?? 0),
+      name: dto.owner?.name ?? '',
+      phone: dto.owner?.phone ?? '',
+      email: dto.owner?.email ?? '',
+      registeredOn: dto.owner?.registeredOn ?? undefined,
+    },
+    ownerHistory: {
+      totalVenues: dto.ownerHistory?.totalVenues ?? 0,
+      liveVenues: dto.ownerHistory?.liveVenues ?? 0,
+    },
+    intendedPlanCode: dto.intendedPlanCode ?? null,
+    commentHistory: (dto.commentHistory ?? []).map(adaptApprovalComment),
   };
 }
 

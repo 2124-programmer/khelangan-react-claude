@@ -3,6 +3,7 @@ import { apiClient } from '../client';
 import type {
   VenueSummaryDto, VenueDetailDto, CreateVenueRequest,
   UpdateVenueRequest, VenueStatusRequest, Page, ImageUploadResponse,
+  AdminVenueDetailDto, SubmitVenueRequest,
 } from '../types';
 
 export const venueService = {
@@ -22,6 +23,11 @@ export const venueService = {
 
   listOwner: (params?: { page?: number; size?: number }) =>
     apiClient.get<Page<VenueSummaryDto>>('/api/v1/owner/venues', { params }).then((r) => r.data),
+
+  // Owner — submit/resubmit a venue for approval (DRAFT|CHANGES_REQUESTED → PENDING).
+  // planId is required only when the venue has >2 courts.
+  submit: (venueId: number, data?: SubmitVenueRequest) =>
+    apiClient.post<VenueDetailDto>(`/api/v1/owner/venues/${venueId}/submit`, data ?? {}).then((r) => r.data),
 
   // Image upload (Owner) — sends multipart/form-data, returns { url }
   uploadImage: async (localUri: string) => {
@@ -51,6 +57,10 @@ export const venueService = {
   // Admin
   listAdmin: (params?: { page?: number; size?: number; status?: string }) =>
     apiClient.get<Page<VenueSummaryDto>>('/api/v1/admin/venues', { params }).then((r) => r.data),
+
+  // Admin — full detail (any status) + owner context, for the approval review screen
+  getAdminById: (id: number) =>
+    apiClient.get<AdminVenueDetailDto>(`/api/v1/admin/venues/${id}`).then((r) => r.data),
 
   updateStatus: (id: number, data: VenueStatusRequest) =>
     apiClient.patch<VenueDetailDto>(`/api/v1/venues/${id}/status`, data).then((r) => r.data),

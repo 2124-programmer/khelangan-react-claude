@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { venueService } from '../services/venueService';
-import { adaptVenueSummary, adaptVenueDetail } from '../adapters';
+import { adaptVenueSummary, adaptVenueDetail, adaptAdminVenueDetail } from '../adapters';
 import type { CreateVenueRequest, UpdateVenueRequest, VenueStatusRequest } from '../types';
 
 export const VENUES_KEY = ['venues'] as const;
@@ -42,6 +42,16 @@ export function useOwnerVenues(params?: { page?: number }, options?: { enabled?:
       };
     },
     enabled: options?.enabled !== false,
+  });
+}
+
+/** Admin-only full venue detail (any status) + owner context, for the approval review screen. */
+export function useAdminVenueDetail(venueId: string | number | undefined) {
+  const id = Number(venueId);
+  return useQuery({
+    queryKey: [...ADMIN_VENUES_KEY, 'detail', id],
+    queryFn: () => venueService.getAdminById(id).then(adaptAdminVenueDetail),
+    enabled: !!venueId && !isNaN(id) && id > 0,
   });
 }
 
@@ -96,6 +106,18 @@ export function useUpdateVenueStatus() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: VENUES_KEY });
       qc.invalidateQueries({ queryKey: ADMIN_VENUES_KEY });
+    },
+  });
+}
+
+export function useSubmitVenue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ venueId, planId }: { venueId: number; planId?: number }) =>
+      venueService.submit(venueId, planId != null ? { planId } : undefined),
+    onSuccess: (_data, { venueId }) => {
+      qc.invalidateQueries({ queryKey: [...VENUES_KEY, venueId] });
+      qc.invalidateQueries({ queryKey: OWNER_VENUES_KEY });
     },
   });
 }
