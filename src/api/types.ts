@@ -618,6 +618,112 @@ export interface Page<T> {
   number: number;
 }
 
+// ─── Subscriptions ─────────────────────────────────────────────────────────
+// Response DTOs use plain strings for enum fields (matching the backend contract).
+
+export type BillingCycle = 'MONTHLY' | 'ANNUAL';
+export type SubscriptionStatusDto =
+  'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'EXPIRED' | 'CANCELED' | 'VOIDED';
+
+export interface SubscriptionPlanDto {
+  id: number;
+  code: string;
+  name: string;
+  maxCourts: number;
+  priceMonthly: number;
+  priceAnnual: number;
+  currency: string;
+  features: string[];
+  photoLimit: number;
+  placementWeight: number;
+  trialDays: number;
+  active: boolean;
+  displayOrder: number;
+}
+
+export interface SubscriptionDto {
+  id: number;
+  ownerId: number;
+  venueId: number;
+  planId: number;
+  planCode: string;
+  planName: string;
+  billingCycle: string;
+  status: string;
+  periodStart: string;
+  periodEnd: string;
+  trialEnd?: string | null;
+  price: number;
+  currency: string;
+  maxCourts: number;
+  features: string[];
+  activationSource: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubscriptionChangeRequestDto {
+  id: number;
+  ownerId: number;
+  venueId: number;
+  currentSubscriptionId?: number | null;
+  requestedPlanId: number;
+  requestedPlanCode: string;
+  requestedPlanName: string;
+  requestedCycle: string;
+  status: string;
+  createdAt: string;
+  decidedAt?: string | null;
+  reason?: string;
+}
+
+export interface VenueSubscriptionViewDto {
+  current?: SubscriptionDto | null;
+  courtsUsed: number;
+  courtsAllowed: number;
+  history: SubscriptionDto[];
+  pendingChangeRequest?: SubscriptionChangeRequestDto | null;
+}
+
+export interface SubscriptionCreateRequest {
+  ownerId: number;
+  venueId: number;
+  planId: number;
+  billingCycle: BillingCycle;
+  asTrial?: boolean;
+  paymentMethod?: 'CASH' | 'UPI_OFFLINE' | 'BANK_TRANSFER' | 'PROVIDER';
+  paymentReference?: string;
+  notes?: string;
+}
+
+export interface SubscriptionEditRequest {
+  planId?: number;
+  billingCycle?: BillingCycle;
+  notes?: string;
+}
+
+export interface UpdatePlanRequest {
+  name?: string;
+  maxCourts?: number;
+  priceMonthly?: number;
+  priceAnnual?: number;
+  features?: string[];
+  photoLimit?: number;
+  placementWeight?: number;
+  trialDays?: number;
+  active?: boolean;
+  displayOrder?: number;
+}
+
+export interface UpgradeRequestCreate {
+  requestedPlanId: number;
+  billingCycle: BillingCycle;
+}
+
+export interface RejectChangeRequestBody {
+  reason: string;
+}
+
 // ─── Error ───────────────────────────────────────────────────────────────────
 
 export interface FieldError {

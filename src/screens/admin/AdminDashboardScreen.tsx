@@ -37,6 +37,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
     { label: 'Payments', icon: '💳', route: 'PaymentsRevenue' },
     { label: 'Disputes', icon: '⚖️', route: 'DisputeManagement' },
     { label: 'Coupons', icon: '🎟️', route: 'CouponManagement' },
+    { label: 'Subscriptions', icon: '📋', route: 'SubscriptionManagement' },
     { label: 'Broadcast', icon: '📢', route: 'NotificationBroadcast' },
     { label: 'Analytics', icon: '📊', route: 'Analytics' },
     { label: 'Sports', icon: '⚽', route: 'CategoryManagement' },

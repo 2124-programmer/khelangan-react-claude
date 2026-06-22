@@ -216,3 +216,70 @@ export interface AppNotification {
   referenceId?: string;   // bookingId or groupId
   referenceType?: string; // "BOOKING" | "BOOKING_GROUP"
 }
+
+// ─── Subscriptions ─────────────────────────────────────────────────────────
+// IDs are strings (per project convention); enum-valued fields stay as the
+// backend's uppercase strings since the UI maps them to labels/colors.
+
+export type SubscriptionStatus =
+  'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'EXPIRED' | 'CANCELED' | 'VOIDED';
+
+export interface SubscriptionPlan {
+  id: string;
+  code: string;
+  name: string;
+  maxCourts: number;
+  priceMonthly: number;
+  priceAnnual: number;
+  currency: string;
+  features: string[];
+  photoLimit: number;
+  placementWeight: number;
+  trialDays: number;
+  active: boolean;
+  displayOrder: number;
+}
+
+export interface Subscription {
+  id: string;
+  ownerId: string;
+  venueId: string;
+  planId: string;
+  planCode: string;
+  planName: string;
+  billingCycle: string;
+  status: SubscriptionStatus;
+  periodStart: string;
+  periodEnd: string;
+  trialEnd?: string | null;
+  price: number;
+  currency: string;
+  maxCourts: number;
+  features: string[];
+  activationSource: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubscriptionChangeRequest {
+  id: string;
+  ownerId: string;
+  venueId: string;
+  currentSubscriptionId?: string | null;
+  requestedPlanId: string;
+  requestedPlanCode: string;
+  requestedPlanName: string;
+  requestedCycle: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  createdAt: string;
+  decidedAt?: string | null;
+  reason?: string;
+}
+
+export interface VenueSubscriptionView {
+  current?: Subscription | null;
+  courtsUsed: number;
+  courtsAllowed: number;
+  history: Subscription[];
+  pendingChangeRequest?: SubscriptionChangeRequest | null;
+}

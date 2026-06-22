@@ -17,7 +17,8 @@ import { useOwnerSettings, useUpdateOwnerSettings } from '../../api/hooks/useSet
 import { useOwnerStats } from '../../api/hooks/useAdmin';
 import { useOwnerPayouts } from '../../api/hooks/usePayouts';
 import { useOwnerReviews } from '../../api/hooks/useReviews';
-import { useVenueDetail, useUpdateVenue, useUploadVenueImage } from '../../api/hooks/useVenues';
+import { useVenueDetail, useUpdateVenue, useUploadVenueImage, useOwnerVenues } from '../../api/hooks/useVenues';
+import { useOwnerVenueSubscription, useOwnerPlans, useCreateUpgradeRequest } from '../../api/hooks/useSubscription';
 import { useSports } from '../../api/hooks/useSports';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../../api/hooks/useNotifications';
 import { useMe } from '../../api/hooks/useUser';
@@ -25,7 +26,8 @@ import { extractApiError } from '../../api/client';
 import { toast } from '../../toast';
 import { parseLatLng, formatLatLng } from '../../utils/locationUtils';
 import { formatRelativeTime, useNow } from '../../utils/dateUtils';
-import { AppNotification, Booking, BookingGroup } from '../../types';
+import { AppNotification, Booking, BookingGroup, SubscriptionStatus } from '../../types';
+import type { SubscriptionPlan } from '../../types';
 import { groupBookingList, isGroup, isExpiredPending } from '../../utils/bookingUtils';
 
 // ─── Edit-venue constants (mirror AddVenueScreen) ───────────────────────────
@@ -518,6 +520,7 @@ export function OwnerProfileScreen({ navigation }: any) {
         <View style={styles.oMenuSection}>
           {[
             { icon: '🏟', label: 'My Venues', onPress: () => navigation.navigate('VenuesTab') },
+            { icon: '📋', label: 'Subscription / My Plan', onPress: () => navigation.navigate('Subscription') },
             { icon: '💰', label: 'Bank & Payouts', onPress: () => navigation.navigate('EarningsTab') },
           ].map((item) => (
             <TouchableOpacity key={item.label} style={styles.menuRow} onPress={item.onPress}>
@@ -1166,29 +1169,225 @@ export function OwnerSettingsScreen({ navigation }: any) {
   );
 }
 
-/* ───────────────── SubscriptionScreen ───────────────── */
-export function SubscriptionScreen({ navigation }: any) {
-  const plans = [
-    { name: 'Free', price: '₹0/mo', features: ['Up to 1 venue', 'Basic analytics'] },
-    { name: 'Pro', price: '₹999/mo', features: ['Up to 5 venues', 'Priority listing', 'Advanced analytics'] },
-    { name: 'Premium', price: '₹1999/mo', features: ['Unlimited venues', 'Top listing', '24/7 support'] },
-  ];
+/* ───────────────── SubscriptionScreen (Owner: My Plan) ───────────────── */
+const SUB_STATUS_META: Record<SubscriptionStatus, { label: string; color: string }> = {
+  TRIALING: { label: 'Trial', color: colors.info },
+  ACTIVE: { label: 'Active', color: colors.success },
+  PAST_DUE: { label: 'Past due', color: colors.warning },
+  EXPIRED: { label: 'Expired', color: colors.danger },
+  CANCELED: { label: 'Canceled', color: colors.textDim },
+  VOIDED: { label: 'Voided', color: colors.textDim },
+};
+const FEATURE_LABELS: Record<string, string> = {
+  AUTO_ACCEPT: 'Auto-accept bookings',
+  OFFERS: 'Offers & promotions',
+  ANALYTICS: 'Analytics',
+  ADVANCED_ANALYTICS: 'Advanced analytics',
+  PRIORITY_PLACEMENT: 'Priority placement',
+  FEATURED_BADGE: 'Featured badge',
+  PRIORITY_SUPPORT: 'Priority support',
+};
+function fmtDate(iso?: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? '—'
+    : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+export function SubscriptionScreen({ navigation, route }: any) {
+  const ownerVenuesQ = useOwnerVenues();
+  const venues = ownerVenuesQ.data?.venues ?? [];
+  const paramVenueId = route?.params?.venueId != null ? String(route.params.venueId) : undefined;
+  const [selectedVenueId, setSelectedVenueId] = useState<string | undefined>(paramVenueId);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+
+  useEffect(() => {
+    if (!selectedVenueId && venues.length) setSelectedVenueId(venues[0].id);
+  }, [venues, selectedVenueId]);
+
+  const subQ = useOwnerVenueSubscription(selectedVenueId);
+  const plansQ = useOwnerPlans();
+  const upgradeMut = useCreateUpgradeRequest(Number(selectedVenueId));
+  const view = subQ.data;
+  const current = view?.current ?? null;
+
+  useEffect(() => {
+    const st = current?.status;
+    if (st === 'PAST_DUE' || st === 'EXPIRED') {
+      toast.warning('Your subscription has lapsed — renew to go live again.');
+    }
+  }, [current?.status]);
+
+  const submitUpgrade = (plan: SubscriptionPlan, cycle: 'MONTHLY' | 'ANNUAL') => {
+    upgradeMut.mutate(
+      { requestedPlanId: Number(plan.id), billingCycle: cycle },
+      {
+        onSuccess: () => {
+          toast.success('Upgrade request submitted. An admin will activate it.');
+          setShowUpgrade(false);
+        },
+        onError: (e) => toast.error(extractApiError(e) || 'Could not submit request'),
+      },
+    );
+  };
+
+  const meta = current ? SUB_STATUS_META[current.status] : null;
+  const pending = view?.pendingChangeRequest ?? null;
+  const lapsed = current?.status === 'PAST_DUE' || current?.status === 'EXPIRED';
+
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader title="Subscription" onBack={() => navigation.goBack()} />
+      <AppHeader title="Subscription / My Plan" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        {plans.map((p) => (
-          <View key={p.name} style={[styles.planCard, shadow.card]}>
-            <Text style={styles.planName}>{p.name}</Text>
-            <Text style={styles.planPrice}>{p.price}</Text>
-            {p.features.map((f) => <Text key={f} style={styles.planFeature}>✓ {f}</Text>)}
-            <AppButton label="Select Plan" variant="secondary" onPress={() => {}} style={{ marginTop: spacing.md }} />
-          </View>
-        ))}
+        {/* Venue selector (owners can have several venues) */}
+        {venues.length > 1 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
+            {venues.map((v) => {
+              const active = v.id === selectedVenueId;
+              return (
+                <TouchableOpacity key={v.id} onPress={() => setSelectedVenueId(v.id)}
+                  style={[subStyles.venueChip, active && subStyles.venueChipActive]}>
+                  <Text style={[subStyles.venueChipText, active && { color: colors.white }]} numberOfLines={1}>
+                    {v.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        {subQ.isLoading ? (
+          <ActivityIndicator color={colors.owner} style={{ marginTop: spacing.xxl }} />
+        ) : !selectedVenueId ? (
+          <EmptyState title="No venues yet" subtitle="Add a venue to manage its subscription." />
+        ) : (
+          <>
+            {lapsed && (
+              <View style={subStyles.banner}>
+                <Text style={subStyles.bannerText}>
+                  ⚠️ This venue is hidden from players. Contact the admin to renew and go live again.
+                </Text>
+              </View>
+            )}
+
+            {/* Current plan card */}
+            {current ? (
+              <View style={[styles.card, shadow.card]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={styles.planName}>{current.planName}</Text>
+                  {meta && (
+                    <View style={[subStyles.badge, { backgroundColor: meta.color }]}>
+                      <Text style={subStyles.badgeText}>{meta.label}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.planPrice}>
+                  ₹{current.price} / {current.billingCycle === 'ANNUAL' ? 'year' : 'month'}
+                </Text>
+                <View style={styles.divider} />
+                <DRow label="Period" value={`${fmtDate(current.periodStart)} → ${fmtDate(current.periodEnd)}`} />
+                {current.status === 'TRIALING' && <DRow label="Trial ends" value={fmtDate(current.trialEnd)} />}
+                <DRow label="Courts used" value={`${view?.courtsUsed ?? 0} / ${view?.courtsAllowed ?? current.maxCourts}`} bold />
+                <View style={styles.divider} />
+                <Text style={subStyles.subHeading}>Included features</Text>
+                {current.features.length === 0
+                  ? <Text style={styles.planFeature}>Baseline: go live, manual accept/reject, reviews, basic earnings</Text>
+                  : current.features.map((f) => (
+                      <Text key={f} style={styles.planFeature}>✓ {FEATURE_LABELS[f] ?? f}</Text>
+                    ))}
+              </View>
+            ) : (
+              <EmptyState title="No active subscription"
+                subtitle="This venue is not live. An admin needs to activate a plan." />
+            )}
+
+            {/* Pending change request */}
+            {pending && (
+              <View style={[subStyles.pendingBox]}>
+                <Text style={subStyles.pendingTitle}>Pending plan change</Text>
+                <Text style={subStyles.pendingText}>
+                  {pending.requestedPlanName} ({pending.requestedCycle === 'ANNUAL' ? 'Annual' : 'Monthly'}) —
+                  awaiting admin activation.
+                </Text>
+              </View>
+            )}
+
+            {/* Upgrade */}
+            {!pending && (
+              <AppButton
+                label={showUpgrade ? 'Hide plans' : 'Upgrade / change plan'}
+                variant={showUpgrade ? 'secondary' : 'primary'}
+                onPress={() => setShowUpgrade((s) => !s)}
+                style={{ marginTop: spacing.lg }}
+              />
+            )}
+
+            {showUpgrade && !pending && (
+              <View style={{ marginTop: spacing.md }}>
+                <Text style={styles.sectionTitle}>Choose a plan</Text>
+                {(plansQ.data ?? [])
+                  .filter((p) => !current || p.id !== current.planId)
+                  .map((p) => (
+                    <View key={p.id} style={[styles.planCard, shadow.card]}>
+                      <Text style={styles.planName}>{p.name}</Text>
+                      <Text style={styles.planPrice}>₹{p.priceMonthly}/mo · ₹{p.priceAnnual}/yr</Text>
+                      <Text style={styles.planFeature}>Up to {p.maxCourts} courts · {p.photoLimit} photos</Text>
+                      {p.features.map((f) => (
+                        <Text key={f} style={styles.planFeature}>✓ {FEATURE_LABELS[f] ?? f}</Text>
+                      ))}
+                      <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
+                        <AppButton label="Monthly" variant="secondary" style={{ flex: 1 }}
+                          onPress={() => submitUpgrade(p, 'MONTHLY')} disabled={upgradeMut.isPending} />
+                        <AppButton label="Annual" variant="primary" style={{ flex: 1 }}
+                          onPress={() => submitUpgrade(p, 'ANNUAL')} disabled={upgradeMut.isPending} />
+                      </View>
+                    </View>
+                  ))}
+              </View>
+            )}
+
+            {/* History */}
+            {view && view.history.length > 0 && (
+              <>
+                <Text style={styles.sectionTitle}>History</Text>
+                {view.history.map((h) => {
+                  const m = SUB_STATUS_META[h.status];
+                  return (
+                    <View key={h.id} style={[styles.reviewCard]}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={styles.reviewName}>{h.planName}</Text>
+                        <Text style={{ color: m.color, fontWeight: fontWeight.semibold, fontSize: fontSize.xs }}>
+                          {m.label}
+                        </Text>
+                      </View>
+                      <Text style={styles.reviewText}>
+                        {fmtDate(h.periodStart)} → {fmtDate(h.periodEnd)} · ₹{h.price}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </>
+            )}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const subStyles = StyleSheet.create({
+  venueChip: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginRight: spacing.sm, maxWidth: 200 },
+  venueChipActive: { backgroundColor: colors.owner, borderColor: colors.owner },
+  venueChipText: { fontSize: fontSize.sm, color: colors.text },
+  badge: { paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.pill },
+  badgeText: { color: colors.white, fontSize: fontSize.xs, fontWeight: fontWeight.bold },
+  subHeading: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.textMid, marginBottom: spacing.xs },
+  banner: { backgroundColor: '#FEF3C7', borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.warning },
+  bannerText: { color: '#92400E', fontSize: fontSize.sm, lineHeight: 20 },
+  pendingBox: { backgroundColor: colors.primaryLight, borderRadius: radius.md, padding: spacing.lg, marginTop: spacing.lg, borderWidth: 1, borderColor: colors.primary },
+  pendingTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.primaryDark },
+  pendingText: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2 },
+});
 
 /* ───────────────── Shared helpers ───────────────── */
 function DRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {

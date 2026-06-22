@@ -9,6 +9,7 @@ import {
   AnalyticsScreen, CategoryManagementScreen, CMSScreen, AdminSettingsScreen,
 } from '../screens/admin/AdminScreens';
 import AdminEmailChangeScreen from '../screens/admin/AdminEmailChangeScreen';
+import { SubscriptionManagementScreen } from '../screens/admin/AdminSubscriptionScreens';
 
 const Stack = createNativeStackNavigator();
 
@@ -28,6 +29,7 @@ export default function AdminNavigator() {
       <Stack.Screen name="Analytics" component={AnalyticsScreen} />
       <Stack.Screen name="CategoryManagement" component={CategoryManagementScreen} />
       <Stack.Screen name="CMS" component={CMSScreen} />
+      <Stack.Screen name="SubscriptionManagement" component={SubscriptionManagementScreen} />
       <Stack.Screen name="AdminSettings" component={AdminSettingsScreen} />
       <Stack.Screen name="AdminEmailChange" component={AdminEmailChangeScreen} />
     </Stack.Navigator>

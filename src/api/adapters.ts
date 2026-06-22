@@ -290,3 +290,81 @@ export function adaptOwnerStats(dto: OwnerStatsDto) {
     pendingPayout: dto.pendingPayout ?? 0,
   };
 }
+
+// ─── Subscriptions ─────────────────────────────────────────────────────────
+import type {
+  SubscriptionPlanDto, SubscriptionDto, SubscriptionChangeRequestDto,
+  VenueSubscriptionViewDto,
+} from './types';
+import type {
+  SubscriptionPlan, Subscription, SubscriptionChangeRequest,
+  VenueSubscriptionView, SubscriptionStatus,
+} from '../types';
+
+export function adaptSubscriptionPlan(dto: SubscriptionPlanDto): SubscriptionPlan {
+  return {
+    id: String(dto.id),
+    code: dto.code,
+    name: dto.name,
+    maxCourts: dto.maxCourts,
+    priceMonthly: dto.priceMonthly,
+    priceAnnual: dto.priceAnnual,
+    currency: dto.currency ?? 'INR',
+    features: dto.features ?? [],
+    photoLimit: dto.photoLimit,
+    placementWeight: dto.placementWeight,
+    trialDays: dto.trialDays,
+    active: dto.active,
+    displayOrder: dto.displayOrder,
+  };
+}
+
+export function adaptSubscription(dto: SubscriptionDto): Subscription {
+  return {
+    id: String(dto.id),
+    ownerId: String(dto.ownerId),
+    venueId: String(dto.venueId),
+    planId: String(dto.planId),
+    planCode: dto.planCode,
+    planName: dto.planName,
+    billingCycle: dto.billingCycle,
+    status: dto.status as SubscriptionStatus,
+    periodStart: dto.periodStart,
+    periodEnd: dto.periodEnd,
+    trialEnd: dto.trialEnd ?? null,
+    price: dto.price,
+    currency: dto.currency ?? 'INR',
+    maxCourts: dto.maxCourts,
+    features: dto.features ?? [],
+    activationSource: dto.activationSource,
+    createdAt: dto.createdAt,
+    updatedAt: dto.updatedAt,
+  };
+}
+
+export function adaptChangeRequest(dto: SubscriptionChangeRequestDto): SubscriptionChangeRequest {
+  return {
+    id: String(dto.id),
+    ownerId: String(dto.ownerId),
+    venueId: String(dto.venueId),
+    currentSubscriptionId: dto.currentSubscriptionId != null ? String(dto.currentSubscriptionId) : null,
+    requestedPlanId: String(dto.requestedPlanId),
+    requestedPlanCode: dto.requestedPlanCode,
+    requestedPlanName: dto.requestedPlanName,
+    requestedCycle: dto.requestedCycle,
+    status: dto.status as SubscriptionChangeRequest['status'],
+    createdAt: dto.createdAt,
+    decidedAt: dto.decidedAt ?? null,
+    reason: dto.reason,
+  };
+}
+
+export function adaptVenueSubscriptionView(dto: VenueSubscriptionViewDto): VenueSubscriptionView {
+  return {
+    current: dto.current ? adaptSubscription(dto.current) : null,
+    courtsUsed: dto.courtsUsed ?? 0,
+    courtsAllowed: dto.courtsAllowed ?? 0,
+    history: (dto.history ?? []).map(adaptSubscription),
+    pendingChangeRequest: dto.pendingChangeRequest ? adaptChangeRequest(dto.pendingChangeRequest) : null,
+  };
+}
