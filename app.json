@@ -10,7 +10,7 @@
     "description": "Score-Adda — a multi-sport turf and court booking platform.",
     "primaryColor": "#0FAE6E",
     "backgroundColor": "#FFFFFF",
-    "platforms": ["ios", "android"],
+    "platforms": ["ios", "android", "web"],
     "splash": {
       "image": "./assets/logo/splash.jpg",
       "resizeMode": "contain",
