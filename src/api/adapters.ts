@@ -341,11 +341,12 @@ export function adaptOwnerStats(dto: OwnerStatsDto) {
 // ─── Subscriptions ─────────────────────────────────────────────────────────
 import type {
   SubscriptionPlanDto, SubscriptionDto, SubscriptionChangeRequestDto,
-  VenueSubscriptionViewDto,
+  VenueSubscriptionViewDto, VenueSubscriptionRowDto, SubscriptionTimelineDto,
 } from './types';
 import type {
   SubscriptionPlan, Subscription, SubscriptionChangeRequest,
   VenueSubscriptionView, SubscriptionStatus,
+  VenueSubscriptionRow, VenueSubscriptionRowStatus, SubscriptionTimeline,
 } from '../types';
 
 export function adaptSubscriptionPlan(dto: SubscriptionPlanDto): SubscriptionPlan {
@@ -413,6 +414,18 @@ export function adaptChangeRequest(dto: SubscriptionChangeRequestDto): Subscript
   };
 }
 
+function adaptTimeline(dto: SubscriptionTimelineDto): SubscriptionTimeline {
+  return {
+    stages: (dto.stages ?? []).map((s) => ({
+      key: s.key,
+      label: s.label,
+      occurredAt: s.occurredAt ?? null,
+      state: s.state,
+    })),
+    liveStageKey: dto.liveStageKey ?? null,
+  };
+}
+
 export function adaptVenueSubscriptionView(dto: VenueSubscriptionViewDto): VenueSubscriptionView {
   return {
     current: dto.current ? adaptSubscription(dto.current) : null,
@@ -420,5 +433,43 @@ export function adaptVenueSubscriptionView(dto: VenueSubscriptionViewDto): Venue
     courtsAllowed: dto.courtsAllowed ?? 0,
     history: (dto.history ?? []).map(adaptSubscription),
     pendingChangeRequest: dto.pendingChangeRequest ? adaptChangeRequest(dto.pendingChangeRequest) : null,
+    venue: dto.venue
+      ? {
+          id: String(dto.venue.id),
+          name: dto.venue.name,
+          city: dto.venue.city ?? null,
+          courtCount: dto.venue.courtCount ?? 0,
+          registeredAt: dto.venue.registeredAt ?? null,
+          approvedAt: dto.venue.approvedAt ?? null,
+        }
+      : null,
+    owner: dto.owner
+      ? {
+          id: String(dto.owner.id),
+          name: dto.owner.name,
+          mobile: dto.owner.mobile ?? null,
+          email: dto.owner.email ?? null,
+        }
+      : null,
+    timeline: dto.timeline ? adaptTimeline(dto.timeline) : null,
+  };
+}
+
+export function adaptVenueSubscriptionRow(dto: VenueSubscriptionRowDto): VenueSubscriptionRow {
+  return {
+    venueId: String(dto.venueId),
+    venueName: dto.venueName,
+    venueCity: dto.venueCity ?? null,
+    ownerName: dto.ownerName ?? '',
+    ownerMobile: dto.ownerMobile ?? null,
+    currentPlanCode: dto.currentPlanCode ?? null,
+    currentPlanName: dto.currentPlanName ?? null,
+    currentStatus: (dto.currentStatus ?? 'NONE') as VenueSubscriptionRowStatus,
+    endDate: dto.endDate ?? null,
+    courtsUsed: dto.courtsUsed ?? 0,
+    courtLimit: dto.courtLimit ?? null,
+    pendingRequestId: dto.pendingRequestId != null ? String(dto.pendingRequestId) : null,
+    pendingCurrentPlanName: dto.pendingCurrentPlanName ?? null,
+    pendingRequestedPlanName: dto.pendingRequestedPlanName ?? null,
   };
 }

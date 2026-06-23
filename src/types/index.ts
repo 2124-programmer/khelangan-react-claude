@@ -333,4 +333,58 @@ export interface VenueSubscriptionView {
   courtsAllowed: number;
   history: Subscription[];
   pendingChangeRequest?: SubscriptionChangeRequest | null;
+  venue?: SubscriptionVenueRef | null;
+  owner?: SubscriptionOwnerRef | null;
+  timeline?: SubscriptionTimeline | null;
+}
+
+export interface SubscriptionVenueRef {
+  id: string;
+  name: string;
+  city?: string | null;
+  courtCount: number;
+  registeredAt?: string | null;
+  approvedAt?: string | null;
+}
+
+export interface SubscriptionOwnerRef {
+  id: string;
+  name: string;
+  mobile?: string | null;
+  email?: string | null;
+}
+
+export type StageKey = 'REGISTERED' | 'APPROVED' | 'TRIAL_ACTIVATED' | 'SUBSCRIPTION';
+export type StageState = 'COMPLETED' | 'LIVE' | 'PENDING';
+
+export interface TimelineStage {
+  key: StageKey;
+  label: string;
+  occurredAt?: string | null;
+  state: StageState;
+}
+
+export interface SubscriptionTimeline {
+  stages: TimelineStage[];
+  liveStageKey?: StageKey | null;
+}
+
+/** Row-level status rollup for the admin venue-subscription table. */
+export type VenueSubscriptionRowStatus = 'ACTIVE' | 'TRIAL' | 'EXPIRING' | 'EXPIRED' | 'NONE';
+
+export interface VenueSubscriptionRow {
+  venueId: string;
+  venueName: string;
+  venueCity?: string | null;
+  ownerName: string;
+  ownerMobile?: string | null;
+  currentPlanCode?: string | null;
+  currentPlanName?: string | null;
+  currentStatus: VenueSubscriptionRowStatus;
+  endDate?: string | null;
+  courtsUsed: number;
+  courtLimit?: number | null;
+  pendingRequestId?: string | null;
+  pendingCurrentPlanName?: string | null;
+  pendingRequestedPlanName?: string | null;
 }

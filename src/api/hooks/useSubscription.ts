@@ -1,7 +1,10 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useQuery, useMutation, useQueryClient, useInfiniteQuery,
+} from '@tanstack/react-query';
 import { subscriptionService } from '../services/subscriptionService';
 import {
   adaptSubscriptionPlan, adaptSubscription, adaptChangeRequest, adaptVenueSubscriptionView,
+  adaptVenueSubscriptionRow,
 } from '../adapters';
 import type {
   SubscriptionCreateRequest, SubscriptionEditRequest, UpdatePlanRequest,
@@ -11,7 +14,32 @@ import type {
 export const SUBS_PLANS_KEY = ['subscription-plans'] as const;
 export const OWNER_SUB_KEY = ['owner', 'venue-subscription'] as const;
 export const ADMIN_SUB_KEY = ['admin', 'subscriptions'] as const;
+export const ADMIN_VENUE_SUBS_KEY = ['admin', 'venue-subscriptions'] as const;
 export const ADMIN_CHANGE_REQ_KEY = ['admin', 'subscription-change-requests'] as const;
+
+const VENUE_SUBS_PAGE_SIZE = 15;
+
+/** Searchable, paginated admin venue-subscription table (infinite scroll). */
+export function useAdminVenueSubscriptions(params: { q?: string; status?: string }) {
+  const q = params.q?.trim() || undefined;
+  const status = params.status && params.status !== 'ALL' ? params.status : undefined;
+  return useInfiniteQuery({
+    queryKey: [...ADMIN_VENUE_SUBS_KEY, { q: q ?? '', status: status ?? 'ALL' }],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const page = await subscriptionService.adminListVenueSubscriptions({
+        q, status, page: pageParam as number, size: VENUE_SUBS_PAGE_SIZE,
+      });
+      return {
+        rows: (page.content ?? []).map(adaptVenueSubscriptionRow),
+        number: page.number ?? (pageParam as number),
+        totalPages: page.totalPages ?? 1,
+        totalElements: page.totalElements ?? 0,
+      };
+    },
+    getNextPageParam: (last) => (last.number < last.totalPages - 1 ? last.number + 1 : undefined),
+  });
+}
 
 // ─── Plans ──────────────────────────────────────────────────────────────────
 export function useOwnerPlans() {
@@ -67,6 +95,7 @@ export function useAdminVenueSubscription(venueId: string | number | undefined) 
 
 function invalidateAdminSub(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ADMIN_SUB_KEY });
+  qc.invalidateQueries({ queryKey: ADMIN_VENUE_SUBS_KEY });
   qc.invalidateQueries({ queryKey: ADMIN_CHANGE_REQ_KEY });
 }
 

@@ -3,6 +3,7 @@ import type {
   SubscriptionPlanDto, SubscriptionDto, SubscriptionChangeRequestDto,
   VenueSubscriptionViewDto, SubscriptionCreateRequest, SubscriptionEditRequest,
   UpdatePlanRequest, UpgradeRequestCreate, RejectChangeRequestBody, Page,
+  VenueSubscriptionPageDto,
 } from '../types';
 
 export const subscriptionService = {
@@ -28,6 +29,9 @@ export const subscriptionService = {
 
   adminList: (params?: { venueId?: number; ownerId?: number; status?: string; page?: number; size?: number }) =>
     apiClient.get<Page<SubscriptionDto>>('/api/v1/admin/subscriptions', { params }).then((r) => r.data),
+
+  adminListVenueSubscriptions: (params?: { q?: string; status?: string; page?: number; size?: number }) =>
+    apiClient.get<VenueSubscriptionPageDto>('/api/v1/admin/venue-subscriptions', { params }).then((r) => r.data),
 
   adminGetVenueSubscription: (venueId: number) =>
     apiClient.get<VenueSubscriptionViewDto>(`/api/v1/admin/venues/${venueId}/subscription`).then((r) => r.data),

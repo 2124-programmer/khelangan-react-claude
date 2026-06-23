@@ -738,6 +738,65 @@ export interface VenueSubscriptionViewDto {
   courtsAllowed: number;
   history: SubscriptionDto[];
   pendingChangeRequest?: SubscriptionChangeRequestDto | null;
+  venue?: SubscriptionVenueRefDto | null;
+  owner?: SubscriptionOwnerRefDto | null;
+  timeline?: SubscriptionTimelineDto | null;
+}
+
+export interface SubscriptionVenueRefDto {
+  id: number;
+  name: string;
+  city?: string | null;
+  courtCount: number;
+  registeredAt?: string | null;
+  approvedAt?: string | null;
+}
+
+export interface SubscriptionOwnerRefDto {
+  id: number;
+  name: string;
+  mobile?: string | null;
+  email?: string | null;
+}
+
+export type StageKeyDto = 'REGISTERED' | 'APPROVED' | 'TRIAL_ACTIVATED' | 'SUBSCRIPTION';
+export type StageStateDto = 'COMPLETED' | 'LIVE' | 'PENDING';
+
+export interface TimelineStageDto {
+  key: StageKeyDto;
+  label: string;
+  occurredAt?: string | null;
+  state: StageStateDto;
+}
+
+export interface SubscriptionTimelineDto {
+  stages: TimelineStageDto[];
+  liveStageKey?: StageKeyDto | null;
+}
+
+export interface VenueSubscriptionRowDto {
+  venueId: number;
+  venueName: string;
+  venueCity?: string | null;
+  ownerName: string;
+  ownerMobile?: string | null;
+  currentPlanCode?: string | null;
+  currentPlanName?: string | null;
+  currentStatus: string;
+  endDate?: string | null;
+  courtsUsed: number;
+  courtLimit?: number | null;
+  pendingRequestId?: number | null;
+  pendingCurrentPlanName?: string | null;
+  pendingRequestedPlanName?: string | null;
+}
+
+export interface VenueSubscriptionPageDto {
+  content: VenueSubscriptionRowDto[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
 }
 
 export interface SubscriptionCreateRequest {

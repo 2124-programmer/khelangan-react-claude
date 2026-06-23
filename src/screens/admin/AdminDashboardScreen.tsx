@@ -31,8 +31,9 @@ export default function AdminDashboardScreen({ navigation }: any) {
     { label: 'Subscription Requests', value: pendingSubRequests, route: 'SubscriptionManagement', params: { tab: 'requests' }, icon: '🧾' },
   ];
 
+  // Approvals + Subscriptions are reached via the "Needs Attention" cards above,
+  // so they're intentionally not duplicated as Management tiles.
   const modules = [
-    { label: 'Approvals', icon: '✅', route: 'VenueApproval' },
     { label: 'Venues', icon: '🏟', route: 'VenueManagement' },
     { label: 'Players', icon: '👤', route: 'PlayerManagement' },
     { label: 'Owners', icon: '🧑‍💼', route: 'OwnerManagement' },
@@ -40,7 +41,6 @@ export default function AdminDashboardScreen({ navigation }: any) {
     { label: 'Payments', icon: '💳', route: 'PaymentsRevenue' },
     { label: 'Disputes', icon: '⚖️', route: 'DisputeManagement' },
     { label: 'Coupons', icon: '🎟️', route: 'CouponManagement' },
-    { label: 'Subscriptions', icon: '📋', route: 'SubscriptionManagement' },
     { label: 'Broadcast', icon: '📢', route: 'NotificationBroadcast' },
     { label: 'Analytics', icon: '📊', route: 'Analytics' },
     { label: 'Sports', icon: '⚽', route: 'CategoryManagement' },
