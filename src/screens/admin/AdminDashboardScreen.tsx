@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { ConfirmActionModal } from '../../modals';
+import { AvatarImage, NotificationBell } from '../../components/common';
 import { useAuth } from '../../store/AuthContext';
 import { useAdminStats } from '../../api/hooks/useAdmin';
 import { useChangeRequests } from '../../api/hooks/useSubscription';
-import { toast } from '../../toast';
 
 export default function AdminDashboardScreen({ navigation }: any) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { data: stats, refetch } = useAdminStats();
   const subRequestsQ = useChangeRequests('PENDING');
   const pendingSubRequests = subRequestsQ.data?.length ?? 0;
@@ -17,7 +16,6 @@ export default function AdminDashboardScreen({ navigation }: any) {
     setRefreshing(true);
     try { await Promise.all([refetch(), subRequestsQ.refetch()]); } finally { setRefreshing(false); }
   };
-  const [showLogout, setShowLogout] = useState(false);
 
   const kpis = [
     { label: 'Bookings Today', value: stats?.bookingsToday ?? 0, icon: '📅', accent: colors.admin },
@@ -59,11 +57,10 @@ export default function AdminDashboardScreen({ navigation }: any) {
             <Text style={styles.name}>{user?.name}</Text>
           </View>
           <View style={styles.topBarActions}>
-            <TouchableOpacity onPress={() => navigation.navigate('AdminSettings')}>
-              <View style={styles.gear}><Text style={{ fontSize: 20 }}>⚙️</Text></View>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowLogout(true)}>
-              <View style={styles.gear}><Text style={{ fontSize: 20 }}>🚪</Text></View>
+            <NotificationBell />
+            <TouchableOpacity onPress={() => navigation.navigate('AdminProfile')}
+              accessibilityRole="button" accessibilityLabel="Profile">
+              <AvatarImage name={user?.name ?? 'Admin'} uri={user?.avatar ?? undefined} size={44} />
             </TouchableOpacity>
           </View>
         </View>
@@ -111,16 +108,6 @@ export default function AdminDashboardScreen({ navigation }: any) {
           ))}
         </View>
       </ScrollView>
-
-      <ConfirmActionModal
-        visible={showLogout}
-        title="Logout?"
-        message="You'll be signed out of the Admin panel."
-        confirmLabel="Logout"
-        danger
-        onConfirm={() => { setShowLogout(false); toast.info('Signed out successfully.'); logout(); }}
-        onDismiss={() => setShowLogout(false)}
-      />
     </SafeAreaView>
   );
 }
