@@ -3,14 +3,15 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
 import {
-  VenueApprovalScreen, VenueManagementScreen, PlayerManagementScreen,
+  PlayerManagementScreen,
   OwnerManagementScreen, AdminBookingsScreen, PaymentsRevenueScreen,
   DisputeManagementScreen, CouponManagementScreen, NotificationBroadcastScreen,
   AnalyticsScreen, CategoryManagementScreen, CMSScreen, AdminSettingsScreen,
 } from '../screens/admin/AdminScreens';
 import AdminEmailChangeScreen from '../screens/admin/AdminEmailChangeScreen';
 import { SubscriptionManagementScreen, SubscriptionDetailScreen } from '../screens/admin/AdminSubscriptionScreens';
-import VenueDetailScreen from '../screens/player/VenueDetailScreen';
+import AdminVenuesScreen from '../screens/admin/AdminVenuesScreen';
+import AdminVenueDetailScreen from '../screens/admin/AdminVenueDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -18,9 +19,12 @@ export default function AdminNavigator() {
   return (
     <Stack.Navigator initialRouteName="AdminDashboard" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
-      <Stack.Screen name="VenueApproval" component={VenueApprovalScreen} />
-      <Stack.Screen name="VenueDetail" component={VenueDetailScreen} />
-      <Stack.Screen name="VenueManagement" component={VenueManagementScreen} />
+      {/* Unified Venues screen (registry + moderation queue). VenueApproval/VenueManagement
+          are kept as redirect aliases for one release so old navigation targets still resolve. */}
+      <Stack.Screen name="Venues" component={AdminVenuesScreen} />
+      <Stack.Screen name="VenueApproval" component={AdminVenuesScreen} />
+      <Stack.Screen name="VenueManagement" component={AdminVenuesScreen} />
+      <Stack.Screen name="VenueDetail" component={AdminVenueDetailScreen} />
       <Stack.Screen name="PlayerManagement" component={PlayerManagementScreen} />
       <Stack.Screen name="OwnerManagement" component={OwnerManagementScreen} />
       <Stack.Screen name="AdminBookings" component={AdminBookingsScreen} />

@@ -27,14 +27,14 @@ export default function AdminDashboardScreen({ navigation }: any) {
   ];
 
   const alerts = [
-    { label: 'Pending Approvals', value: stats?.pendingApprovals ?? 0, route: 'VenueApproval', params: undefined, icon: '🕓' },
+    { label: 'Pending Approvals', value: stats?.pendingApprovals ?? 0, route: 'Venues', params: { tab: 'PENDING' }, icon: '🕓' },
     { label: 'Subscription Requests', value: pendingSubRequests, route: 'SubscriptionManagement', params: { tab: 'requests' }, icon: '🧾' },
   ];
 
   // Approvals + Subscriptions are reached via the "Needs Attention" cards above,
   // so they're intentionally not duplicated as Management tiles.
   const modules = [
-    { label: 'Venues', icon: '🏟', route: 'VenueManagement' },
+    { label: 'Venues', icon: '🏟', route: 'Venues' },
     { label: 'Players', icon: '👤', route: 'PlayerManagement' },
     { label: 'Owners', icon: '🧑‍💼', route: 'OwnerManagement' },
     { label: 'Bookings', icon: '📋', route: 'AdminBookings' },

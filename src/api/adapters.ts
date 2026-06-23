@@ -7,12 +7,14 @@ import type {
   SlotDto, BookingDto, ReviewDto, CouponDto, PayoutDto, DisputeDto,
   NotificationDto, AdminStatsDto, OwnerStatsDto, OwnerSettingsDto,
   AdminVenueDetailDto, VenueApprovalComment as VenueApprovalCommentDto,
+  VenueCountsDto,
 } from './types';
 import type {
   User, Sport, Venue, VenueImage, Court, Slot, Booking, Review, Coupon,
   Payout, Dispute, AppNotification, UserRole, VenueStatus,
   SlotStatus, BookingStatus, PaymentStatus, OwnerSettings, CancellationReason,
   AdminVenueDetail, VenueApprovalComment, VenueSubscriptionBadge,
+  VenueCounts, VenueStatusTone, VenueActionCode,
 } from '../types';
 
 function adaptSubscriptionBadge(dto: VenueSummaryDto['subscription']): VenueSubscriptionBadge | undefined {
@@ -192,6 +194,30 @@ export function adaptAdminVenueDetail(dto: AdminVenueDetailDto): AdminVenueDetai
     },
     intendedPlanCode: dto.intendedPlanCode ?? null,
     commentHistory: (dto.commentHistory ?? []).map(adaptApprovalComment),
+    approvalStatus: dto.approvalStatus ?? 'PENDING',
+    listingStatus: dto.listingStatus ?? 'NONE',
+    statusLabel: dto.statusLabel ?? '',
+    statusTone: (dto.statusTone ?? 'GRAY') as VenueStatusTone,
+    availableActions: (dto.availableActions ?? []) as VenueActionCode[],
+    rejectionReason: dto.rejectionReason ?? null,
+    changeNotes: dto.changeNotes ?? null,
+    submittedAt: dto.submittedAt ?? null,
+    completeness: {
+      percent: dto.completeness?.percent ?? 0,
+      checks: (dto.completeness?.checks ?? []).map((c) => ({
+        key: c.key ?? '', label: c.label ?? '', done: !!c.done,
+      })),
+    },
+  };
+}
+
+export function adaptVenueCounts(dto: VenueCountsDto): VenueCounts {
+  return {
+    all: dto.all ?? 0,
+    pending: dto.pending ?? 0,
+    changesRequested: dto.changesRequested ?? 0,
+    approved: dto.approved ?? 0,
+    rejected: dto.rejected ?? 0,
   };
 }
 

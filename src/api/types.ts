@@ -301,12 +301,38 @@ export interface OwnerVenueHistoryDto {
   liveVenues?: number;
 }
 
+export interface VenueCompletenessCheckDto {
+  key?: string;   // PHOTOS | COURT | ADDRESS | PHONE
+  label?: string;
+  done?: boolean;
+}
+export interface VenueCompletenessDto {
+  percent?: number;
+  checks?: VenueCompletenessCheckDto[];
+}
+export interface VenueCountsDto {
+  all?: number;
+  pending?: number;
+  changesRequested?: number;
+  approved?: number;
+  rejected?: number;
+}
+
 export interface AdminVenueDetailDto {
   venue?: VenueDetailDto;
   owner?: AdminOwnerDto;
   ownerHistory?: OwnerVenueHistoryDto;
   intendedPlanCode?: string;
   commentHistory?: VenueApprovalComment[];
+  approvalStatus?: string;
+  listingStatus?: string;
+  statusLabel?: string;
+  statusTone?: string;
+  availableActions?: string[];
+  rejectionReason?: string | null;
+  changeNotes?: string | null;
+  submittedAt?: string | null;
+  completeness?: VenueCompletenessDto;
 }
 
 // ─── Court ───────────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@ import { apiClient } from '../client';
 import type {
   VenueSummaryDto, VenueDetailDto, CreateVenueRequest,
   UpdateVenueRequest, VenueStatusRequest, Page, ImageUploadResponse,
-  AdminVenueDetailDto, SubmitVenueRequest,
+  AdminVenueDetailDto, SubmitVenueRequest, VenueCountsDto,
 } from '../types';
 
 export const venueService = {
@@ -55,8 +55,11 @@ export const venueService = {
   },
 
   // Admin
-  listAdmin: (params?: { page?: number; size?: number; status?: string }) =>
+  listAdmin: (params?: { page?: number; size?: number; status?: string; q?: string }) =>
     apiClient.get<Page<VenueSummaryDto>>('/api/v1/admin/venues', { params }).then((r) => r.data),
+
+  countsAdmin: () =>
+    apiClient.get<VenueCountsDto>('/api/v1/admin/venues/counts').then((r) => r.data),
 
   // Admin — full detail (any status) + owner context, for the approval review screen
   getAdminById: (id: number) =>

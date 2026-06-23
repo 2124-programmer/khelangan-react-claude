@@ -83,6 +83,26 @@ export function getOpenStatus(openTime: string, closeTime: string): OpenStatus {
   return { isOpen, label };
 }
 
+// ─── Status badge mapping ─────────────────────────────────────────────────────
+
+import type { VenueStatus, VenueStatusTone } from '../types';
+
+/**
+ * Maps the single venue status (frontend lowercase enum) to the admin Venues
+ * badge {label, tone}. Detail screens prefer the server-provided statusLabel/tone,
+ * but list cards derive it here from the summary's status.
+ */
+export function venueStatusBadge(status: VenueStatus): { label: string; tone: VenueStatusTone } {
+  switch (status) {
+    case 'live': return { label: 'Live', tone: 'GREEN' };
+    case 'suspended': return { label: 'Unlisted', tone: 'GRAY' };
+    case 'pending': return { label: 'Pending', tone: 'AMBER' };
+    case 'changes_requested': return { label: 'Draft', tone: 'BLUE' };
+    case 'rejected': return { label: 'Rejected', tone: 'RED' };
+    default: return { label: 'Draft', tone: 'GRAY' };
+  }
+}
+
 // ─── Directions helper ────────────────────────────────────────────────────────
 
 /**

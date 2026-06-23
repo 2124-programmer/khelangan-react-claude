@@ -1,6 +1,10 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useQuery, useMutation, useQueryClient, useInfiniteQuery,
+} from '@tanstack/react-query';
 import { venueService } from '../services/venueService';
-import { adaptVenueSummary, adaptVenueDetail, adaptAdminVenueDetail } from '../adapters';
+import {
+  adaptVenueSummary, adaptVenueDetail, adaptAdminVenueDetail, adaptVenueCounts,
+} from '../adapters';
 import type { CreateVenueRequest, UpdateVenueRequest, VenueStatusRequest } from '../types';
 
 export const VENUES_KEY = ['venues'] as const;
@@ -55,6 +59,37 @@ export function useAdminVenueDetail(venueId: string | number | undefined) {
   });
 }
 
+const ADMIN_VENUES_PAGE_SIZE = 15;
+
+/** Unified admin Venues screen — searchable, status-filtered, infinite scroll. */
+export function useAdminVenuesInfinite(params: { status?: string; q?: string }) {
+  const status = params.status || 'ALL';
+  const q = params.q?.trim() || undefined;
+  return useInfiniteQuery({
+    queryKey: [...ADMIN_VENUES_KEY, 'registry', { status, q: q ?? '' }],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const page = await venueService.listAdmin({
+        status, q, page: pageParam as number, size: ADMIN_VENUES_PAGE_SIZE,
+      });
+      return {
+        venues: page.content.map(adaptVenueSummary),
+        number: page.number ?? (pageParam as number),
+        totalPages: page.totalPages ?? 1,
+        totalElements: page.totalElements ?? 0,
+      };
+    },
+    getNextPageParam: (last) => (last.number < last.totalPages - 1 ? last.number + 1 : undefined),
+  });
+}
+
+export function useAdminVenueCounts() {
+  return useQuery({
+    queryKey: [...ADMIN_VENUES_KEY, 'counts'],
+    queryFn: () => venueService.countsAdmin().then(adaptVenueCounts),
+  });
+}
+
 export function useAdminVenues(params?: { page?: number; size?: number; status?: string }) {
   return useQuery({
     queryKey: [...ADMIN_VENUES_KEY, params],
@@ -105,7 +140,10 @@ export function useUpdateVenueStatus() {
       venueService.updateStatus(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: VENUES_KEY });
+      // ADMIN_VENUES_KEY cascades to the registry list, counts, and detail queries.
       qc.invalidateQueries({ queryKey: ADMIN_VENUES_KEY });
+      // Dashboard "Pending Approvals" badge.
+      qc.invalidateQueries({ queryKey: ['admin', 'stats'] });
     },
   });
 }

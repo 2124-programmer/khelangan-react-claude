@@ -132,12 +132,42 @@ export interface OwnerVenueHistory {
   liveVenues: number;
 }
 
+export type VenueStatusTone = 'GREEN' | 'AMBER' | 'BLUE' | 'RED' | 'GRAY';
+export type VenueActionCode = 'APPROVE' | 'REJECT' | 'SEND_BACK' | 'RECONSIDER' | 'UNLIST' | 'RELIST' | 'EDIT';
+
+export interface VenueCompletenessCheck {
+  key: string;   // PHOTOS | COURT | ADDRESS | PHONE
+  label: string;
+  done: boolean;
+}
+export interface VenueCompleteness {
+  percent: number;
+  checks: VenueCompletenessCheck[];
+}
+
+export interface VenueCounts {
+  all: number;
+  pending: number;
+  changesRequested: number;
+  approved: number;
+  rejected: number;
+}
+
 export interface AdminVenueDetail {
   venue: Venue;
   owner: AdminVenueOwner;
   ownerHistory: OwnerVenueHistory;
   intendedPlanCode: string | null;
   commentHistory: VenueApprovalComment[];
+  approvalStatus: string;
+  listingStatus: string;        // LIVE | UNLISTED | NONE
+  statusLabel: string;
+  statusTone: VenueStatusTone;
+  availableActions: VenueActionCode[];
+  rejectionReason?: string | null;
+  changeNotes?: string | null;
+  submittedAt?: string | null;
+  completeness: VenueCompleteness;
 }
 
 export interface Slot {
