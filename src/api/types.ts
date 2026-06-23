@@ -318,6 +318,115 @@ export interface VenueCountsDto {
   rejected?: number;
 }
 
+// ─── Admin Players ────────────────────────────────────────────────────────
+export interface PlayerStatsDto {
+  totalPlayers?: number;
+  newThisWeek?: number;
+  activeRatePct?: number;
+  flaggedCount?: number;
+}
+export interface PlayerRowDto {
+  playerId?: number;
+  name?: string;
+  email?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  status?: string;
+  riskLevel?: string;
+  riskReason?: string | null;
+  bookingCount?: number;
+  totalSpend?: number;
+  lastActiveAt?: string | null;
+  joinedAt?: string | null;
+}
+export interface PlayerPageDto {
+  content?: PlayerRowDto[];
+  totalElements?: number;
+  totalPages?: number;
+  size?: number;
+  number?: number;
+}
+export interface PlayerStatsBlockDto {
+  bookingCount?: number;
+  totalSpend?: number;
+  refundCount?: number;
+  refundTotal?: number;
+  reviewCount?: number;
+  cancellationRatePct?: number;
+  noShowCount?: number;
+}
+export interface PlayerAdminDetailDto {
+  playerId?: number;
+  name?: string;
+  email?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  city?: string | null;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  status?: string;
+  riskLevel?: string;
+  riskReason?: string | null;
+  joinedAt?: string | null;
+  lastActiveAt?: string | null;
+  stats?: PlayerStatsBlockDto;
+  suspension?: { reason?: string | null; until?: string | null } | null;
+  deletion?: { deletedAt?: string | null; deletedByName?: string | null; reason?: string | null } | null;
+  availableActions?: string[];
+}
+export interface PlayerBookingRowDto {
+  bookingId?: number;
+  venueName?: string;
+  date?: string | null;
+  slotLabel?: string;
+  amount?: number;
+  status?: string;
+}
+export interface PlayerBookingPageDto {
+  content?: PlayerBookingRowDto[];
+  totalElements?: number;
+  totalPages?: number;
+  size?: number;
+  number?: number;
+}
+export interface PlayerPaymentRowDto {
+  paymentId?: number;
+  date?: string | null;
+  amount?: number;
+  methodLabel?: string;
+  status?: string;
+  refundedAmount?: number | null;
+}
+export interface PlayerPaymentPageDto {
+  content?: PlayerPaymentRowDto[];
+  totalElements?: number;
+  totalPages?: number;
+  size?: number;
+  number?: number;
+}
+export interface PlayerAuditRowDto {
+  id?: number;
+  actorName?: string | null;
+  action?: string;
+  reason?: string | null;
+  fromStatus?: string | null;
+  toStatus?: string | null;
+  createdAt?: string | null;
+}
+export interface PlayerAuditPageDto {
+  content?: PlayerAuditRowDto[];
+  totalElements?: number;
+  totalPages?: number;
+  size?: number;
+  number?: number;
+}
+export interface PlayerSuspendBody { reason: string; until?: string | null }
+export interface PlayerReasonBody { reason: string }
+export interface PlayerVerificationBody { channel: 'EMAIL' | 'PHONE'; verified: boolean }
+export interface PlayerMessageBody { channels: string[]; subject?: string | null; body: string }
+
 export interface AdminVenueDetailDto {
   venue?: VenueDetailDto;
   owner?: AdminOwnerDto;

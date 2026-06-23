@@ -170,6 +170,96 @@ export interface AdminVenueDetail {
   completeness: VenueCompleteness;
 }
 
+// ─── Admin Players ────────────────────────────────────────────────────────
+export type PlayerStatus = 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'DELETED';
+export type RiskLevel = 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH';
+export type PlayerActionCode =
+  | 'SUSPEND' | 'REACTIVATE' | 'BAN' | 'UNBAN' | 'VERIFY' | 'UNVERIFY'
+  | 'FORCE_LOGOUT' | 'RESET_PASSWORD' | 'MESSAGE' | 'DELETE';
+export type MessageChannel = 'IN_APP' | 'EMAIL' | 'SMS';
+
+export interface PlayerStats {
+  totalPlayers: number;
+  newThisWeek: number;
+  activeRatePct: number;
+  flaggedCount: number;
+}
+
+export interface PlayerRow {
+  playerId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  status: PlayerStatus;
+  riskLevel: RiskLevel;
+  riskReason?: string | null;
+  bookingCount: number;
+  totalSpend: number;
+  lastActiveAt?: string | null;
+  joinedAt?: string | null;
+}
+
+export interface PlayerStatsBlock {
+  bookingCount: number;
+  totalSpend: number;
+  refundCount: number;
+  refundTotal: number;
+  reviewCount: number;
+  cancellationRatePct: number;
+  noShowCount: number;
+}
+
+export interface PlayerAdminDetail {
+  playerId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  city?: string | null;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  status: PlayerStatus;
+  riskLevel: RiskLevel;
+  riskReason?: string | null;
+  joinedAt?: string | null;
+  lastActiveAt?: string | null;
+  stats: PlayerStatsBlock;
+  suspension?: { reason?: string | null; until?: string | null } | null;
+  deletion?: { deletedAt?: string | null; deletedByName?: string | null; reason?: string | null } | null;
+  availableActions: PlayerActionCode[];
+}
+
+export interface PlayerBookingRow {
+  bookingId: string;
+  venueName: string;
+  date?: string | null;
+  slotLabel: string;
+  amount: number;
+  status: string;
+}
+
+export interface PlayerPaymentRow {
+  paymentId: string;
+  date?: string | null;
+  amount: number;
+  methodLabel: string;
+  status: string;
+  refundedAmount?: number | null;
+}
+
+export interface PlayerAuditRow {
+  id: string;
+  actorName?: string | null;
+  action: string;
+  reason?: string | null;
+  fromStatus?: string | null;
+  toStatus?: string | null;
+  createdAt?: string | null;
+}
+
 export interface Slot {
   id: string;
   courtId: string;

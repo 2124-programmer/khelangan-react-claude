@@ -221,6 +221,108 @@ export function adaptVenueCounts(dto: VenueCountsDto): VenueCounts {
   };
 }
 
+// ─── Admin Players ────────────────────────────────────────────────────────
+import type {
+  PlayerStatsDto, PlayerRowDto, PlayerAdminDetailDto,
+  PlayerBookingRowDto, PlayerPaymentRowDto, PlayerAuditRowDto,
+} from './types';
+import type {
+  PlayerStats, PlayerRow, PlayerStatus, RiskLevel, PlayerAdminDetail, PlayerActionCode,
+  PlayerBookingRow, PlayerPaymentRow, PlayerAuditRow,
+} from '../types';
+
+export function adaptPlayerStats(dto: PlayerStatsDto): PlayerStats {
+  return {
+    totalPlayers: dto.totalPlayers ?? 0,
+    newThisWeek: dto.newThisWeek ?? 0,
+    activeRatePct: dto.activeRatePct ?? 0,
+    flaggedCount: dto.flaggedCount ?? 0,
+  };
+}
+
+export function adaptPlayerRow(dto: PlayerRowDto): PlayerRow {
+  return {
+    playerId: String(dto.playerId ?? 0),
+    name: dto.name ?? '',
+    email: dto.email ?? null,
+    phone: dto.phone ?? null,
+    avatarUrl: dto.avatarUrl ?? null,
+    emailVerified: !!dto.emailVerified,
+    phoneVerified: !!dto.phoneVerified,
+    status: (dto.status ?? 'ACTIVE') as PlayerStatus,
+    riskLevel: (dto.riskLevel ?? 'NONE') as RiskLevel,
+    riskReason: dto.riskReason ?? null,
+    bookingCount: dto.bookingCount ?? 0,
+    totalSpend: dto.totalSpend ?? 0,
+    lastActiveAt: dto.lastActiveAt ?? null,
+    joinedAt: dto.joinedAt ?? null,
+  };
+}
+
+export function adaptPlayerDetail(dto: PlayerAdminDetailDto): PlayerAdminDetail {
+  return {
+    playerId: String(dto.playerId ?? 0),
+    name: dto.name ?? '',
+    email: dto.email ?? null,
+    phone: dto.phone ?? null,
+    avatarUrl: dto.avatarUrl ?? null,
+    city: dto.city ?? null,
+    emailVerified: !!dto.emailVerified,
+    phoneVerified: !!dto.phoneVerified,
+    status: (dto.status ?? 'ACTIVE') as PlayerStatus,
+    riskLevel: (dto.riskLevel ?? 'NONE') as RiskLevel,
+    riskReason: dto.riskReason ?? null,
+    joinedAt: dto.joinedAt ?? null,
+    lastActiveAt: dto.lastActiveAt ?? null,
+    stats: {
+      bookingCount: dto.stats?.bookingCount ?? 0,
+      totalSpend: dto.stats?.totalSpend ?? 0,
+      refundCount: dto.stats?.refundCount ?? 0,
+      refundTotal: dto.stats?.refundTotal ?? 0,
+      reviewCount: dto.stats?.reviewCount ?? 0,
+      cancellationRatePct: dto.stats?.cancellationRatePct ?? 0,
+      noShowCount: dto.stats?.noShowCount ?? 0,
+    },
+    suspension: dto.suspension ?? null,
+    deletion: dto.deletion ?? null,
+    availableActions: (dto.availableActions ?? []) as PlayerActionCode[],
+  };
+}
+
+export function adaptPlayerBookingRow(dto: PlayerBookingRowDto): PlayerBookingRow {
+  return {
+    bookingId: String(dto.bookingId ?? 0),
+    venueName: dto.venueName ?? '—',
+    date: dto.date ?? null,
+    slotLabel: dto.slotLabel ?? '',
+    amount: dto.amount ?? 0,
+    status: dto.status ?? '',
+  };
+}
+
+export function adaptPlayerPaymentRow(dto: PlayerPaymentRowDto): PlayerPaymentRow {
+  return {
+    paymentId: String(dto.paymentId ?? 0),
+    date: dto.date ?? null,
+    amount: dto.amount ?? 0,
+    methodLabel: dto.methodLabel ?? '—',
+    status: dto.status ?? '',
+    refundedAmount: dto.refundedAmount ?? null,
+  };
+}
+
+export function adaptPlayerAuditRow(dto: PlayerAuditRowDto): PlayerAuditRow {
+  return {
+    id: String(dto.id ?? 0),
+    actorName: dto.actorName ?? null,
+    action: dto.action ?? '',
+    reason: dto.reason ?? null,
+    fromStatus: dto.fromStatus ?? null,
+    toStatus: dto.toStatus ?? null,
+    createdAt: dto.createdAt ?? null,
+  };
+}
+
 export function adaptSlot(dto: SlotDto): Slot {
   return {
     // AVAILABLE slots have no DB id; use a composite key so React keys stay unique

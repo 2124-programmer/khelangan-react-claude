@@ -35,7 +35,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
   // so they're intentionally not duplicated as Management tiles.
   const modules = [
     { label: 'Venues', icon: '🏟', route: 'Venues' },
-    { label: 'Players', icon: '👤', route: 'PlayerManagement' },
+    { label: 'Players', icon: '👤', route: 'Players' },
     { label: 'Owners', icon: '🧑‍💼', route: 'OwnerManagement' },
     { label: 'Bookings', icon: '📋', route: 'AdminBookings' },
     { label: 'Payments', icon: '💳', route: 'PaymentsRevenue' },

@@ -3,7 +3,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
 import {
-  PlayerManagementScreen,
   OwnerManagementScreen, AdminBookingsScreen, PaymentsRevenueScreen,
   DisputeManagementScreen, CouponManagementScreen, NotificationBroadcastScreen,
   AnalyticsScreen, CategoryManagementScreen, CMSScreen, AdminSettingsScreen,
@@ -12,6 +11,8 @@ import AdminEmailChangeScreen from '../screens/admin/AdminEmailChangeScreen';
 import { SubscriptionManagementScreen, SubscriptionDetailScreen } from '../screens/admin/AdminSubscriptionScreens';
 import AdminVenuesScreen from '../screens/admin/AdminVenuesScreen';
 import AdminVenueDetailScreen from '../screens/admin/AdminVenueDetailScreen';
+import AdminPlayersScreen from '../screens/admin/AdminPlayersScreen';
+import PlayerDetailScreen from '../screens/admin/PlayerDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -25,7 +26,10 @@ export default function AdminNavigator() {
       <Stack.Screen name="VenueApproval" component={AdminVenuesScreen} />
       <Stack.Screen name="VenueManagement" component={AdminVenuesScreen} />
       <Stack.Screen name="VenueDetail" component={AdminVenueDetailScreen} />
-      <Stack.Screen name="PlayerManagement" component={PlayerManagementScreen} />
+      {/* Scaled Players management. PlayerManagement kept as a redirect alias for one release. */}
+      <Stack.Screen name="Players" component={AdminPlayersScreen} />
+      <Stack.Screen name="PlayerManagement" component={AdminPlayersScreen} />
+      <Stack.Screen name="PlayerDetail" component={PlayerDetailScreen} />
       <Stack.Screen name="OwnerManagement" component={OwnerManagementScreen} />
       <Stack.Screen name="AdminBookings" component={AdminBookingsScreen} />
       <Stack.Screen name="PaymentsRevenue" component={PaymentsRevenueScreen} />
