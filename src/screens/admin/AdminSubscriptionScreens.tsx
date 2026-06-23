@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, ActivityIndicator } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, ActivityIndicator, Modal, FlatList, TextInput } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader, AppButton, AppInput, SectionTabBar, EmptyState } from '../../components/common';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
@@ -23,8 +24,8 @@ function fmt(iso?: string | null): string {
   return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export function SubscriptionManagementScreen({ navigation }: any) {
-  const [tab, setTab] = useState('activate');
+export function SubscriptionManagementScreen({ navigation, route }: any) {
+  const [tab, setTab] = useState<string>(route?.params?.tab ?? 'activate');
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <AppHeader title="Subscriptions" onBack={() => navigation.goBack()} />
@@ -46,9 +47,12 @@ export function SubscriptionManagementScreen({ navigation }: any) {
 
 /* ── Activate / per-venue detail ─────────────────────────────────────────── */
 function ActivateTab() {
-  const venuesQ = useAdminVenues({ page: 0 });
+  // Admin venue count is bounded (hundreds at most); fetch them all once and
+  // filter client-side inside the searchable picker — no cramped horizontal scroll.
+  const venuesQ = useAdminVenues({ page: 0, size: 500 });
   const venues: Venue[] = venuesQ.data?.venues ?? [];
   const [venue, setVenue] = useState<Venue | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => { if (!venue && venues.length) setVenue(venues[0]); }, [venues, venue]);
 
@@ -58,17 +62,31 @@ function ActivateTab() {
   return (
     <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
       <Text style={styles.label}>Venue</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
-        {venues.map((v) => {
-          const active = v.id === venue?.id;
-          return (
-            <TouchableOpacity key={v.id} onPress={() => setVenue(v)}
-              style={[styles.chip, active && styles.chipActive]}>
-              <Text style={[styles.chipText, active && { color: colors.white }]} numberOfLines={1}>{v.name}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      <TouchableOpacity
+        style={styles.venueSelect}
+        onPress={() => setPickerOpen(true)}
+        disabled={venuesQ.isLoading}
+      >
+        <Feather name="map-pin" size={16} color={colors.admin} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.venueSelectName} numberOfLines={1}>
+            {venuesQ.isLoading ? 'Loading venues…' : venue?.name ?? 'Select a venue'}
+          </Text>
+          {venue ? <Text style={styles.venueSelectSub} numberOfLines={1}>{venue.city}</Text> : null}
+        </View>
+        <Feather name="chevron-down" size={20} color={colors.textDim} />
+      </TouchableOpacity>
+      <Text style={styles.venueCount}>
+        {venues.length} venue{venues.length === 1 ? '' : 's'} · tap to search
+      </Text>
+
+      <VenuePickerModal
+        visible={pickerOpen}
+        venues={venues}
+        selectedId={venue?.id}
+        onSelect={(v) => { setVenue(v); setPickerOpen(false); }}
+        onClose={() => setPickerOpen(false)}
+      />
 
       {!venue ? (
         <EmptyState title="No venues" subtitle="No venues to manage yet." />
@@ -80,6 +98,80 @@ function ActivateTab() {
         <CreateSubscriptionForm venue={venue} />
       )}
     </ScrollView>
+  );
+}
+
+/** Full-screen searchable venue picker — scales to hundreds of venues. */
+function VenuePickerModal({ visible, venues, selectedId, onSelect, onClose }: {
+  visible: boolean;
+  venues: Venue[];
+  selectedId?: string;
+  onSelect: (v: Venue) => void;
+  onClose: () => void;
+}) {
+  const [q, setQ] = useState('');
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    if (!term) return venues;
+    return venues.filter(
+      (v) => v.name.toLowerCase().includes(term) || (v.city ?? '').toLowerCase().includes(term),
+    );
+  }, [q, venues]);
+
+  // Reset the search box each time the picker opens.
+  useEffect(() => { if (visible) setQ(''); }, [visible]);
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={styles.pickerBackdrop}>
+        <View style={styles.pickerSheet}>
+          <View style={styles.pickerHeader}>
+            <Text style={styles.pickerTitle}>Select venue</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Feather name="x" size={22} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.searchRow}>
+            <Feather name="search" size={18} color={colors.textDim} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by name or city"
+              placeholderTextColor={colors.textDim}
+              value={q}
+              onChangeText={setQ}
+              autoFocus
+            />
+            {q.length > 0 && (
+              <TouchableOpacity onPress={() => setQ('')}>
+                <Feather name="x-circle" size={18} color={colors.textDim} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <FlatList
+            data={filtered}
+            keyExtractor={(v) => v.id}
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={<Text style={styles.pickerEmpty}>No venues match “{q}”.</Text>}
+            renderItem={({ item }) => {
+              const active = item.id === selectedId;
+              return (
+                <TouchableOpacity style={styles.pickerRow} onPress={() => onSelect(item)}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.pickerRowName, active && { color: colors.admin }]} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <Text style={styles.pickerRowSub} numberOfLines={1}>{item.city}</Text>
+                  </View>
+                  {active && <Feather name="check" size={20} color={colors.admin} />}
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -266,10 +358,32 @@ function RequestsTab() {
         : requests.length === 0 ? <EmptyState title="No pending requests" subtitle="Owner upgrade requests appear here." />
         : requests.map((r) => (
           <View key={r.id} style={[styles.card, shadow.card]}>
-            <Text style={styles.cardTitle}>{r.requestedPlanName}</Text>
-            <Text style={styles.hint}>
-              Cycle: {r.requestedCycle === 'ANNUAL' ? 'Annual' : 'Monthly'} · Venue #{r.venueId} · {fmt(r.createdAt)}
+            {/* Venue + owner — who is asking */}
+            <Text style={styles.cardTitle} numberOfLines={1}>{r.venueName}</Text>
+            <Text style={styles.hint} numberOfLines={1}>
+              {r.ownerName}{r.venueCity ? ` · ${r.venueCity}` : ''}
             </Text>
+
+            {/* Plan change — what they want */}
+            <View style={styles.reqPlanRow}>
+              <View style={styles.reqPlanBox}>
+                <Text style={styles.reqPlanLabel}>Current</Text>
+                <Text style={styles.reqPlanValue} numberOfLines={1}>{r.currentPlanName ?? 'None'}</Text>
+              </View>
+              <Feather name="arrow-right" size={18} color={colors.textDim} />
+              <View style={styles.reqPlanBox}>
+                <Text style={styles.reqPlanLabel}>Requested</Text>
+                <Text style={[styles.reqPlanValue, { color: colors.admin }]} numberOfLines={1}>{r.requestedPlanName}</Text>
+              </View>
+            </View>
+
+            {/* Pricing + meta */}
+            <View style={styles.divider} />
+            <Row label="Billing" value={r.requestedCycle === 'ANNUAL' ? 'Annual' : 'Monthly'} />
+            <Row label="Price" value={`₹${r.requestedPlanPrice.toLocaleString('en-IN')} / ${r.requestedCycle === 'ANNUAL' ? 'yr' : 'mo'}`} />
+            <Row label="Court limit" value={`up to ${r.requestedPlanMaxCourts} courts`} />
+            <Row label="Requested on" value={fmt(r.createdAt)} />
+
             {rejectingId === r.id ? (
               <View style={{ marginTop: spacing.sm }}>
                 <AppInput placeholder="Reason for rejection" value={reason} onChangeText={setReason} />
@@ -374,6 +488,28 @@ const styles = StyleSheet.create({
   label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid, marginBottom: spacing.sm },
   hint: { fontSize: fontSize.sm, color: colors.textDim, marginTop: 2 },
   noteText: { fontSize: fontSize.xs, color: colors.textDim, marginTop: spacing.sm, fontStyle: 'italic' },
+  venueSelect: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
+  },
+  venueSelectName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
+  venueSelectSub: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 1 },
+  venueCount: { fontSize: fontSize.xs, color: colors.textDim, marginTop: spacing.xs, marginBottom: spacing.md },
+  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  pickerSheet: { backgroundColor: colors.bg, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingTop: spacing.lg, maxHeight: '85%', minHeight: '55%' },
+  pickerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, marginBottom: spacing.md },
+  pickerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: spacing.lg, height: 46, marginHorizontal: spacing.lg, marginBottom: spacing.sm,
+  },
+  searchInput: { flex: 1, fontSize: fontSize.md, color: colors.text, outlineWidth: 0 } as any,
+  pickerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  pickerRowName: { fontSize: fontSize.md, color: colors.text, fontWeight: fontWeight.medium },
+  pickerRowSub: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 1 },
+  pickerEmpty: { textAlign: 'center', color: colors.textDim, fontSize: fontSize.sm, padding: spacing.xl },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginRight: spacing.sm, maxWidth: 200 },
   chipActive: { backgroundColor: colors.admin, borderColor: colors.admin },
@@ -387,6 +523,10 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.pill },
   badgeText: { color: colors.white, fontSize: fontSize.xs, fontWeight: fontWeight.bold },
   section: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.lg, marginBottom: spacing.sm },
+  reqPlanRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md },
+  reqPlanBox: { flex: 1, backgroundColor: colors.bg, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  reqPlanLabel: { fontSize: fontSize.xs, color: colors.textDim },
+  reqPlanValue: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text, marginTop: 2 },
   histRow: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   histPlan: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
   histMeta: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 2 },

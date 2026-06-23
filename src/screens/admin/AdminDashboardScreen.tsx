@@ -4,15 +4,18 @@ import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../the
 import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
 import { useAdminStats } from '../../api/hooks/useAdmin';
+import { useChangeRequests } from '../../api/hooks/useSubscription';
 import { toast } from '../../toast';
 
 export default function AdminDashboardScreen({ navigation }: any) {
   const { user, logout } = useAuth();
   const { data: stats, refetch } = useAdminStats();
+  const subRequestsQ = useChangeRequests('PENDING');
+  const pendingSubRequests = subRequestsQ.data?.length ?? 0;
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = async () => {
     setRefreshing(true);
-    try { await refetch(); } finally { setRefreshing(false); }
+    try { await Promise.all([refetch(), subRequestsQ.refetch()]); } finally { setRefreshing(false); }
   };
   const [showLogout, setShowLogout] = useState(false);
 
@@ -24,8 +27,8 @@ export default function AdminDashboardScreen({ navigation }: any) {
   ];
 
   const alerts = [
-    { label: 'Pending Approvals', value: stats?.pendingApprovals ?? 0, route: 'VenueApproval', icon: '🕓' },
-    { label: 'Open Disputes', value: stats?.openDisputes ?? 0, route: 'DisputeManagement', icon: '⚠️' },
+    { label: 'Pending Approvals', value: stats?.pendingApprovals ?? 0, route: 'VenueApproval', params: undefined, icon: '🕓' },
+    { label: 'Subscription Requests', value: pendingSubRequests, route: 'SubscriptionManagement', params: { tab: 'requests' }, icon: '🧾' },
   ];
 
   const modules = [
@@ -82,7 +85,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
           <TouchableOpacity
             key={a.label}
             style={styles.alertRow}
-            onPress={() => navigation.navigate(a.route)}
+            onPress={() => navigation.navigate(a.route, a.params)}
           >
             <Text style={{ fontSize: 22 }}>{a.icon}</Text>
             <Text style={styles.alertLabel}>{a.label}</Text>

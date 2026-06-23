@@ -55,7 +55,7 @@ export function useAdminVenueDetail(venueId: string | number | undefined) {
   });
 }
 
-export function useAdminVenues(params?: { page?: number; status?: string }) {
+export function useAdminVenues(params?: { page?: number; size?: number; status?: string }) {
   return useQuery({
     queryKey: [...ADMIN_VENUES_KEY, params],
     queryFn: async () => {

@@ -713,11 +713,18 @@ export interface SubscriptionDto {
 export interface SubscriptionChangeRequestDto {
   id: number;
   ownerId: number;
+  ownerName?: string;
+  ownerEmail?: string | null;
   venueId: number;
+  venueName?: string;
+  venueCity?: string | null;
   currentSubscriptionId?: number | null;
+  currentPlanName?: string | null;
   requestedPlanId: number;
   requestedPlanCode: string;
   requestedPlanName: string;
+  requestedPlanPrice?: number;
+  requestedPlanMaxCourts?: number;
   requestedCycle: string;
   status: string;
   createdAt: string;

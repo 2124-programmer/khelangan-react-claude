@@ -308,11 +308,18 @@ export interface Subscription {
 export interface SubscriptionChangeRequest {
   id: string;
   ownerId: string;
+  ownerName: string;
+  ownerEmail?: string | null;
   venueId: string;
+  venueName: string;
+  venueCity?: string | null;
   currentSubscriptionId?: string | null;
+  currentPlanName?: string | null;
   requestedPlanId: string;
   requestedPlanCode: string;
   requestedPlanName: string;
+  requestedPlanPrice: number;
+  requestedPlanMaxCourts: number;
   requestedCycle: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
   createdAt: string;
