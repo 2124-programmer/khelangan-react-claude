@@ -988,3 +988,96 @@ export interface ApiError {
   path?: string;
   fieldErrors?: FieldError[];
 }
+
+// ─── Admin Owners ───────────────────────────────────────────────────────────
+// NB: OwnerStatsDto/OwnerStats already name the owner *dashboard* stats; the admin
+// owner-management stats use the AdminOwnerStats* names to avoid a collision.
+export interface AdminOwnerStatsDto {
+  totalOwners?: number;
+  newThisWeek?: number;
+  activeOwners?: number;
+  onboardingOwners?: number;
+  flaggedCount?: number;
+}
+export interface OwnerRowDto {
+  ownerId?: number;
+  name?: string;
+  email?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  status?: string;
+  riskLevel?: string;
+  riskReason?: string | null;
+  totalVenues?: number;
+  liveVenues?: number;
+  grossBookingValue?: number;
+  rating?: number | null;
+  lastActiveAt?: string | null;
+  joinedAt?: string | null;
+}
+export interface OwnerPageDto {
+  content?: OwnerRowDto[];
+  totalElements?: number;
+  totalPages?: number;
+  size?: number;
+  number?: number;
+}
+export interface OwnerStatsBlockDto {
+  totalVenues?: number;
+  liveVenues?: number;
+  grossBookingValue?: number;
+  bookingCount?: number;
+  rating?: number | null;
+  ownerCancellationRatePct?: number;
+  disputeCount?: number;
+  refundRatePct?: number;
+}
+export interface OwnerAdminDetailDto {
+  ownerId?: number;
+  name?: string;
+  email?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  city?: string | null;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  status?: string;
+  riskLevel?: string;
+  riskReason?: string | null;
+  joinedAt?: string | null;
+  lastActiveAt?: string | null;
+  stats?: OwnerStatsBlockDto;
+  suspension?: { reason?: string | null; until?: string | null } | null;
+  deletion?: {
+    deletedAt?: string | null;
+    deletedByName?: string | null;
+    reason?: string | null;
+    venuesArchived?: number | null;
+    bookingsCancelled?: number | null;
+    subscriptionsVoided?: number | null;
+  } | null;
+  availableActions?: string[];
+}
+export interface OwnerBookingRowDto {
+  bookingId?: number;
+  venueName?: string;
+  playerName?: string;
+  date?: string | null;
+  slotLabel?: string;
+  amount?: number;
+  status?: string;
+}
+export interface OwnerBookingPageDto {
+  content?: OwnerBookingRowDto[];
+  totalElements?: number;
+  totalPages?: number;
+  size?: number;
+  number?: number;
+}
+export interface OwnerReasonBody { reason: string }
+export interface OwnerSuspendBody { reason: string; until?: string | null }
+export interface OwnerBanBody { reason: string; cancelUpcomingBookings?: boolean }
+export interface OwnerVerificationBody { channel: 'EMAIL' | 'PHONE'; verified: boolean }
+export interface OwnerMessageBody { channels: string[]; subject?: string | null; body: string }

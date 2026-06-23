@@ -99,6 +99,7 @@ export function venueStatusBadge(status: VenueStatus): { label: string; tone: Ve
     case 'pending': return { label: 'Pending', tone: 'AMBER' };
     case 'changes_requested': return { label: 'Draft', tone: 'BLUE' };
     case 'rejected': return { label: 'Rejected', tone: 'RED' };
+    case 'archived': return { label: 'Archived', tone: 'GRAY' };
     default: return { label: 'Draft', tone: 'GRAY' };
   }
 }

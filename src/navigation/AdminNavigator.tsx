@@ -3,10 +3,12 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
 import {
-  OwnerManagementScreen, AdminBookingsScreen, PaymentsRevenueScreen,
+  AdminBookingsScreen, PaymentsRevenueScreen,
   DisputeManagementScreen, CouponManagementScreen, NotificationBroadcastScreen,
   AnalyticsScreen, CategoryManagementScreen, CMSScreen, AdminSettingsScreen,
 } from '../screens/admin/AdminScreens';
+import AdminOwnersScreen from '../screens/admin/AdminOwnersScreen';
+import OwnerDetailScreen from '../screens/admin/OwnerDetailScreen';
 import AdminEmailChangeScreen from '../screens/admin/AdminEmailChangeScreen';
 import { SubscriptionManagementScreen, SubscriptionDetailScreen } from '../screens/admin/AdminSubscriptionScreens';
 import AdminVenuesScreen from '../screens/admin/AdminVenuesScreen';
@@ -30,7 +32,10 @@ export default function AdminNavigator() {
       <Stack.Screen name="Players" component={AdminPlayersScreen} />
       <Stack.Screen name="PlayerManagement" component={AdminPlayersScreen} />
       <Stack.Screen name="PlayerDetail" component={PlayerDetailScreen} />
-      <Stack.Screen name="OwnerManagement" component={OwnerManagementScreen} />
+      {/* Scaled Owners management. OwnerManagement is the dashboard route; Owners is the canonical name. */}
+      <Stack.Screen name="Owners" component={AdminOwnersScreen} />
+      <Stack.Screen name="OwnerManagement" component={AdminOwnersScreen} />
+      <Stack.Screen name="OwnerDetail" component={OwnerDetailScreen} />
       <Stack.Screen name="AdminBookings" component={AdminBookingsScreen} />
       <Stack.Screen name="PaymentsRevenue" component={PaymentsRevenueScreen} />
       <Stack.Screen name="DisputeManagement" component={DisputeManagementScreen} />

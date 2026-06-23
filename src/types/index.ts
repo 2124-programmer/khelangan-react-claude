@@ -13,7 +13,7 @@ export type BookingStatus =
 
 export type CancellationReason = 'player' | 'owner' | 'time_over';
 
-export type VenueStatus = 'draft' | 'live' | 'pending' | 'rejected' | 'suspended' | 'changes_requested';
+export type VenueStatus = 'draft' | 'live' | 'pending' | 'rejected' | 'suspended' | 'changes_requested' | 'archived';
 
 export type SlotStatus = 'available' | 'booked' | 'blocked' | 'held';
 
@@ -507,4 +507,87 @@ export interface VenueSubscriptionRow {
   pendingRequestId?: string | null;
   pendingCurrentPlanName?: string | null;
   pendingRequestedPlanName?: string | null;
+}
+
+// ─── Admin Owners ───────────────────────────────────────────────────────────
+// Reuses RiskLevel + MessageChannel from Admin Players. OwnerStatus mirrors PlayerStatus
+// but is kept distinct so the two surfaces can diverge.
+export type OwnerStatus = 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'DELETED';
+export type OwnerActionCode =
+  | 'SUSPEND' | 'REACTIVATE' | 'BAN' | 'UNBAN' | 'VERIFY' | 'UNVERIFY'
+  | 'FORCE_LOGOUT' | 'RESET_PASSWORD' | 'MESSAGE' | 'DELETE';
+
+export interface AdminOwnerStats {
+  totalOwners: number;
+  newThisWeek: number;
+  activeOwners: number;
+  onboardingOwners: number;
+  flaggedCount: number;
+}
+
+export interface OwnerRow {
+  ownerId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  status: OwnerStatus;
+  riskLevel: RiskLevel;
+  riskReason?: string | null;
+  totalVenues: number;
+  liveVenues: number;
+  grossBookingValue: number;
+  rating?: number | null;
+  lastActiveAt?: string | null;
+  joinedAt?: string | null;
+}
+
+export interface OwnerStatsBlock {
+  totalVenues: number;
+  liveVenues: number;
+  grossBookingValue: number;
+  bookingCount: number;
+  rating?: number | null;
+  ownerCancellationRatePct: number;
+  disputeCount: number;
+  refundRatePct: number;
+}
+
+export interface OwnerAdminDetail {
+  ownerId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  city?: string | null;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  status: OwnerStatus;
+  riskLevel: RiskLevel;
+  riskReason?: string | null;
+  joinedAt?: string | null;
+  lastActiveAt?: string | null;
+  stats: OwnerStatsBlock;
+  suspension?: { reason?: string | null; until?: string | null } | null;
+  deletion?: {
+    deletedAt?: string | null;
+    deletedByName?: string | null;
+    reason?: string | null;
+    venuesArchived?: number | null;
+    bookingsCancelled?: number | null;
+    subscriptionsVoided?: number | null;
+  } | null;
+  availableActions: OwnerActionCode[];
+}
+
+export interface OwnerBookingRow {
+  bookingId: string;
+  venueName: string;
+  playerName: string;
+  date?: string | null;
+  slotLabel: string;
+  amount: number;
+  status: string;
 }

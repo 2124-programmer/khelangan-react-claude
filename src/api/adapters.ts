@@ -601,3 +601,86 @@ export function adaptVenueSubscriptionRow(dto: VenueSubscriptionRowDto): VenueSu
     pendingRequestedPlanName: dto.pendingRequestedPlanName ?? null,
   };
 }
+
+// ─── Admin Owners ────────────────────────────────────────────────────────────
+import type {
+  AdminOwnerStatsDto, OwnerRowDto, OwnerAdminDetailDto, OwnerBookingRowDto,
+} from './types';
+import type {
+  AdminOwnerStats, OwnerRow, OwnerAdminDetail, OwnerBookingRow,
+  OwnerStatus, OwnerActionCode, RiskLevel as OwnerRiskLevel,
+} from '../types';
+
+export function adaptAdminOwnerStats(dto: AdminOwnerStatsDto): AdminOwnerStats {
+  return {
+    totalOwners: dto.totalOwners ?? 0,
+    newThisWeek: dto.newThisWeek ?? 0,
+    activeOwners: dto.activeOwners ?? 0,
+    onboardingOwners: dto.onboardingOwners ?? 0,
+    flaggedCount: dto.flaggedCount ?? 0,
+  };
+}
+
+export function adaptOwnerRow(dto: OwnerRowDto): OwnerRow {
+  return {
+    ownerId: String(dto.ownerId ?? 0),
+    name: dto.name ?? '',
+    email: dto.email ?? null,
+    phone: dto.phone ?? null,
+    avatarUrl: dto.avatarUrl ?? null,
+    emailVerified: !!dto.emailVerified,
+    phoneVerified: !!dto.phoneVerified,
+    status: (dto.status ?? 'ACTIVE') as OwnerStatus,
+    riskLevel: (dto.riskLevel ?? 'NONE') as OwnerRiskLevel,
+    riskReason: dto.riskReason ?? null,
+    totalVenues: dto.totalVenues ?? 0,
+    liveVenues: dto.liveVenues ?? 0,
+    grossBookingValue: dto.grossBookingValue ?? 0,
+    rating: dto.rating ?? null,
+    lastActiveAt: dto.lastActiveAt ?? null,
+    joinedAt: dto.joinedAt ?? null,
+  };
+}
+
+export function adaptOwnerDetail(dto: OwnerAdminDetailDto): OwnerAdminDetail {
+  return {
+    ownerId: String(dto.ownerId ?? 0),
+    name: dto.name ?? '',
+    email: dto.email ?? null,
+    phone: dto.phone ?? null,
+    avatarUrl: dto.avatarUrl ?? null,
+    city: dto.city ?? null,
+    emailVerified: !!dto.emailVerified,
+    phoneVerified: !!dto.phoneVerified,
+    status: (dto.status ?? 'ACTIVE') as OwnerStatus,
+    riskLevel: (dto.riskLevel ?? 'NONE') as OwnerRiskLevel,
+    riskReason: dto.riskReason ?? null,
+    joinedAt: dto.joinedAt ?? null,
+    lastActiveAt: dto.lastActiveAt ?? null,
+    stats: {
+      totalVenues: dto.stats?.totalVenues ?? 0,
+      liveVenues: dto.stats?.liveVenues ?? 0,
+      grossBookingValue: dto.stats?.grossBookingValue ?? 0,
+      bookingCount: dto.stats?.bookingCount ?? 0,
+      rating: dto.stats?.rating ?? null,
+      ownerCancellationRatePct: dto.stats?.ownerCancellationRatePct ?? 0,
+      disputeCount: dto.stats?.disputeCount ?? 0,
+      refundRatePct: dto.stats?.refundRatePct ?? 0,
+    },
+    suspension: dto.suspension ?? null,
+    deletion: dto.deletion ?? null,
+    availableActions: (dto.availableActions ?? []) as OwnerActionCode[],
+  };
+}
+
+export function adaptOwnerBookingRow(dto: OwnerBookingRowDto): OwnerBookingRow {
+  return {
+    bookingId: String(dto.bookingId ?? 0),
+    venueName: dto.venueName ?? '—',
+    playerName: dto.playerName ?? '—',
+    date: dto.date ?? null,
+    slotLabel: dto.slotLabel ?? '',
+    amount: dto.amount ?? 0,
+    status: dto.status ?? '',
+  };
+}
