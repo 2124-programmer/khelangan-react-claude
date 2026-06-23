@@ -591,3 +591,117 @@ export interface OwnerBookingRow {
   amount: number;
   status: string;
 }
+
+// ─── Admin Disputes ───────────────────────────────────────────────────────────
+// (legacy `Dispute`/`DisputeStatus` are the role-scoped raise flow; admin triage uses these)
+export type AdminDisputeStatus = 'OPEN' | 'UNDER_REVIEW' | 'NEEDS_INFO' | 'RESOLVED' | 'DISMISSED';
+export type DisputeCategory =
+  | 'OWNER_NO_SHOW' | 'OWNER_CANCELLATION' | 'DOUBLE_BOOKING' | 'NOT_AS_DESCRIBED'
+  | 'REFUND_NOT_GIVEN' | 'OVERCHARGED' | 'SAFETY_BEHAVIOR' | 'OTHER';
+export type DisputePriority = 'LOW' | 'MEDIUM' | 'HIGH';
+export type DisputeWaitingOn = 'PLAYER' | 'OWNER' | 'NONE';
+export type DisputePartyRole = 'PLAYER' | 'OWNER';
+export type MessageAudience = 'PLAYER' | 'OWNER' | 'BOTH';
+export type ResolutionOutcome =
+  | 'RULED_FOR_PLAYER' | 'RULED_FOR_OWNER' | 'PARTIAL' | 'RESOLVED_BY_PARTIES' | 'DISMISSED';
+export type ConsequenceAction = 'NONE' | 'WARN' | 'FLAG' | 'SUSPEND' | 'BAN';
+export type DisputeActionCode =
+  | 'ASSIGN' | 'MESSAGE' | 'REQUEST_INFO' | 'ADD_NOTE' | 'RESOLVE' | 'DISMISS' | 'REOPEN' | 'APPLY_CONSEQUENCE';
+
+export interface DisputePartyMini {
+  id: string;
+  role: DisputePartyRole;
+  name: string;
+  phoneVerified: boolean;
+  riskLevel: RiskLevel;
+  priorDisputeCount: number;
+  rating?: number | null;
+}
+
+export interface AdminDisputeRow {
+  disputeId: string;
+  title: string;
+  category: DisputeCategory;
+  status: AdminDisputeStatus;
+  priority: DisputePriority;
+  bookingRef?: string | null;
+  venueName?: string | null;
+  playerName: string;
+  ownerName: string;
+  assignedToName?: string | null;
+  waitingOn: DisputeWaitingOn;
+  raisedAt?: string | null;
+  isOverdue: boolean;
+}
+
+export interface AdminDisputeStats {
+  open: number;
+  needsInfo: number;
+  overdue: number;
+  resolvedThisWeek: number;
+  avgResolutionHours: number;
+}
+
+export interface DisputeConversationItem {
+  id: string;
+  senderRole: 'PLAYER' | 'OWNER' | 'ADMIN';
+  senderName: string;
+  body: string;
+  attachments: string[];
+  createdAt?: string | null;
+}
+export interface DisputeInternalNote {
+  id: string;
+  authorName: string;
+  body: string;
+  createdAt?: string | null;
+}
+export interface DisputeTimelineItem {
+  id: string;
+  action: string;
+  actorName: string;
+  summary: string;
+  createdAt?: string | null;
+}
+export interface DisputeResolutionView {
+  outcome: ResolutionOutcome | null;
+  atFault: DisputePartyRole | 'NONE';
+  rulingNote: string;
+  recommendedRefundAmount?: number | null;
+  consequenceTarget?: DisputePartyRole | 'NONE' | null;
+  consequenceAction: ConsequenceAction;
+  resolvedByName?: string | null;
+  resolvedAt?: string | null;
+}
+export interface DisputeBooking {
+  bookingId: string;
+  ref: string;
+  venueName: string;
+  date?: string | null;
+  slotLabel: string;
+  amount: number;
+  methodLabel?: string | null;
+  status: string;
+}
+
+export interface AdminDisputeDetail {
+  disputeId: string;
+  title: string;
+  category: DisputeCategory;
+  status: AdminDisputeStatus;
+  priority: DisputePriority;
+  raisedByRole: DisputePartyRole;
+  raisedAt?: string | null;
+  assignedToName?: string | null;
+  waitingOn: DisputeWaitingOn;
+  isOverdue: boolean;
+  slaHours: number;
+  booking?: DisputeBooking | null;
+  player: DisputePartyMini;
+  owner: DisputePartyMini;
+  conversation: DisputeConversationItem[];
+  internalNotes: DisputeInternalNote[];
+  timeline: DisputeTimelineItem[];
+  resolution?: DisputeResolutionView | null;
+  availableActions: DisputeActionCode[];
+}

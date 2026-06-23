@@ -4,11 +4,13 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
 import {
   AdminBookingsScreen, PaymentsRevenueScreen,
-  DisputeManagementScreen, CouponManagementScreen, NotificationBroadcastScreen,
+  CouponManagementScreen, NotificationBroadcastScreen,
   AnalyticsScreen, CategoryManagementScreen, CMSScreen, AdminSettingsScreen,
 } from '../screens/admin/AdminScreens';
 import AdminOwnersScreen from '../screens/admin/AdminOwnersScreen';
 import OwnerDetailScreen from '../screens/admin/OwnerDetailScreen';
+import DisputesScreen from '../screens/admin/DisputesScreen';
+import DisputeDetailScreen from '../screens/admin/DisputeDetailScreen';
 import AdminEmailChangeScreen from '../screens/admin/AdminEmailChangeScreen';
 import { SubscriptionManagementScreen, SubscriptionDetailScreen } from '../screens/admin/AdminSubscriptionScreens';
 import AdminVenuesScreen from '../screens/admin/AdminVenuesScreen';
@@ -38,7 +40,10 @@ export default function AdminNavigator() {
       <Stack.Screen name="OwnerDetail" component={OwnerDetailScreen} />
       <Stack.Screen name="AdminBookings" component={AdminBookingsScreen} />
       <Stack.Screen name="PaymentsRevenue" component={PaymentsRevenueScreen} />
-      <Stack.Screen name="DisputeManagement" component={DisputeManagementScreen} />
+      {/* Scaled Disputes triage. DisputeManagement is the dashboard route; Disputes is canonical. */}
+      <Stack.Screen name="Disputes" component={DisputesScreen} />
+      <Stack.Screen name="DisputeManagement" component={DisputesScreen} />
+      <Stack.Screen name="DisputeDetail" component={DisputeDetailScreen} />
       <Stack.Screen name="CouponManagement" component={CouponManagementScreen} />
       <Stack.Screen name="NotificationBroadcast" component={NotificationBroadcastScreen} />
       <Stack.Screen name="Analytics" component={AnalyticsScreen} />

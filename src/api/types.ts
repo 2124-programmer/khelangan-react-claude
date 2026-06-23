@@ -1081,3 +1081,122 @@ export interface OwnerSuspendBody { reason: string; until?: string | null }
 export interface OwnerBanBody { reason: string; cancelUpcomingBookings?: boolean }
 export interface OwnerVerificationBody { channel: 'EMAIL' | 'PHONE'; verified: boolean }
 export interface OwnerMessageBody { channels: string[]; subject?: string | null; body: string }
+
+// ─── Admin Disputes ─────────────────────────────────────────────────────────
+// (legacy DisputeDto/DisputeStatus are the role-scoped raise flow; admin uses these)
+export interface PartyMiniDto {
+  id?: number;
+  role?: string;
+  name?: string;
+  phoneVerified?: boolean;
+  riskLevel?: string;
+  priorDisputeCount?: number;
+  rating?: number | null;
+}
+export interface DisputeRowDto {
+  disputeId?: number;
+  title?: string;
+  category?: string;
+  status?: string;
+  priority?: string;
+  bookingRef?: string | null;
+  venueName?: string | null;
+  playerName?: string;
+  ownerName?: string;
+  assignedToName?: string | null;
+  waitingOn?: string;
+  raisedAt?: string | null;
+  isOverdue?: boolean;
+}
+export interface AdminDisputePageDto {
+  content?: DisputeRowDto[];
+  totalElements?: number;
+  totalPages?: number;
+  size?: number;
+  number?: number;
+}
+export interface DisputeStatsDto {
+  open?: number;
+  needsInfo?: number;
+  overdue?: number;
+  resolvedThisWeek?: number;
+  avgResolutionHours?: number;
+}
+export interface DisputeConversationItemDto {
+  id?: number;
+  senderRole?: string;
+  senderName?: string;
+  body?: string;
+  attachments?: string[];
+  createdAt?: string | null;
+}
+export interface DisputeInternalNoteDto {
+  id?: number;
+  authorName?: string;
+  body?: string;
+  createdAt?: string | null;
+}
+export interface DisputeTimelineItemDto {
+  id?: number;
+  action?: string;
+  actorName?: string;
+  summary?: string;
+  createdAt?: string | null;
+}
+export interface DisputeResolutionDto {
+  outcome?: string;
+  atFault?: string;
+  rulingNote?: string;
+  recommendedRefundAmount?: number | null;
+  consequenceTarget?: string | null;
+  consequenceAction?: string;
+  resolvedByName?: string | null;
+  resolvedAt?: string | null;
+}
+export interface DisputeBookingRefDto {
+  bookingId?: number;
+  ref?: string;
+  venueName?: string;
+  date?: string | null;
+  slotLabel?: string;
+  amount?: number;
+  methodLabel?: string | null;
+  status?: string;
+}
+export interface DisputeDetailDto {
+  disputeId?: number;
+  title?: string;
+  category?: string;
+  status?: string;
+  priority?: string;
+  raisedByRole?: string;
+  raisedAt?: string | null;
+  assignedToName?: string | null;
+  waitingOn?: string;
+  isOverdue?: boolean;
+  slaHours?: number;
+  booking?: DisputeBookingRefDto | null;
+  player?: PartyMiniDto;
+  owner?: PartyMiniDto;
+  conversation?: DisputeConversationItemDto[];
+  internalNotes?: DisputeInternalNoteDto[];
+  timeline?: DisputeTimelineItemDto[];
+  resolution?: DisputeResolutionDto | null;
+  availableActions?: string[];
+}
+export interface DisputeResolveBody {
+  outcome: string;
+  atFault: string;
+  rulingNote: string;
+  recommendedRefundAmount?: number | null;
+  consequence?: {
+    target: 'PLAYER' | 'OWNER';
+    action: 'NONE' | 'WARN' | 'FLAG' | 'SUSPEND' | 'BAN';
+    reason: string;
+    until?: string | null;
+  } | null;
+}
+export interface DisputeReasonBody { reason: string }
+export interface DisputeMessageBody { audience: 'PLAYER' | 'OWNER' | 'BOTH'; channels: string[]; body: string }
+export interface DisputeRequestInfoBody { party: 'PLAYER' | 'OWNER'; message: string }
+export interface DisputeNoteBody { body: string }

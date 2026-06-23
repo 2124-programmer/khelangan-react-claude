@@ -684,3 +684,121 @@ export function adaptOwnerBookingRow(dto: OwnerBookingRowDto): OwnerBookingRow {
     status: dto.status ?? '',
   };
 }
+
+// ─── Admin Disputes ──────────────────────────────────────────────────────────
+import type {
+  DisputeRowDto, DisputeStatsDto, DisputeDetailDto, PartyMiniDto,
+  DisputeConversationItemDto, DisputeInternalNoteDto, DisputeTimelineItemDto, DisputeResolutionDto,
+} from './types';
+import type {
+  AdminDisputeRow, AdminDisputeStats, AdminDisputeDetail, DisputePartyMini,
+  AdminDisputeStatus, DisputeCategory, DisputePriority, DisputeWaitingOn, DisputePartyRole,
+  ResolutionOutcome, ConsequenceAction, DisputeActionCode,
+  DisputeConversationItem, DisputeInternalNote, DisputeTimelineItem, DisputeResolutionView,
+  RiskLevel as DisputeRiskLevel,
+} from '../types';
+
+export function adaptAdminDisputeStats(dto: DisputeStatsDto): AdminDisputeStats {
+  return {
+    open: dto.open ?? 0,
+    needsInfo: dto.needsInfo ?? 0,
+    overdue: dto.overdue ?? 0,
+    resolvedThisWeek: dto.resolvedThisWeek ?? 0,
+    avgResolutionHours: dto.avgResolutionHours ?? 0,
+  };
+}
+
+export function adaptAdminDisputeRow(dto: DisputeRowDto): AdminDisputeRow {
+  return {
+    disputeId: String(dto.disputeId ?? 0),
+    title: dto.title ?? '',
+    category: (dto.category ?? 'OTHER') as DisputeCategory,
+    status: (dto.status ?? 'OPEN') as AdminDisputeStatus,
+    priority: (dto.priority ?? 'MEDIUM') as DisputePriority,
+    bookingRef: dto.bookingRef ?? null,
+    venueName: dto.venueName ?? null,
+    playerName: dto.playerName ?? '—',
+    ownerName: dto.ownerName ?? '—',
+    assignedToName: dto.assignedToName ?? null,
+    waitingOn: (dto.waitingOn ?? 'NONE') as DisputeWaitingOn,
+    raisedAt: dto.raisedAt ?? null,
+    isOverdue: !!dto.isOverdue,
+  };
+}
+
+function adaptPartyMini(dto: PartyMiniDto | undefined, role: DisputePartyRole): DisputePartyMini {
+  return {
+    id: String(dto?.id ?? 0),
+    role: (dto?.role as DisputePartyRole) ?? role,
+    name: dto?.name ?? '—',
+    phoneVerified: !!dto?.phoneVerified,
+    riskLevel: (dto?.riskLevel ?? 'NONE') as DisputeRiskLevel,
+    priorDisputeCount: dto?.priorDisputeCount ?? 0,
+    rating: dto?.rating ?? null,
+  };
+}
+
+function adaptResolution(dto: DisputeResolutionDto | null | undefined): DisputeResolutionView | null {
+  if (!dto) return null;
+  return {
+    outcome: (dto.outcome ?? null) as ResolutionOutcome | null,
+    atFault: (dto.atFault ?? 'NONE') as DisputePartyRole | 'NONE',
+    rulingNote: dto.rulingNote ?? '',
+    recommendedRefundAmount: dto.recommendedRefundAmount ?? null,
+    consequenceTarget: (dto.consequenceTarget ?? null) as DisputePartyRole | 'NONE' | null,
+    consequenceAction: (dto.consequenceAction ?? 'NONE') as ConsequenceAction,
+    resolvedByName: dto.resolvedByName ?? null,
+    resolvedAt: dto.resolvedAt ?? null,
+  };
+}
+
+function adaptConversationItem(dto: DisputeConversationItemDto): DisputeConversationItem {
+  return {
+    id: String(dto.id ?? 0),
+    senderRole: (dto.senderRole ?? 'ADMIN') as DisputeConversationItem['senderRole'],
+    senderName: dto.senderName ?? '—',
+    body: dto.body ?? '',
+    attachments: dto.attachments ?? [],
+    createdAt: dto.createdAt ?? null,
+  };
+}
+
+export function adaptAdminDisputeDetail(dto: DisputeDetailDto): AdminDisputeDetail {
+  return {
+    disputeId: String(dto.disputeId ?? 0),
+    title: dto.title ?? '',
+    category: (dto.category ?? 'OTHER') as DisputeCategory,
+    status: (dto.status ?? 'OPEN') as AdminDisputeStatus,
+    priority: (dto.priority ?? 'MEDIUM') as DisputePriority,
+    raisedByRole: (dto.raisedByRole ?? 'PLAYER') as DisputePartyRole,
+    raisedAt: dto.raisedAt ?? null,
+    assignedToName: dto.assignedToName ?? null,
+    waitingOn: (dto.waitingOn ?? 'NONE') as DisputeWaitingOn,
+    isOverdue: !!dto.isOverdue,
+    slaHours: dto.slaHours ?? 48,
+    booking: dto.booking
+      ? {
+          bookingId: String(dto.booking.bookingId ?? 0),
+          ref: dto.booking.ref ?? '',
+          venueName: dto.booking.venueName ?? '—',
+          date: dto.booking.date ?? null,
+          slotLabel: dto.booking.slotLabel ?? '',
+          amount: dto.booking.amount ?? 0,
+          methodLabel: dto.booking.methodLabel ?? null,
+          status: dto.booking.status ?? '',
+        }
+      : null,
+    player: adaptPartyMini(dto.player, 'PLAYER'),
+    owner: adaptPartyMini(dto.owner, 'OWNER'),
+    conversation: (dto.conversation ?? []).map(adaptConversationItem),
+    internalNotes: (dto.internalNotes ?? []).map((n: DisputeInternalNoteDto): DisputeInternalNote => ({
+      id: String(n.id ?? 0), authorName: n.authorName ?? '—', body: n.body ?? '', createdAt: n.createdAt ?? null,
+    })),
+    timeline: (dto.timeline ?? []).map((t: DisputeTimelineItemDto): DisputeTimelineItem => ({
+      id: String(t.id ?? 0), action: t.action ?? '', actorName: t.actorName ?? '—',
+      summary: t.summary ?? '', createdAt: t.createdAt ?? null,
+    })),
+    resolution: adaptResolution(dto.resolution),
+    availableActions: (dto.availableActions ?? []) as DisputeActionCode[],
+  };
+}
