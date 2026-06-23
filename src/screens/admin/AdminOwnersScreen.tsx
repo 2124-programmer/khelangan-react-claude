@@ -1,15 +1,24 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, FlatList, ActivityIndicator,
+  Modal, Linking,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader, EmptyState, AvatarImage } from '../../components/common';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { formatRelativeTime } from '../../utils/dateUtils';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useOwnersInfinite, useOwnerStats } from '../../api/hooks/useOwners';
+import { toast } from '../../toast';
 import type { OwnerRow, OwnerStatus } from '../../types';
+
+/** Build a wa.me link — strip non-digits and default a bare 10-digit number to +91. */
+function whatsappUrl(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  const withCc = digits.length === 10 ? `91${digits}` : digits;
+  return `https://wa.me/${withCc}`;
+}
 
 export const OWNER_STATUS_COLOR: Record<OwnerStatus, string> = {
   ACTIVE: colors.success, SUSPENDED: colors.warning, BANNED: colors.danger, DELETED: colors.textDim,
@@ -46,6 +55,14 @@ export default function AdminOwnersScreen({ navigation }: any) {
   const q = useOwnersInfinite({ q: debounced, segment, sort });
   const owners: OwnerRow[] = (q.data?.pages ?? []).flatMap((p) => p.owners);
   const s = statsQ.data;
+
+  // Owner whose Call/WhatsApp chooser is open (null = closed).
+  const [contactFor, setContactFor] = useState<OwnerRow | null>(null);
+
+  const openContact = (url: string, fallback: string) => {
+    setContactFor(null);
+    Linking.openURL(url).catch(() => toast.error(fallback));
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -122,13 +139,51 @@ export default function AdminOwnersScreen({ navigation }: any) {
               : <EmptyState icon="🧑‍💼" title="No owners" subtitle="Venue owners will appear here." />
         }
         renderItem={({ item }) => (
-          <OwnerRowCard row={item} onPress={() => navigation.navigate('OwnerDetail', { ownerId: item.ownerId })} />
+          <OwnerRowCard
+            row={item}
+            onPress={() => navigation.navigate('OwnerDetail', { ownerId: item.ownerId })}
+            onContact={() => setContactFor(item)}
+          />
         )}
         onEndReachedThreshold={0.4}
         onEndReached={() => { if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage(); }}
         ListFooterComponent={q.isFetchingNextPage
           ? <ActivityIndicator color={colors.admin} style={{ marginVertical: spacing.md }} /> : null}
       />
+
+      {/* Contact chooser — Call / WhatsApp */}
+      <Modal visible={contactFor !== null} transparent animationType="fade" onRequestClose={() => setContactFor(null)}>
+        <TouchableOpacity style={styles.contactOverlay} activeOpacity={1} onPress={() => setContactFor(null)}>
+          <View style={[styles.contactSheet, shadow.modal]}>
+            <Text style={styles.contactName} numberOfLines={1}>{contactFor?.name}</Text>
+            <Text style={styles.contactPhone}>{contactFor?.phone ?? 'No phone number'}</Text>
+            <View style={styles.contactActions}>
+              <TouchableOpacity
+                style={styles.contactBtn}
+                disabled={!contactFor?.phone}
+                onPress={() => contactFor?.phone && openContact(`tel:${contactFor.phone}`, 'Unable to start a call.')}
+                accessibilityRole="button" accessibilityLabel="Call"
+              >
+                <View style={[styles.contactIcon, { backgroundColor: colors.admin }]}>
+                  <Feather name="phone" size={22} color={colors.white} />
+                </View>
+                <Text style={styles.contactBtnText}>Call</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.contactBtn}
+                disabled={!contactFor?.phone}
+                onPress={() => contactFor?.phone && openContact(whatsappUrl(contactFor.phone), 'WhatsApp is not installed.')}
+                accessibilityRole="button" accessibilityLabel="WhatsApp"
+              >
+                <View style={[styles.contactIcon, { backgroundColor: '#25D366' }]}>
+                  <FontAwesome name="whatsapp" size={24} color={colors.white} />
+                </View>
+                <Text style={styles.contactBtnText}>WhatsApp</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -142,7 +197,7 @@ function Kpi({ label, value, accent }: { label: string; value: number | string; 
   );
 }
 
-function OwnerRowCard({ row, onPress }: { row: OwnerRow; onPress: () => void }) {
+function OwnerRowCard({ row, onPress, onContact }: { row: OwnerRow; onPress: () => void; onContact: () => void }) {
   const flagged = row.riskLevel === 'MEDIUM' || row.riskLevel === 'HIGH';
   return (
     <TouchableOpacity activeOpacity={0.85} onPress={onPress} accessibilityRole="button" accessibilityLabel={row.name}>
@@ -167,6 +222,17 @@ function OwnerRowCard({ row, onPress }: { row: OwnerRow; onPress: () => void }) 
             {row.lastActiveAt ? ` · active ${formatRelativeTime(row.lastActiveAt)}` : ''}
           </Text>
         </View>
+        {row.phone ? (
+          <TouchableOpacity
+            style={styles.contactChip}
+            onPress={onContact}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={`Contact ${row.name}`}
+          >
+            <Feather name="message-circle" size={18} color={colors.admin} />
+          </TouchableOpacity>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -200,4 +266,19 @@ const styles = StyleSheet.create({
   signal: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 2 },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill },
   badgeText: { color: colors.white, fontSize: 10, fontWeight: fontWeight.bold },
+  contactChip: {
+    width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.border,
+  },
+  contactOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
+  contactSheet: {
+    backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg,
+    padding: spacing.xl, paddingBottom: spacing.xl + spacing.lg,
+  },
+  contactName: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, textAlign: 'center' },
+  contactPhone: { fontSize: fontSize.sm, color: colors.textMid, textAlign: 'center', marginTop: 2 },
+  contactActions: { flexDirection: 'row', justifyContent: 'center', gap: spacing.xl, marginTop: spacing.lg },
+  contactBtn: { alignItems: 'center', gap: spacing.xs },
+  contactIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  contactBtnText: { fontSize: fontSize.sm, color: colors.text, fontWeight: fontWeight.medium },
 });
