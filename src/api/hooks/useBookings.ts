@@ -96,13 +96,15 @@ export function useCancelBookingGroup() {
   });
 }
 
+// Note: these do NOT invalidate ['notifications']. The notifications screen marks the related
+// request read optimistically (useMarkNotificationRead patches the cache), and the bell resyncs
+// on its 30s poll — so re-fetching the notifications list + unread-count here would be redundant.
 export function useAcceptBooking() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => bookingService.accept(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
-      qc.invalidateQueries({ queryKey: ['notifications'] });
       qc.invalidateQueries({ queryKey: ownerDashboardKeys.summary() });
     },
   });
@@ -114,7 +116,6 @@ export function useRejectBooking() {
     mutationFn: (id: number) => bookingService.reject(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
-      qc.invalidateQueries({ queryKey: ['notifications'] });
       qc.invalidateQueries({ queryKey: ownerDashboardKeys.summary() });
     },
   });
@@ -127,7 +128,6 @@ export function useAcceptBookingGroup() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: ['slots'] });
-      qc.invalidateQueries({ queryKey: ['notifications'] });
       qc.invalidateQueries({ queryKey: ownerDashboardKeys.summary() });
     },
   });
@@ -140,7 +140,6 @@ export function useRejectBookingGroup() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: ['slots'] });
-      qc.invalidateQueries({ queryKey: ['notifications'] });
       qc.invalidateQueries({ queryKey: ownerDashboardKeys.summary() });
     },
   });

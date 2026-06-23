@@ -19,6 +19,9 @@ export function ToastHost() {
     return toastEmitter.subscribe((input: ToastInput) => {
       setQueue((prev) => {
         if (prev.length >= MAX_VISIBLE) return prev;
+        // Collapse duplicates: when the backend is down, several parallel queries
+        // each surface the same "Network Error" — show it once, not once per query.
+        if (prev.some((e) => e.type === input.type && e.message === input.message)) return prev;
         const entry: ToastEntry = { ...input, id: String(nextId++) };
         return [...prev, entry];
       });

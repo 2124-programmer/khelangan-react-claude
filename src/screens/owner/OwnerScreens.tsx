@@ -865,6 +865,13 @@ export function OwnerNotificationsScreen({ navigation }: any) {
     setRefreshing(true);
     try { await refetch(); } finally { setRefreshing(false); }
   };
+
+  // Refresh on focus so a request actioned elsewhere (e.g. the Bookings tab, which dismisses the
+  // owner's request notification server-side) no longer shows stale Accept/Reject buttons here.
+  useEffect(() => {
+    const unsub = navigation.addListener('focus', () => { refetch(); });
+    return unsub;
+  }, [navigation, refetch]);
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const acceptBooking = useAcceptBooking();
