@@ -108,6 +108,9 @@ export function OwnerSubscriptionCard({ venueId, onAddCourt }: CardProps) {
         <Text style={styles.cardTitle}>{title}</Text>
       </View>
       <Text style={styles.cardSubtitle}>{subtitle}</Text>
+      {(state.status === 'ACTIVE' || state.status === 'TRIAL') && state.coveredCourtNames.length > 0 && (
+        <Text style={styles.cardCourts}>Courts live: {state.coveredCourtNames.join(', ')}</Text>
+      )}
 
       {blocked ? (
         <AppButton label="Add a court" variant="secondary" onPress={() => onAddCourt?.()} style={{ marginTop: spacing.md }} />
@@ -450,6 +453,90 @@ function Bullet({ text }: { text: string }) {
   );
 }
 
+// ─── Compact subscription strip for the My Venues card ────────────────────────
+
+type StripTone = 'green' | 'amber' | 'red' | 'neutral';
+const STRIP_PALETTE: Record<StripTone, { bg: string; fg: string }> = {
+  green: { bg: '#DCFCE7', fg: '#15803D' },
+  amber: { bg: '#FEF3C7', fg: '#B45309' },
+  red: { bg: '#FEE2E2', fg: '#B91C1C' },
+  neutral: { bg: colors.surfaceAlt, fg: colors.textMid },
+};
+
+interface StripProps {
+  venueId: string | number;
+  /** Tapping the strip routes to where the owner manages the subscription (venue preview). */
+  onManage: () => void;
+}
+
+/**
+ * Status-aware subscription strip for a live venue's My-Venues card. Reflects the full
+ * court-coverage model: required / trial+days / active plan / pending request / expired.
+ */
+export function VenueSubscriptionStrip({ venueId, onManage }: StripProps) {
+  const { data: state } = useOwnerSubscriptionState(venueId);
+  if (!state) return null;
+
+  const k = state.bookableCourts;
+  const limit = state.courtLimit ?? state.totalCourts;
+  let icon: React.ComponentProps<typeof Feather>['name'] = 'credit-card';
+  let tone: StripTone = 'neutral';
+  let title = '';
+  let sub = '';
+  let cta = 'Manage';
+
+  if (state.blockReason === 'NO_COURTS') {
+    icon = 'alert-triangle'; tone = 'amber';
+    title = 'Add a court to go live';
+    sub = 'A subscription needs at least one court';
+    cta = 'Add';
+  } else if (state.pendingRequest) {
+    const pr = state.pendingRequest;
+    icon = 'clock'; tone = 'amber';
+    title = `${pr.planName ?? pr.planCode} requested`;
+    sub = `${pr.coveredCourtIds.length} court${pr.coveredCourtIds.length === 1 ? '' : 's'} · pending admin activation`;
+    cta = 'View';
+  } else if (state.status === 'TRIAL') {
+    const left = daysUntil(state.endDate);
+    icon = 'zap'; tone = left <= 7 ? 'amber' : 'green';
+    title = `Trial · ${left}d left`;
+    sub = `${k}/${limit} court${limit === 1 ? '' : 's'} live · upgrade to a paid plan`;
+    cta = 'Upgrade';
+  } else if (state.status === 'ACTIVE') {
+    icon = 'check-circle'; tone = 'green';
+    title = `${state.planName ?? 'Plan'} · ${k}/${limit} courts`;
+    sub = state.endDate ? `Renews ${fmtDate(state.endDate)}` : 'Active';
+    cta = 'Manage';
+  } else if (state.status === 'EXPIRED' || state.status === 'CANCELED') {
+    icon = 'alert-circle'; tone = 'red';
+    title = 'Subscription expired';
+    sub = 'Renew to make your courts bookable';
+    cta = 'Renew';
+  } else {
+    icon = 'lock'; tone = 'red';
+    title = 'Subscription required';
+    sub = 'Start a free trial to make courts bookable';
+    cta = 'Start';
+  }
+
+  const palette = STRIP_PALETTE[tone];
+  return (
+    <TouchableOpacity
+      style={[styles.strip, { backgroundColor: palette.bg }]}
+      activeOpacity={0.8}
+      onPress={onManage}
+    >
+      <Feather name={icon} size={18} color={palette.fg} />
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.stripTitle, { color: palette.fg }]} numberOfLines={1}>{title}</Text>
+        {!!sub && <Text style={styles.stripSub} numberOfLines={1}>{sub}</Text>}
+      </View>
+      <Text style={[styles.stripCta, { color: palette.fg }]}>{cta}</Text>
+      <Feather name="chevron-right" size={16} color={palette.fg} />
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface, borderRadius: radius.md,
@@ -460,6 +547,7 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
   cardTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text, flex: 1 },
   cardSubtitle: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 4, lineHeight: 19 },
+  cardCourts: { fontSize: fontSize.xs, color: colors.text, fontWeight: fontWeight.semibold, marginTop: 4 },
 
   // Sheet
   overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
@@ -527,4 +615,13 @@ const styles = StyleSheet.create({
   detailLabel: { fontSize: fontSize.sm, color: colors.textMid },
   detailValue: { flex: 1, fontSize: fontSize.sm, color: colors.text, fontWeight: fontWeight.semibold, textAlign: 'right' },
   requestHint: { fontSize: fontSize.xs, color: colors.textDim, lineHeight: 18, marginTop: spacing.md },
+
+  // My-Venues subscription strip
+  strip: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+  },
+  stripTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold },
+  stripSub: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 1 },
+  stripCta: { fontSize: fontSize.xs, fontWeight: fontWeight.bold },
 });

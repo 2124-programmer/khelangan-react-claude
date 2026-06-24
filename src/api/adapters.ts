@@ -511,6 +511,8 @@ export function adaptSubscription(dto: SubscriptionDto): Subscription {
     price: dto.price,
     currency: dto.currency ?? 'INR',
     maxCourts: dto.maxCourts,
+    coveredCourtIds: (dto.coveredCourtIds ?? []).map(String),
+    coveredCourtNames: dto.coveredCourtNames ?? [],
     features: dto.features ?? [],
     activationSource: dto.activationSource,
     createdAt: dto.createdAt,

@@ -6,7 +6,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, StatusBadge, EmptyState, LoadingOverlay } from '../../components/common';
-import { SubscriptionBadge } from '../../components/SubscriptionBadge';
+import { VenueSubscriptionStrip } from '../../components/subscription/OwnerSubscriptionPurchase';
 import { useOwnerVenues, useSubmitVenue } from '../../api/hooks/useVenues';
 import { useOwnerPlans } from '../../api/hooks/useSubscription';
 import { toast } from '../../toast';
@@ -14,6 +14,14 @@ import { extractApiError } from '../../api/client';
 import type { Venue } from '../../types';
 
 const FREE_COURT_THRESHOLD = 2;
+
+/** Whole days since the venue was first created/registered on the platform. */
+function platformDays(submittedAt?: string): number | null {
+  if (!submittedAt) return null;
+  const t = new Date(submittedAt).getTime();
+  if (isNaN(t)) return null;
+  return Math.max(0, Math.floor((Date.now() - t) / 86_400_000));
+}
 
 export default function MyVenuesScreen({ navigation }: any) {
   const { data, isLoading, refetch } = useOwnerVenues();
@@ -77,12 +85,18 @@ export default function MyVenuesScreen({ navigation }: any) {
                     </Text>
                     <Text style={styles.meta}>{v.courtCount} courts</Text>
                   </View>
+                  {platformDays(v.submittedAt) !== null && (
+                    <Text style={styles.platformMeta}>
+                      🗓  On Score-Adda for {platformDays(v.submittedAt)} day{platformDays(v.submittedAt) === 1 ? '' : 's'}
+                    </Text>
+                  )}
 
-                  {v.subscriptionBadge && (
+                  {/* Status-aware subscription strip — only meaningful once the venue is approved/live. */}
+                  {v.status === 'live' && (
                     <View style={{ marginTop: spacing.sm }}>
-                      <SubscriptionBadge
-                        badge={v.subscriptionBadge}
-                        onPress={() => navigation.navigate('Subscription', { venueId: v.id })}
+                      <VenueSubscriptionStrip
+                        venueId={v.id}
+                        onManage={() => navigation.navigate('VenueDetail', { venueId: v.id, mode: 'preview' })}
                       />
                     </View>
                   )}
@@ -164,7 +178,7 @@ export default function MyVenuesScreen({ navigation }: any) {
             <Text style={styles.modalTitle}>Choose a plan</Text>
             <Text style={styles.modalMsg}>
               {tierVenue?.name} has {tierVenue?.courtCount} courts. Select a plan that supports them to submit.
-              Your venue goes live on a 30-day free trial once approved.
+              After approval, start a free trial (or this plan) and pick which courts to make bookable.
             </Text>
             <ScrollView style={{ maxHeight: 320, marginTop: spacing.md }}>
               {plans.map((p) => {
@@ -210,6 +224,7 @@ const styles = StyleSheet.create({
   addr: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 4 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
   meta: { fontSize: fontSize.xs, color: colors.textMid },
+  platformMeta: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 4 },
   draftNotice: { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md, marginTop: spacing.md },
   draftNoticeText: { fontSize: fontSize.xs, color: colors.textMid, lineHeight: 17 },
   changesNotice: { backgroundColor: '#FEF3C7', borderRadius: radius.md, padding: spacing.md, marginTop: spacing.md, borderWidth: 1, borderColor: '#FDE68A' },

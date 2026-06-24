@@ -473,6 +473,8 @@ export interface Subscription {
   price: number;
   currency: string;
   maxCourts: number;
+  coveredCourtIds: string[];
+  coveredCourtNames: string[];
   features: string[];
   activationSource: string;
   createdAt: string;

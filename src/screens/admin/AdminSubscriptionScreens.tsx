@@ -270,7 +270,11 @@ export function SubscriptionDetailScreen({ navigation, route }: any) {
               <Text style={styles.hint}>₹{current.price.toLocaleString('en-IN')} / {current.billingCycle === 'ANNUAL' ? 'year' : 'month'}</Text>
               <View style={styles.divider} />
               <Field label="Period" value={`${fmt(current.periodStart)} → ${fmt(current.periodEnd)}`} />
-              <Field label="Courts" value={`${view.courtsUsed} / ${view.courtsAllowed || current.maxCourts}`} />
+              <Field
+                label={`Courts covered (${current.coveredCourtNames.length}/${current.maxCourts})`}
+                value={current.coveredCourtNames.length ? current.coveredCourtNames.join(', ') : '—'}
+              />
+              <Field label="Total courts at venue" value={`${courtCount}`} />
 
               <View style={styles.actionRow}>
                 <AppButton label="Renew" variant="primary" style={{ flex: 1 }} disabled={renewMut.isPending}
@@ -282,16 +286,16 @@ export function SubscriptionDetailScreen({ navigation, route }: any) {
               </View>
             </View>
           ) : (
-            <CreateSubscriptionForm venueId={venueId} ownerId={owner?.id ?? ''} venueName={venue?.name ?? ''} minCourts={courtCount} />
+            <CreateSubscriptionForm venueId={venueId} ownerId={owner?.id ?? ''} venueName={venue?.name ?? ''} minCourts={0} />
           )}
 
           {/* Change-plan picker */}
           {editing && current && (
             <View style={[styles.card, shadow.card]}>
               <Text style={styles.cardTitle}>Change plan / cycle</Text>
-              <Text style={styles.hint}>Plans below this venue's {courtCount} courts are disabled.</Text>
+              <Text style={styles.hint}>Court coverage adjusts to the new plan's limit (a downgrade trims covered courts).</Text>
               <PlanCyclePicker plans={plans} busy={editMut.isPending} submitPrefix="Apply change"
-                minCourts={courtCount} hideTrial
+                minCourts={0} hideTrial
                 onSubmit={(planId, cycle) => doEdit(planId, cycle)} />
             </View>
           )}
