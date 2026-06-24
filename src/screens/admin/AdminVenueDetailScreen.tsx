@@ -12,8 +12,14 @@ import { formatRelativeTime } from '../../utils/dateUtils';
 import { extractApiError } from '../../api/client';
 import { toast } from '../../toast';
 import { useAdminVenueDetail, useUpdateVenueStatus } from '../../api/hooks/useVenues';
+import { useAdminVenueSubscription } from '../../api/hooks/useSubscription';
+import { useSports } from '../../api/hooks/useSports';
 import { TONE_COLOR } from './AdminVenuesScreen';
 import type { VenueActionCode } from '../../types';
+
+const subStatusColor = (s?: string): string =>
+  s === 'ACTIVE' ? colors.success : s === 'TRIALING' ? colors.info
+  : s === 'PAST_DUE' ? colors.warning : colors.textDim;
 
 /** Action → target venue status + button presentation. */
 const ACTION_META: Record<VenueActionCode, {
@@ -32,6 +38,11 @@ export default function AdminVenueDetailScreen({ navigation, route }: any) {
   const venueId: string = String(route?.params?.venueId ?? '');
   const detailQ = useAdminVenueDetail(venueId);
   const updateStatus = useUpdateVenueStatus();
+  const { data: sports = [] } = useSports();
+  const subView = useAdminVenueSubscription(venueId).data;
+  const currentSub = subView?.current ?? null;
+  const coveredIds = new Set(currentSub?.coveredCourtIds ?? []);
+  const sportName = (id: string) => sports.find((s) => s.id === id)?.name ?? '';
 
   const [reasonFor, setReasonFor] = useState<VenueActionCode | null>(null);
   const [reason, setReason] = useState('');
@@ -158,6 +169,85 @@ export default function AdminVenueDetailScreen({ navigation, route }: any) {
                 ) : null}
               </View>
             </View>
+
+            {/* Subscription + court coverage */}
+            <View style={[styles.card, shadow.card]}>
+              <View style={styles.rowBetween}>
+                <Text style={styles.cardTitle}>Subscription</Text>
+                <View style={[styles.badge, { backgroundColor: subStatusColor(currentSub?.status) }]}>
+                  <Text style={styles.badgeText}>{currentSub ? currentSub.status : 'NONE'}</Text>
+                </View>
+              </View>
+              {currentSub ? (
+                <View style={{ marginTop: spacing.sm, gap: 4 }}>
+                  <Text style={styles.muted}>
+                    {currentSub.planName} · ₹{currentSub.price.toLocaleString('en-IN')}/{currentSub.billingCycle === 'ANNUAL' ? 'yr' : 'mo'}
+                  </Text>
+                  <Text style={styles.muted}>
+                    Covered courts ({currentSub.coveredCourtNames.length}/{currentSub.maxCourts}): {currentSub.coveredCourtNames.length ? currentSub.coveredCourtNames.join(', ') : '—'}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={[styles.muted, { marginTop: spacing.sm }]}>
+                  No active subscription — players can't book this venue yet.
+                </Text>
+              )}
+              <TouchableOpacity onPress={() => navigation.navigate('SubscriptionDetail', { venueId })} style={{ marginTop: spacing.md }}>
+                <Text style={styles.linkText}>Manage subscription →</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Courts (with live / coverage state) */}
+            <View style={[styles.card, shadow.card]}>
+              <Text style={styles.cardTitle}>Courts ({venue.courts.length})</Text>
+              {venue.courts.length === 0 ? (
+                <Text style={[styles.muted, { marginTop: spacing.sm }]}>No courts added yet.</Text>
+              ) : (
+                venue.courts.map((c) => {
+                  const live = coveredIds.has(c.id) && c.isActive;
+                  const label = live ? 'Live' : !c.isActive ? 'Inactive' : 'Not covered';
+                  return (
+                    <View key={c.id} style={styles.courtRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.courtName}>{c.name}</Text>
+                        <Text style={styles.courtMeta}>
+                          {[sportName(c.sportId), c.type, `₹${c.effectivePricePerHour}/hr`].filter(Boolean).join('  ·  ')}
+                        </Text>
+                      </View>
+                      <View style={[styles.courtBadge, { backgroundColor: live ? '#E6F7EE' : colors.surfaceAlt }]}>
+                        <Text style={[styles.courtBadgeText, { color: live ? colors.success : colors.textMid }]}>{label}</Text>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+
+            {/* Sports & amenities */}
+            {(venue.sports.length > 0 || venue.amenities.length > 0) && (
+              <View style={[styles.card, shadow.card]}>
+                {venue.sports.length > 0 && (
+                  <>
+                    <Text style={styles.cardTitle}>Sports</Text>
+                    <View style={styles.chipWrap}>
+                      {venue.sports.map((sid) => (
+                        <View key={sid} style={styles.chip}><Text style={styles.chipText}>{sportName(sid) || sid}</Text></View>
+                      ))}
+                    </View>
+                  </>
+                )}
+                {venue.amenities.length > 0 && (
+                  <>
+                    <Text style={[styles.cardTitle, { marginTop: venue.sports.length > 0 ? spacing.md : 0 }]}>Amenities</Text>
+                    <View style={styles.chipWrap}>
+                      {venue.amenities.map((a) => (
+                        <View key={a} style={styles.chip}><Text style={styles.chipText}>{a}</Text></View>
+                      ))}
+                    </View>
+                  </>
+                )}
+              </View>
+            )}
           </ScrollView>
 
           {/* Sticky action bar (from availableActions) */}
@@ -220,7 +310,7 @@ function isOpen(open: string, close: string): boolean {
 
 function confirmMessage(action: VenueActionCode | null): string {
   switch (action) {
-    case 'APPROVE': return 'Approve this venue? It goes live and a trial subscription starts.';
+    case 'APPROVE': return 'Approve this venue? The owner can then start a trial and pick which courts to make bookable.';
     case 'RECONSIDER': return 'Move this rejected venue back to the pending queue?';
     case 'UNLIST': return 'Unlist this venue? It will be hidden from players until re-listed.';
     case 'RELIST': return 'Re-list this venue so it is visible to players again?';
@@ -287,6 +377,18 @@ const styles = StyleSheet.create({
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   checkLabel: { fontSize: fontSize.sm, color: colors.text },
   muted: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 4 },
+  linkText: { fontSize: fontSize.sm, color: colors.admin, fontWeight: fontWeight.semibold },
+  courtRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm,
+    paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  courtName: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
+  courtMeta: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 2 },
+  courtBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.pill },
+  courtBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
+  chip: { backgroundColor: colors.surfaceAlt, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 5 },
+  chipText: { fontSize: fontSize.xs, color: colors.textMid, fontWeight: fontWeight.medium },
   contactRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   contactBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, maxWidth: '70%' },
   contactText: { fontSize: fontSize.sm, color: colors.admin, fontWeight: fontWeight.semibold },

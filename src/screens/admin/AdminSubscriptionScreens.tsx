@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, ActivityIndicator,
-  FlatList, TextInput, Linking,
+  FlatList, TextInput, Linking, Modal,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -508,18 +508,28 @@ function RequestsTab({ navigation }: { navigation: any }) {
   const [filter, setFilter] = useState('PENDING');
   const debounced = useDebounce(search, 300).trim().toLowerCase();
   const reqQ = useChangeRequests(filter);
+  const plansQ = useAdminPlans();
   const activateMut = useActivateChangeRequest();
   const rejectMut = useRejectChangeRequest();
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [reason, setReason] = useState('');
+  const [infoPlan, setInfoPlan] = useState<SubscriptionPlan | null>(null);
+
+  const plans = plansQ.data ?? [];
+  // Requested values are plan codes; current is a plan name — match either.
+  const findPlan = (codeOrName?: string | null): SubscriptionPlan | null =>
+    codeOrName ? (plans.find((p) => p.code === codeOrName) ?? plans.find((p) => p.name === codeOrName) ?? null) : null;
 
   const all = reqQ.data ?? [];
-  const requests = debounced
+  const requests = (debounced
     ? all.filter((r) =>
         r.venueName.toLowerCase().includes(debounced) ||
         r.ownerName.toLowerCase().includes(debounced) ||
         (r.venueCity ?? '').toLowerCase().includes(debounced))
-    : all;
+    : all)
+    // Newest first (defensive; the API already returns createdAt DESC).
+    .slice()
+    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
 
   return (
     <View style={{ flex: 1 }}>
@@ -544,25 +554,49 @@ function RequestsTab({ navigation }: { navigation: any }) {
           ListEmptyComponent={<EmptyState icon="📭" title="No requests" subtitle="Owner upgrade requests appear here." />}
           renderItem={({ item: r }) => (
             <View style={[styles.card, shadow.card]}>
-              <Text style={styles.cardTitle} numberOfLines={1}>{r.venueName}</Text>
-              <Text style={styles.hint} numberOfLines={1}>{r.ownerName}{r.venueCity ? ` · ${r.venueCity}` : ''}</Text>
+              {/* Header: venue/owner + go-to-venue */}
+              <View style={styles.reqHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle} numberOfLines={1}>{r.venueName}</Text>
+                  <Text style={styles.hint} numberOfLines={1}>{r.ownerName}{r.venueCity ? ` · ${r.venueCity}` : ''}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.gotoVenueBtn}
+                  onPress={() => navigation.navigate('VenueDetail', { venueId: r.venueId })}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.gotoVenueText}>go to Venue</Text>
+                </TouchableOpacity>
+              </View>
 
               <View style={styles.reqPlanRow}>
                 <View style={styles.reqPlanBox}>
-                  <Text style={styles.reqPlanLabel}>Current</Text>
+                  <View style={styles.reqPlanLabelRow}>
+                    <Text style={styles.reqPlanLabel}>Current</Text>
+                    {!!findPlan(r.currentPlanName) && (
+                      <TouchableOpacity style={styles.infoBtn} onPress={() => setInfoPlan(findPlan(r.currentPlanName))} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Feather name="info" size={13} color={colors.textMid} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                   <Text style={styles.reqPlanValue} numberOfLines={1}>{r.currentPlanName ?? 'None'}</Text>
                 </View>
                 <Feather name="arrow-right" size={18} color={colors.textDim} />
                 <View style={styles.reqPlanBox}>
-                  <Text style={styles.reqPlanLabel}>Requested</Text>
+                  <View style={styles.reqPlanLabelRow}>
+                    <Text style={styles.reqPlanLabel}>Requested</Text>
+                    {!!findPlan(r.requestedPlanCode) && (
+                      <TouchableOpacity style={[styles.infoBtn, styles.infoBtnAdmin]} onPress={() => setInfoPlan(findPlan(r.requestedPlanCode))} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Feather name="info" size={13} color={colors.admin} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                   <Text style={[styles.reqPlanValue, { color: colors.admin }]} numberOfLines={1}>{r.requestedPlanName}</Text>
                 </View>
               </View>
 
               <View style={styles.divider} />
-              <Field label="Billing" value={r.requestedCycle === 'ANNUAL' ? 'Annual' : 'Monthly'} />
-              <Field label="Price" value={`₹${r.requestedPlanPrice.toLocaleString('en-IN')} / ${r.requestedCycle === 'ANNUAL' ? 'yr' : 'mo'}`} />
-              <Field label="Court limit" value={`up to ${r.requestedPlanMaxCourts} courts`} />
+              <Field label="Court limit" value={`up to ${r.requestedPlanMaxCourts} court${r.requestedPlanMaxCourts === 1 ? '' : 's'}`} />
               <Field
                 label={`Courts requested (${r.coveredCourtNames.length})`}
                 value={r.coveredCourtNames.length ? r.coveredCourtNames.join(', ') : '—'}
@@ -571,7 +605,7 @@ function RequestsTab({ navigation }: { navigation: any }) {
               {!!r.decidedAt && <Field label="Decided on" value={fmt(r.decidedAt)} />}
 
               {rejectingId === r.id ? (
-                <View style={{ marginTop: spacing.sm }}>
+                <View style={{ marginTop: spacing.md }}>
                   <AppInput placeholder="Reason for rejection" value={reason} onChangeText={setReason} />
                   <View style={styles.actionRow}>
                     <AppButton label="Confirm reject" variant="danger" style={{ flex: 1 }} disabled={rejectMut.isPending}
@@ -582,28 +616,87 @@ function RequestsTab({ navigation }: { navigation: any }) {
                     <AppButton label="Cancel" variant="secondary" style={{ flex: 1 }} onPress={() => setRejectingId(null)} />
                   </View>
                 </View>
-              ) : filter === 'PENDING' ? (
-                <View style={styles.actionRow}>
-                  <AppButton label="Activate" variant="primary" style={{ flex: 1 }} disabled={activateMut.isPending}
-                    onPress={() => activateMut.mutate(Number(r.id), {
-                      onSuccess: () => toast.success('Upgrade activated.'),
-                      onError: (e) => toast.error(extractApiError(e) || 'Failed'),
-                    })} />
-                  <AppButton label="Reject" variant="secondary" style={{ flex: 1 }}
-                    onPress={() => { setRejectingId(r.id); setReason(''); }} />
-                  <AppButton label="View" variant="ghost" onPress={() => navigation.navigate('SubscriptionDetail', { venueId: r.venueId })} />
-                </View>
               ) : (
-                <View style={styles.actionRow}>
-                  <AppButton label="View" variant="secondary" style={{ flex: 1 }}
-                    onPress={() => navigation.navigate('SubscriptionDetail', { venueId: r.venueId })} />
+                <View style={styles.reqFooter}>
+                  {/* Compact billing + price box */}
+                  <View style={styles.bpBox}>
+                    <View style={styles.bpRow}>
+                      <Text style={styles.bpLabel}>Billing</Text>
+                      <Text style={styles.bpValue}>{r.requestedCycle === 'ANNUAL' ? 'Annual' : 'Monthly'}</Text>
+                    </View>
+                    <View style={styles.bpRow}>
+                      <Text style={styles.bpLabel}>Price</Text>
+                      <Text style={styles.bpValue}>₹{r.requestedPlanPrice.toLocaleString('en-IN')} / {r.requestedCycle === 'ANNUAL' ? 'yr' : 'mo'}</Text>
+                    </View>
+                  </View>
+
+                  {filter === 'PENDING' ? (
+                    <View style={styles.footerActionsCol}>
+                      <AppButton label="Activate" variant="primary" fullWidth={false} style={styles.footerBtn} disabled={activateMut.isPending}
+                        onPress={() => activateMut.mutate(Number(r.id), {
+                          onSuccess: () => toast.success('Upgrade activated.'),
+                          onError: (e) => toast.error(extractApiError(e) || 'Failed'),
+                        })} />
+                      <AppButton label="Reject" variant="secondary" fullWidth={false} style={styles.footerBtn}
+                        onPress={() => { setRejectingId(r.id); setReason(''); }} />
+                    </View>
+                  ) : (
+                    <AppButton label="View" variant="secondary" fullWidth={false} style={styles.footerViewBtn}
+                      onPress={() => navigation.navigate('SubscriptionDetail', { venueId: r.venueId })} />
+                  )}
                 </View>
               )}
             </View>
           )}
         />
       )}
+      <PlanInfoModal plan={infoPlan} onClose={() => setInfoPlan(null)} />
     </View>
+  );
+}
+
+/** Prettify a feature code like AUTO_ACCEPT → "Auto Accept". */
+function prettyFeature(code: string): string {
+  return code.toLowerCase().split('_').map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w)).join(' ');
+}
+
+/* ── Plan info popup (price, court limit, features) ───────────────────────── */
+function PlanInfoModal({ plan, onClose }: { plan: SubscriptionPlan | null; onClose: () => void }) {
+  return (
+    <Modal transparent visible={!!plan} animationType="fade" onRequestClose={onClose}>
+      <View style={styles.infoOverlay}>
+        <View style={[styles.infoCard, shadow.modal]}>
+          {plan && (
+            <>
+              <View style={styles.rowBetween}>
+                <Text style={styles.infoTitle}>{plan.name} plan</Text>
+                <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={styles.infoCloseX}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.divider} />
+              <Field label="Monthly" value={`₹${plan.priceMonthly.toLocaleString('en-IN')}`} />
+              <Field label="Annual" value={`₹${plan.priceAnnual.toLocaleString('en-IN')}`} />
+              <Field label="Court limit" value={`up to ${plan.maxCourts} court${plan.maxCourts === 1 ? '' : 's'}`} />
+              <Field label="Photos" value={`up to ${plan.photoLimit}`} />
+              <Field label="Free trial" value={`${plan.trialDays} days`} />
+              {plan.features.length > 0 && (
+                <>
+                  <Text style={[styles.reqPlanLabel, { marginTop: spacing.md, marginBottom: spacing.xs }]}>Features</Text>
+                  {plan.features.map((f) => (
+                    <View key={f} style={styles.featureRow}>
+                      <Feather name="check" size={14} color={colors.success} />
+                      <Text style={styles.featureText}>{prettyFeature(f)}</Text>
+                    </View>
+                  ))}
+                </>
+              )}
+              <AppButton label="Close" variant="secondary" onPress={onClose} style={{ marginTop: spacing.md }} />
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -717,8 +810,36 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: spacing.md, paddingVertical: 4, borderRadius: radius.pill },
   badgeText: { color: colors.white, fontSize: fontSize.xs, fontWeight: fontWeight.bold },
   section: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.sm },
+  reqHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  gotoVenueBtn: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 5 },
+  gotoVenueText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.admin },
+  reqFooter: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md },
+  bpBox: {
+    flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: 4, justifyContent: 'center',
+  },
+  bpRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  bpLabel: { fontSize: fontSize.xs, color: colors.textDim },
+  bpValue: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
+  footerActionsCol: { gap: spacing.sm, justifyContent: 'center' },
+  footerBtn: { height: 36, paddingHorizontal: spacing.lg, minWidth: 104 },
+  footerViewBtn: { paddingHorizontal: spacing.xl, minWidth: 104 },
   reqPlanRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md },
   reqPlanBox: { flex: 1, backgroundColor: colors.bg, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  reqPlanLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  infoBtn: {
+    width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border,
+  },
+  infoBtnAdmin: { backgroundColor: '#EDE9FE', borderColor: '#DDD6FE' },
   reqPlanLabel: { fontSize: fontSize.xs, color: colors.textDim },
   reqPlanValue: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text, marginTop: 2 },
+
+  // Plan info popup
+  infoOverlay: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  infoCard: { width: '100%', maxWidth: 380, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.xl },
+  infoTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
+  infoCloseX: { fontSize: 18, color: colors.textDim, fontWeight: fontWeight.bold },
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 6 },
+  featureText: { fontSize: fontSize.sm, color: colors.textMid },
 });
