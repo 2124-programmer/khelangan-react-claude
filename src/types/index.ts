@@ -404,6 +404,60 @@ export interface SubscriptionPlan {
   displayOrder: number;
 }
 
+// ─── Owner subscription purchase + court coverage ─────────────────────────────
+export type PlanKind = 'TRIAL' | 'PAID';
+export type PlanOptionCode = 'TRIAL' | 'STARTER' | 'GROWTH' | 'PRO' | 'PRO_MAX';
+export type PaidPlanCode = 'STARTER' | 'GROWTH' | 'PRO' | 'PRO_MAX';
+export type VenueSubState = 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'CANCELED' | 'NONE';
+
+export interface PlanOption {
+  code: PlanOptionCode;
+  name: string;
+  kind: PlanKind;
+  price: number;
+  courtLimit: number;
+  durationDays: number;
+  oncePerVenue: boolean;
+  available: boolean;
+  unavailableReason: string | null;
+}
+
+export interface SelectableCourt {
+  courtId: string;
+  name: string;
+  sport: string | null;
+  isActive: boolean;
+  isCovered: boolean;
+}
+
+export interface VenueSubscriptionState {
+  venueId: string;
+  kind: PlanKind | null;
+  planCode: string | null;
+  planName: string | null;
+  status: VenueSubState;
+  startDate: string | null;
+  endDate: string | null;
+  courtLimit: number | null;
+  coveredCourtIds: string[];
+  coveredCourtNames: string[];
+  updatedAt: string | null;
+  totalCourts: number;
+  bookableCourts: number;
+  trialUsed: boolean;
+  canStartTrial: boolean;
+  canPurchasePaid: boolean;
+  blockReason: 'NONE' | 'NO_COURTS';
+  pendingRequest: {
+    requestId: string;
+    planCode: string;
+    planName: string | null;
+    coveredCourtIds: string[];
+    coveredCourtNames: string[];
+    requestedAt: string | null;
+  } | null;
+}
+
 export interface Subscription {
   id: string;
   ownerId: string;
@@ -442,6 +496,8 @@ export interface SubscriptionChangeRequest {
   requestedPlanMaxCourts: number;
   requestedCycle: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  coveredCourtIds: string[];
+  coveredCourtNames: string[];
   createdAt: string;
   decidedAt?: string | null;
   reason?: string;

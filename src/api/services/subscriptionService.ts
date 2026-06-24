@@ -4,6 +4,8 @@ import type {
   VenueSubscriptionViewDto, SubscriptionCreateRequest, SubscriptionEditRequest,
   UpdatePlanRequest, UpgradeRequestCreate, RejectChangeRequestBody, Page,
   VenueSubscriptionPageDto,
+  PlanOptionDto, SelectableCourtDto, VenueSubscriptionStateDto,
+  CourtSelectionBody, PaidRequestBody, SubscriptionRequestViewDto,
 } from '../types';
 
 export const subscriptionService = {
@@ -59,4 +61,25 @@ export const subscriptionService = {
   ownerCreateUpgradeRequest: (venueId: number, data: UpgradeRequestCreate) =>
     apiClient.post<SubscriptionChangeRequestDto>(
       `/api/v1/owner/venues/${venueId}/subscription/upgrade-requests`, data).then((r) => r.data),
+
+  // ─── Owner: court-coverage purchase (self-serve trial + paid request) ──────
+  ownerGetPlanOptions: (venueId: number) =>
+    apiClient.get<PlanOptionDto[]>(`/api/v1/owner/venues/${venueId}/plan-options`).then((r) => r.data),
+
+  ownerGetSubscriptionState: (venueId: number) =>
+    apiClient.get<VenueSubscriptionStateDto>(`/api/v1/owner/venues/${venueId}/subscription-state`).then((r) => r.data),
+
+  ownerGetSelectableCourts: (venueId: number) =>
+    apiClient.get<SelectableCourtDto[]>(`/api/v1/owner/venues/${venueId}/selectable-courts`).then((r) => r.data),
+
+  ownerStartTrial: (venueId: number, data: CourtSelectionBody) =>
+    apiClient.post<VenueSubscriptionStateDto>(`/api/v1/owner/venues/${venueId}/trial`, data).then((r) => r.data),
+
+  ownerCreateSubscriptionRequest: (venueId: number, data: PaidRequestBody) =>
+    apiClient.post<SubscriptionRequestViewDto>(
+      `/api/v1/owner/venues/${venueId}/subscription-requests`, data).then((r) => r.data),
+
+  ownerCancelSubscriptionRequest: (venueId: number) =>
+    apiClient.post<VenueSubscriptionStateDto>(
+      `/api/v1/owner/venues/${venueId}/subscription-requests/cancel`).then((r) => r.data),
 };

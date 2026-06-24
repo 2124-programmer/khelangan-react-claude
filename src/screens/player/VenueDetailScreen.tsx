@@ -21,6 +21,7 @@ import { haversineKm, formatDistance } from '../../utils/locationUtils';
 import { formatVenueAddress, getOpenStatus, getMapsUrl } from '../../utils/venueUtils';
 import { useAuth } from '../../store/AuthContext';
 import { setPendingNav } from '../../store/pendingNav';
+import { OwnerSubscriptionCard } from '../../components/subscription/OwnerSubscriptionPurchase';
 
 const AMENITY_ICON: Record<string, string> = {
   'Locker Room': '🔒',
@@ -114,7 +115,7 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         data: { status: statusFor[actionModal], rejectionReason: reason.trim() || undefined },
       });
       toast.success(
-        actionModal === 'approve' ? 'Venue approved — live on a 30-day trial.'
+        actionModal === 'approve' ? 'Venue approved. The owner can now start a trial and pick courts.'
           : actionModal === 'reject' ? 'Venue rejected. The owner has been notified.'
             : 'Sent back to the owner for changes.',
       );
@@ -408,8 +409,8 @@ export default function VenueDetailScreen({ navigation, route }: any) {
                 <Text style={styles.adminNoteText}>
                   {venue.courts.length} court{venue.courts.length === 1 ? '' : 's'}
                   {intendedPlanCode ? ` · committed tier: ${intendedPlanCode}` : ' · free tier (Starter)'}.
-                  Approving auto-starts a 30-day free trial and makes the venue live; the owner
-                  activates a paid plan before the trial ends to stay live.
+                  Approving makes the venue approved; the owner then starts a free trial (or a paid
+                  plan) and picks which courts to make bookable before players can book.
                 </Text>
               </View>
             </View>
@@ -447,6 +448,13 @@ export default function VenueDetailScreen({ navigation, route }: any) {
 
           {/* Courts — tappable, go straight to slot selection */}
           <Text style={styles.sectionTitle}>Courts</Text>
+          {/* Owner-only: subscription + court-coverage purchase (not shown to players). */}
+          {isPreview && (
+            <OwnerSubscriptionCard
+              venueId={venue.id}
+              onAddCourt={() => navigation.navigate('EditVenue', { venueId: venue.id })}
+            />
+          )}
           {venue.courts.length === 0 ? (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyBoxText}>No courts have been added yet</Text>

@@ -320,6 +320,10 @@ export function SubscriptionDetailScreen({ navigation, route }: any) {
               <Field label="Billing" value={pending.requestedCycle === 'ANNUAL' ? 'Annual' : 'Monthly'} />
               <Field label="Price" value={`₹${pending.requestedPlanPrice.toLocaleString('en-IN')} / ${pending.requestedCycle === 'ANNUAL' ? 'yr' : 'mo'}`} />
               <Field label="Court limit" value={`up to ${pending.requestedPlanMaxCourts} courts`} />
+              <Field
+                label={`Courts requested (${pending.coveredCourtNames.length})`}
+                value={pending.coveredCourtNames.length ? pending.coveredCourtNames.join(', ') : '—'}
+              />
               <Field label="Requested on" value={fmt(pending.createdAt)} />
 
               {rejecting ? (
@@ -555,7 +559,12 @@ function RequestsTab({ navigation }: { navigation: any }) {
               <Field label="Billing" value={r.requestedCycle === 'ANNUAL' ? 'Annual' : 'Monthly'} />
               <Field label="Price" value={`₹${r.requestedPlanPrice.toLocaleString('en-IN')} / ${r.requestedCycle === 'ANNUAL' ? 'yr' : 'mo'}`} />
               <Field label="Court limit" value={`up to ${r.requestedPlanMaxCourts} courts`} />
+              <Field
+                label={`Courts requested (${r.coveredCourtNames.length})`}
+                value={r.coveredCourtNames.length ? r.coveredCourtNames.join(', ') : '—'}
+              />
               <Field label="Requested on" value={fmt(r.createdAt)} />
+              {!!r.decidedAt && <Field label="Decided on" value={fmt(r.decidedAt)} />}
 
               {rejectingId === r.id ? (
                 <View style={{ marginTop: spacing.sm }}>

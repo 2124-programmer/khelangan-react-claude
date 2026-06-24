@@ -862,6 +862,8 @@ export interface SubscriptionChangeRequestDto {
   requestedPlanMaxCourts?: number;
   requestedCycle: string;
   status: string;
+  coveredCourtIds?: string[];
+  coveredCourtNames?: string[];
   createdAt: string;
   decidedAt?: string | null;
   reason?: string;
@@ -971,6 +973,76 @@ export interface UpgradeRequestCreate {
 
 export interface RejectChangeRequestBody {
   reason: string;
+}
+
+// ─── Owner subscription purchase + court coverage ─────────────────────────────
+
+export interface PlanOptionDto {
+  code?: string;
+  name?: string;
+  kind?: string;            // TRIAL | PAID
+  price?: number;
+  courtLimit?: number;
+  durationDays?: number;
+  oncePerVenue?: boolean;
+  available?: boolean;
+  unavailableReason?: string | null;
+}
+
+export interface SelectableCourtDto {
+  courtId?: string;
+  name?: string;
+  sport?: string | null;
+  isActive?: boolean;
+  isCovered?: boolean;
+}
+
+export interface PendingRequestRefDto {
+  requestId?: string;
+  planCode?: string;
+  planName?: string | null;
+  coveredCourtIds?: string[];
+  coveredCourtNames?: string[];
+  requestedAt?: string | null;
+}
+
+export interface VenueSubscriptionStateDto {
+  venueId?: string;
+  kind?: string | null;     // TRIAL | PAID
+  planCode?: string | null;
+  planName?: string | null;
+  status?: string;          // TRIAL | ACTIVE | EXPIRED | CANCELED | NONE
+  startDate?: string | null;
+  endDate?: string | null;
+  courtLimit?: number | null;
+  coveredCourtIds?: string[];
+  coveredCourtNames?: string[];
+  updatedAt?: string | null;
+  totalCourts?: number;
+  bookableCourts?: number;
+  trialUsed?: boolean;
+  canStartTrial?: boolean;
+  canPurchasePaid?: boolean;
+  blockReason?: string;     // NONE | NO_COURTS
+  pendingRequest?: PendingRequestRefDto | null;
+}
+
+export interface CourtSelectionBody {
+  courtIds: string[];
+}
+
+export interface PaidRequestBody {
+  planCode: string;         // STARTER | GROWTH | PRO | PRO_MAX
+  courtIds: string[];
+}
+
+export interface SubscriptionRequestViewDto {
+  requestId?: string;
+  venueId?: string;
+  planCode?: string;
+  coveredCourtIds?: string[];
+  status?: string;
+  requestedAt?: string;
 }
 
 // ─── Error ───────────────────────────────────────────────────────────────────

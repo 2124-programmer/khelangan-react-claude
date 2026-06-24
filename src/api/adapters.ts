@@ -536,6 +536,8 @@ export function adaptChangeRequest(dto: SubscriptionChangeRequestDto): Subscript
     requestedPlanMaxCourts: dto.requestedPlanMaxCourts ?? 0,
     requestedCycle: dto.requestedCycle,
     status: dto.status as SubscriptionChangeRequest['status'],
+    coveredCourtIds: (dto.coveredCourtIds ?? []).map(String),
+    coveredCourtNames: dto.coveredCourtNames ?? [],
     createdAt: dto.createdAt,
     decidedAt: dto.decidedAt ?? null,
     reason: dto.reason,
@@ -800,5 +802,70 @@ export function adaptAdminDisputeDetail(dto: DisputeDetailDto): AdminDisputeDeta
     })),
     resolution: adaptResolution(dto.resolution),
     availableActions: (dto.availableActions ?? []) as DisputeActionCode[],
+  };
+}
+
+// ─── Owner subscription purchase + court coverage ────────────────────────────
+import type {
+  PlanOptionDto, SelectableCourtDto, VenueSubscriptionStateDto,
+} from './types';
+import type {
+  PlanOption, PlanOptionCode, PlanKind, SelectableCourt,
+  VenueSubscriptionState, VenueSubState,
+} from '../types';
+
+export function adaptPlanOption(dto: PlanOptionDto): PlanOption {
+  return {
+    code: (dto.code ?? 'STARTER') as PlanOptionCode,
+    name: dto.name ?? '',
+    kind: (dto.kind ?? 'PAID') as PlanKind,
+    price: dto.price ?? 0,
+    courtLimit: dto.courtLimit ?? 0,
+    durationDays: dto.durationDays ?? 30,
+    oncePerVenue: dto.oncePerVenue ?? false,
+    available: dto.available ?? false,
+    unavailableReason: dto.unavailableReason ?? null,
+  };
+}
+
+export function adaptSelectableCourt(dto: SelectableCourtDto): SelectableCourt {
+  return {
+    courtId: String(dto.courtId ?? ''),
+    name: dto.name ?? '',
+    sport: dto.sport ?? null,
+    isActive: dto.isActive ?? false,
+    isCovered: dto.isCovered ?? false,
+  };
+}
+
+export function adaptVenueSubscriptionState(dto: VenueSubscriptionStateDto): VenueSubscriptionState {
+  return {
+    venueId: String(dto.venueId ?? ''),
+    kind: (dto.kind ?? null) as PlanKind | null,
+    planCode: dto.planCode ?? null,
+    planName: dto.planName ?? null,
+    status: (dto.status ?? 'NONE') as VenueSubState,
+    startDate: dto.startDate ?? null,
+    endDate: dto.endDate ?? null,
+    courtLimit: dto.courtLimit ?? null,
+    coveredCourtIds: (dto.coveredCourtIds ?? []).map(String),
+    coveredCourtNames: dto.coveredCourtNames ?? [],
+    updatedAt: dto.updatedAt ?? null,
+    totalCourts: dto.totalCourts ?? 0,
+    bookableCourts: dto.bookableCourts ?? 0,
+    trialUsed: dto.trialUsed ?? false,
+    canStartTrial: dto.canStartTrial ?? false,
+    canPurchasePaid: dto.canPurchasePaid ?? false,
+    blockReason: (dto.blockReason === 'NO_COURTS' ? 'NO_COURTS' : 'NONE'),
+    pendingRequest: dto.pendingRequest
+      ? {
+          requestId: String(dto.pendingRequest.requestId ?? ''),
+          planCode: dto.pendingRequest.planCode ?? '',
+          planName: dto.pendingRequest.planName ?? null,
+          coveredCourtIds: (dto.pendingRequest.coveredCourtIds ?? []).map(String),
+          coveredCourtNames: dto.pendingRequest.coveredCourtNames ?? [],
+          requestedAt: dto.pendingRequest.requestedAt ?? null,
+        }
+      : null,
   };
 }

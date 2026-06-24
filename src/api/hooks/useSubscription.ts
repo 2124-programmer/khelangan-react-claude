@@ -4,12 +4,13 @@ import {
 import { subscriptionService } from '../services/subscriptionService';
 import {
   adaptSubscriptionPlan, adaptSubscription, adaptChangeRequest, adaptVenueSubscriptionView,
-  adaptVenueSubscriptionRow,
+  adaptVenueSubscriptionRow, adaptPlanOption, adaptSelectableCourt, adaptVenueSubscriptionState,
 } from '../adapters';
 import type {
   SubscriptionCreateRequest, SubscriptionEditRequest, UpdatePlanRequest,
-  UpgradeRequestCreate,
+  UpgradeRequestCreate, CourtSelectionBody, PaidRequestBody,
 } from '../types';
+import { VENUES_KEY, OWNER_VENUES_KEY } from './useVenues';
 
 export const SUBS_PLANS_KEY = ['subscription-plans'] as const;
 export const OWNER_SUB_KEY = ['owner', 'venue-subscription'] as const;
@@ -80,6 +81,79 @@ export function useCreateUpgradeRequest(venueId: number) {
   return useMutation({
     mutationFn: (data: UpgradeRequestCreate) => subscriptionService.ownerCreateUpgradeRequest(venueId, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: [...OWNER_SUB_KEY, venueId] }),
+  });
+}
+
+// ─── Owner court-coverage purchase (self-serve trial + paid request) ─────────
+export const OWNER_SUB_STATE_KEY = ['owner', 'venue-subscription-state'] as const;
+export const OWNER_PLAN_OPTIONS_KEY = ['owner', 'plan-options'] as const;
+export const OWNER_SELECTABLE_COURTS_KEY = ['owner', 'selectable-courts'] as const;
+
+/**
+ * A trial-start / paid-request changes court bookability, so it ripples across surfaces:
+ * the venue's own state, the owner My-Venues badge, the player discovery feed + venue detail,
+ * and (for paid requests) the admin subscription queues.
+ */
+function invalidateAfterCoverageChange(qc: ReturnType<typeof useQueryClient>, venueId: number) {
+  qc.invalidateQueries({ queryKey: [...OWNER_SUB_STATE_KEY, venueId] });
+  qc.invalidateQueries({ queryKey: [...OWNER_PLAN_OPTIONS_KEY, venueId] });
+  qc.invalidateQueries({ queryKey: [...OWNER_SELECTABLE_COURTS_KEY, venueId] });
+  qc.invalidateQueries({ queryKey: [...OWNER_SUB_KEY, venueId] });
+  qc.invalidateQueries({ queryKey: OWNER_VENUES_KEY });
+  qc.invalidateQueries({ queryKey: VENUES_KEY });           // player feed + venue detail
+  qc.invalidateQueries({ queryKey: ADMIN_VENUE_SUBS_KEY });
+  qc.invalidateQueries({ queryKey: ADMIN_CHANGE_REQ_KEY });
+}
+
+export function useOwnerSubscriptionState(venueId: string | number | undefined) {
+  const id = Number(venueId);
+  return useQuery({
+    queryKey: [...OWNER_SUB_STATE_KEY, id],
+    queryFn: () => subscriptionService.ownerGetSubscriptionState(id).then(adaptVenueSubscriptionState),
+    enabled: !!venueId && !isNaN(id) && id > 0,
+  });
+}
+
+export function useOwnerPlanOptions(venueId: string | number | undefined, enabled = true) {
+  const id = Number(venueId);
+  return useQuery({
+    queryKey: [...OWNER_PLAN_OPTIONS_KEY, id],
+    queryFn: () => subscriptionService.ownerGetPlanOptions(id).then((l) => l.map(adaptPlanOption)),
+    enabled: enabled && !!venueId && !isNaN(id) && id > 0,
+  });
+}
+
+export function useOwnerSelectableCourts(venueId: string | number | undefined, enabled = true) {
+  const id = Number(venueId);
+  return useQuery({
+    queryKey: [...OWNER_SELECTABLE_COURTS_KEY, id],
+    queryFn: () => subscriptionService.ownerGetSelectableCourts(id).then((l) => l.map(adaptSelectableCourt)),
+    enabled: enabled && !!venueId && !isNaN(id) && id > 0,
+  });
+}
+
+export function useStartVenueTrial(venueId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CourtSelectionBody) =>
+      subscriptionService.ownerStartTrial(venueId, data).then(adaptVenueSubscriptionState),
+    onSuccess: () => invalidateAfterCoverageChange(qc, venueId),
+  });
+}
+
+export function useCreateVenueSubscriptionRequest(venueId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: PaidRequestBody) => subscriptionService.ownerCreateSubscriptionRequest(venueId, data),
+    onSuccess: () => invalidateAfterCoverageChange(qc, venueId),
+  });
+}
+
+export function useCancelVenueSubscriptionRequest(venueId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => subscriptionService.ownerCancelSubscriptionRequest(venueId).then(adaptVenueSubscriptionState),
+    onSuccess: () => invalidateAfterCoverageChange(qc, venueId),
   });
 }
 
