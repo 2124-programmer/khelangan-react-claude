@@ -1,49 +1,44 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
-import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { colors, spacing, fontSize, fontWeight } from '../../theme';
 import { AvatarImage, NotificationBell } from '../../components/common';
 import { useAuth } from '../../store/AuthContext';
-import { useAdminStats } from '../../api/hooks/useAdmin';
-import { useChangeRequests } from '../../api/hooks/useSubscription';
+import { useDashboardSummary } from '../../api/hooks/useAdmin';
+import {
+  PeriodToggle, MetricCard, HeroMetricCard, NeedsAttentionRow, QuietState, ManagementGrid,
+  formatINR, formatCount, dashboardGreeting, resolveDeepLink,
+} from '../../components/dashboard';
+import type { DashboardPeriod, NeedsAttentionItem } from '../../types';
+
+const QUIET_LABEL: Record<DashboardPeriod, string> = {
+  TODAY: 'Quiet so far today',
+  WEEK: 'Quiet so far this week',
+  MONTH: 'Quiet so far this month',
+};
 
 export default function AdminDashboardScreen({ navigation }: any) {
   const { user } = useAuth();
-  const { data: stats, refetch } = useAdminStats();
-  const subRequestsQ = useChangeRequests('PENDING');
-  const pendingSubRequests = subRequestsQ.data?.length ?? 0;
+  const [period, setPeriod] = useState<DashboardPeriod>('TODAY');
+  const { data: summary, refetch, isLoading } = useDashboardSummary(period);
   const [refreshing, setRefreshing] = useState(false);
+
   const handleRefresh = async () => {
     setRefreshing(true);
-    try { await Promise.all([refetch(), subRequestsQ.refetch()]); } finally { setRefreshing(false); }
+    try { await refetch(); } finally { setRefreshing(false); }
   };
 
-  const kpis = [
-    { label: 'Bookings Today', value: stats?.bookingsToday ?? 0, icon: '📅', accent: colors.admin },
-    { label: 'Revenue Today', value: `₹${(stats?.revenueToday ?? 0).toLocaleString('en-IN')}`, icon: '💰', accent: colors.primary },
-    { label: 'New Users', value: stats?.newUsers ?? 0, icon: '👥', accent: colors.owner },
-    { label: 'Active Venues', value: stats?.activeVenues ?? 0, icon: '🏟', accent: colors.warning },
-  ];
+  const { greeting, dateLabel } = dashboardGreeting(summary?.asOf);
+  const go = (screen: string, params?: Record<string, string>) => resolveDeepLink(navigation, screen, params);
+  const onAttention = (item: NeedsAttentionItem) =>
+    resolveDeepLink(navigation, item.deepLinkScreen, item.deepLinkParams);
 
-  const alerts = [
-    { label: 'Pending Approvals', value: stats?.pendingApprovals ?? 0, route: 'Venues', params: { tab: 'PENDING' }, icon: '🕓' },
-    { label: 'Subscription Requests', value: pendingSubRequests, route: 'SubscriptionManagement', params: { tab: 'requests' }, icon: '🧾' },
-  ];
+  // Period-bound metrics all zero → show a calm "quiet" line instead of a grid of zeros.
+  const periodBoundZero = !!summary
+    && summary.bookingsThisPeriod.value === 0
+    && summary.newSignupsThisPeriod.value === 0
+    && (summary.gbvThisPeriod?.amount ?? 0) === 0;
 
-  // Approvals + Subscriptions are reached via the "Needs Attention" cards above,
-  // so they're intentionally not duplicated as Management tiles.
-  const modules = [
-    { label: 'Venues', icon: '🏟', route: 'Venues' },
-    { label: 'Players', icon: '👤', route: 'Players' },
-    { label: 'Owners', icon: '🧑‍💼', route: 'OwnerManagement' },
-    { label: 'Bookings', icon: '📋', route: 'AdminBookings' },
-    { label: 'Payments', icon: '💳', route: 'PaymentsRevenue' },
-    { label: 'Disputes', icon: '⚖️', route: 'DisputeManagement' },
-    { label: 'Coupons', icon: '🎟️', route: 'CouponManagement' },
-    { label: 'Broadcast', icon: '📢', route: 'NotificationBroadcast' },
-    { label: 'Analytics', icon: '📊', route: 'Analytics' },
-    { label: 'Sports', icon: '⚽', route: 'CategoryManagement' },
-    { label: 'CMS', icon: '📄', route: 'CMS' },
-  ];
+  const showFinancials = !!summary?.canViewFinancials;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -51,10 +46,13 @@ export default function AdminDashboardScreen({ navigation }: any) {
         contentContainerStyle={{ padding: spacing.lg }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
+        {/* Header */}
         <View style={styles.topBar}>
-          <View>
-            <Text style={styles.hi}>Admin Panel</Text>
-            <Text style={styles.name}>{user?.name}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.greeting}>
+              {greeting}{dateLabel ? ` · ${dateLabel}` : ''}
+            </Text>
+            <Text style={styles.name}>{user?.name ?? 'Admin'}</Text>
           </View>
           <View style={styles.topBarActions}>
             <NotificationBell />
@@ -65,48 +63,64 @@ export default function AdminDashboardScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* KPIs */}
-        <View style={styles.kpiGrid}>
-          {kpis.map((k) => (
-            <View key={k.label} style={[styles.kpiCard, shadow.card]}>
-              <Text style={{ fontSize: 22 }}>{k.icon}</Text>
-              <Text style={[styles.kpiValue, { color: k.accent }]}>{k.value}</Text>
-              <Text style={styles.kpiLabel}>{k.label}</Text>
-            </View>
-          ))}
-        </View>
+        {/* Period toggle */}
+        <PeriodToggle period={period} onChange={setPeriod} />
 
-        {/* Alerts */}
-        <Text style={styles.sectionTitle}>Needs Attention</Text>
-        {alerts.map((a) => (
-          <TouchableOpacity
-            key={a.label}
-            style={styles.alertRow}
-            onPress={() => navigation.navigate(a.route, a.params)}
-          >
-            <Text style={{ fontSize: 22 }}>{a.icon}</Text>
-            <Text style={styles.alertLabel}>{a.label}</Text>
-            <View style={styles.alertBadge}>
-              <Text style={styles.alertBadgeText}>{a.value}</Text>
-            </View>
-            <Text style={styles.arrow}>›</Text>
-          </TouchableOpacity>
-        ))}
+        {summary ? (
+          <>
+            {/* MRR hero (financial) */}
+            {showFinancials && summary.mrr ? (
+              <HeroMetricCard mrr={summary.mrr} onPress={() => go('SubscriptionManagement')} />
+            ) : null}
 
-        {/* Modules */}
-        <Text style={styles.sectionTitle}>Management</Text>
-        <View style={styles.moduleGrid}>
-          {modules.map((m) => (
-            <TouchableOpacity
-              key={m.label}
-              style={styles.module}
-              onPress={() => navigation.navigate(m.route)}
-            >
-              <Text style={{ fontSize: 26 }}>{m.icon}</Text>
-              <Text style={styles.moduleLabel}>{m.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+            {periodBoundZero ? <QuietState label={QUIET_LABEL[period]} /> : null}
+
+            {/* Top metric cards */}
+            <View style={styles.cardGrid}>
+              <MetricCard
+                label="Pending moderation"
+                value={formatCount(summary.pendingModeration.value)}
+                tone={summary.pendingModeration.value > 0 ? 'DANGER' : 'NEUTRAL'}
+                onPress={() => go('Venues', { tab: 'PENDING' })}
+              />
+              <MetricCard
+                label="New signups"
+                value={formatCount(summary.newSignupsThisPeriod.value)}
+                metric={summary.newSignupsThisPeriod}
+                onPress={() => go('Players')}
+              />
+              <MetricCard
+                label="Active venues"
+                value={formatCount(summary.activeVenues.value)}
+                onPress={() => go('Venues')}
+              />
+              <MetricCard
+                label="Bookings"
+                value={formatCount(summary.bookingsThisPeriod.value)}
+                metric={summary.bookingsThisPeriod}
+                onPress={() => go('AdminBookings')}
+              />
+              {showFinancials && summary.gbvThisPeriod ? (
+                <MetricCard
+                  label="Booking volume (GBV)"
+                  value={formatINR(summary.gbvThisPeriod.amount)}
+                  metric={summary.gbvThisPeriod}
+                  onPress={() => go('AdminBookings')}
+                />
+              ) : null}
+            </View>
+
+            {/* Needs Attention */}
+            <Text style={styles.sectionTitle}>Needs Attention</Text>
+            <NeedsAttentionRow items={summary.needsAttention} onPressItem={onAttention} />
+
+            {/* Management */}
+            <Text style={styles.sectionTitle}>Management</Text>
+            <ManagementGrid counts={summary.counts} onPressTile={(route) => go(route)} />
+          </>
+        ) : (
+          <Text style={styles.loading}>{isLoading ? 'Loading dashboard…' : 'Could not load dashboard.'}</Text>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -115,21 +129,10 @@ export default function AdminDashboardScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
-  topBarActions: { flexDirection: 'row', gap: spacing.sm },
-  hi: { fontSize: fontSize.sm, color: colors.textMid },
+  topBarActions: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  greeting: { fontSize: fontSize.sm, color: colors.textMid },
   name: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  gear: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', ...shadow.card },
-  kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  kpiCard: { width: '47%', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, alignItems: 'flex-start', gap: spacing.xs },
-  kpiValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold },
-  kpiLabel: { fontSize: fontSize.xs, color: colors.textMid },
+  cardGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.xl, marginBottom: spacing.md },
-  alertRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
-  alertLabel: { flex: 1, fontSize: fontSize.md, color: colors.text },
-  alertBadge: { backgroundColor: colors.danger, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 2, minWidth: 28, alignItems: 'center' },
-  alertBadgeText: { fontSize: fontSize.xs, color: colors.white, fontWeight: fontWeight.bold },
-  arrow: { fontSize: 22, color: colors.textDim },
-  moduleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  module: { width: '22%', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, paddingVertical: spacing.lg, gap: spacing.xs, ...shadow.card },
-  moduleLabel: { fontSize: 10, color: colors.textMid, textAlign: 'center' },
+  loading: { fontSize: fontSize.md, color: colors.textMid, textAlign: 'center', marginTop: spacing.xxl },
 });

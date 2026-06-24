@@ -6,6 +6,7 @@ import type {
   VenueSubscriptionPageDto,
   PlanOptionDto, SelectableCourtDto, VenueSubscriptionStateDto,
   CourtSelectionBody, PaidRequestBody, SubscriptionRequestViewDto,
+  ActivateChangeRequestBody,
 } from '../types';
 
 export const subscriptionService = {
@@ -44,8 +45,15 @@ export const subscriptionService = {
       params: { status },
     }).then((r) => r.data),
 
-  adminActivateChangeRequest: (id: number) =>
-    apiClient.post<SubscriptionDto>(`/api/v1/admin/subscription-change-requests/${id}/activate`).then((r) => r.data),
+  /** Courts of the request's venue for the admin court picker (isCovered = owner's requested courts). */
+  adminListChangeRequestCourts: (id: number) =>
+    apiClient.get<SelectableCourtDto[]>(
+      `/api/v1/admin/subscription-change-requests/${id}/selectable-courts`).then((r) => r.data),
+
+  /** Approve + activate (offline/cash). Optional courtIds override the owner's court selection. */
+  adminActivateChangeRequest: (id: number, data?: ActivateChangeRequestBody) =>
+    apiClient.post<SubscriptionDto>(
+      `/api/v1/admin/subscription-change-requests/${id}/activate`, data ?? undefined).then((r) => r.data),
 
   adminRejectChangeRequest: (id: number, data: RejectChangeRequestBody) =>
     apiClient.post<SubscriptionChangeRequestDto>(

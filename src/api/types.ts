@@ -725,6 +725,70 @@ export interface AdminStatsDto {
   openDisputes?: number;
 }
 
+// ─── Dashboard summary (single aggregated payload) ───────────────────────────
+
+export type DashboardPeriodDto = 'TODAY' | 'WEEK' | 'MONTH';
+export type DashboardToneDto = 'NEUTRAL' | 'DANGER';
+export type TrendDirectionDto = 'UP' | 'DOWN' | 'FLAT';
+export type NeedsAttentionKeyDto =
+  | 'PENDING_APPROVALS'
+  | 'SUBSCRIPTION_REQUESTS'
+  | 'OPEN_DISPUTES'
+  | 'EXPIRING_SUBSCRIPTIONS'
+  | 'TRIALS_ENDING';
+
+export interface CountMetricDto {
+  value: number;
+  trendPct?: number | null;
+  trendDirection?: TrendDirectionDto | null;
+}
+
+export interface MoneyMetricDto {
+  amount: number;
+  trendPct?: number | null;
+  trendDirection?: TrendDirectionDto | null;
+}
+
+export interface MrrMetricDto {
+  amount: number;
+  activeSubscriptions: number;
+  trendPct?: number | null;
+  trendDirection?: TrendDirectionDto | null;
+}
+
+export interface NeedsAttentionItemDto {
+  key: NeedsAttentionKeyDto;
+  label: string;
+  count: number;
+  tone: DashboardToneDto;
+  deepLinkScreen: string;
+  deepLinkParams?: Record<string, string> | null;
+}
+
+export interface ManagementCountsDto {
+  venues?: number;
+  players?: number;
+  owners?: number;
+  bookings?: number;
+  openDisputes?: number;
+  activeCoupons?: number;
+}
+
+export interface DashboardSummaryDto {
+  asOf: string;
+  period: DashboardPeriodDto;
+  canViewFinancials: boolean;
+  mrr?: MrrMetricDto | null;
+  revenueThisPeriod?: MoneyMetricDto | null;
+  gbvThisPeriod?: MoneyMetricDto | null;
+  bookingsThisPeriod: CountMetricDto;
+  newSignupsThisPeriod: CountMetricDto;
+  activeVenues: CountMetricDto;
+  pendingModeration: CountMetricDto;
+  needsAttention: NeedsAttentionItemDto[];
+  counts: ManagementCountsDto;
+}
+
 export interface OwnerStatsDto {
   todayBookings?: number;
   todayRevenue?: number;
@@ -975,6 +1039,11 @@ export interface UpgradeRequestCreate {
 
 export interface RejectChangeRequestBody {
   reason: string;
+}
+
+/** Optional admin overrides when activating a change request. Omit courtIds to keep the owner's selection. */
+export interface ActivateChangeRequestBody {
+  courtIds?: string[] | null;
 }
 
 // ─── Owner subscription purchase + court coverage ─────────────────────────────

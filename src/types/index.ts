@@ -763,3 +763,66 @@ export interface AdminDisputeDetail {
   resolution?: DisputeResolutionView | null;
   availableActions: DisputeActionCode[];
 }
+
+// ─── Admin Dashboard summary ───────────────────────────────────────────────
+export type DashboardPeriod = 'TODAY' | 'WEEK' | 'MONTH';
+export type DashboardTone = 'NEUTRAL' | 'DANGER';
+export type TrendDirection = 'UP' | 'DOWN' | 'FLAT';
+export type NeedsAttentionKey =
+  | 'PENDING_APPROVALS'
+  | 'SUBSCRIPTION_REQUESTS'
+  | 'OPEN_DISPUTES'
+  | 'EXPIRING_SUBSCRIPTIONS'
+  | 'TRIALS_ENDING';
+
+export interface CountMetric {
+  value: number;
+  trendPct: number | null;
+  trendDirection: TrendDirection | null;
+}
+
+export interface MoneyMetric {
+  amount: number;
+  trendPct: number | null;
+  trendDirection: TrendDirection | null;
+}
+
+export interface MrrMetric {
+  amount: number;
+  activeSubscriptions: number;
+  trendPct: number | null;
+  trendDirection: TrendDirection | null;
+}
+
+export interface NeedsAttentionItem {
+  key: NeedsAttentionKey;
+  label: string;
+  count: number;
+  tone: DashboardTone;
+  deepLinkScreen: string;
+  deepLinkParams: Record<string, string> | null;
+}
+
+export interface ManagementCounts {
+  venues: number;
+  players: number;
+  owners: number;
+  bookings: number;
+  openDisputes: number;
+  activeCoupons: number;
+}
+
+export interface DashboardSummary {
+  asOf: string;
+  period: DashboardPeriod;
+  canViewFinancials: boolean;
+  mrr: MrrMetric | null;
+  revenueThisPeriod: MoneyMetric | null;
+  gbvThisPeriod: MoneyMetric | null;
+  bookingsThisPeriod: CountMetric;
+  newSignupsThisPeriod: CountMetric;
+  activeVenues: CountMetric;
+  pendingModeration: CountMetric;
+  needsAttention: NeedsAttentionItem[];
+  counts: ManagementCounts;
+}

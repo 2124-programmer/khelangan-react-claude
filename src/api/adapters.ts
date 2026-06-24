@@ -16,6 +16,13 @@ import type {
   AdminVenueDetail, VenueApprovalComment, VenueSubscriptionBadge,
   VenueCounts, VenueStatusTone, VenueActionCode,
 } from '../types';
+import type {
+  DashboardSummaryDto, CountMetricDto, MoneyMetricDto, MrrMetricDto, NeedsAttentionItemDto,
+} from './types';
+import type {
+  DashboardSummary, CountMetric, MoneyMetric, MrrMetric, NeedsAttentionItem,
+  DashboardPeriod, DashboardTone, TrendDirection, NeedsAttentionKey, ManagementCounts,
+} from '../types';
 
 function adaptSubscriptionBadge(dto: VenueSummaryDto['subscription']): VenueSubscriptionBadge | undefined {
   if (!dto) return undefined;
@@ -446,6 +453,71 @@ export function adaptAdminStats(dto: AdminStatsDto) {
     activeVenues: dto.activeVenues ?? 0,
     pendingApprovals: dto.pendingApprovals ?? 0,
     openDisputes: dto.openDisputes ?? 0,
+  };
+}
+
+// ─── Dashboard summary ───────────────────────────────────────────────────────
+
+function adaptCountMetric(dto: CountMetricDto | undefined): CountMetric {
+  return {
+    value: dto?.value ?? 0,
+    trendPct: dto?.trendPct ?? null,
+    trendDirection: (dto?.trendDirection ?? null) as TrendDirection | null,
+  };
+}
+
+function adaptMoneyMetric(dto: MoneyMetricDto | null | undefined): MoneyMetric | null {
+  if (!dto) return null;
+  return {
+    amount: dto.amount ?? 0,
+    trendPct: dto.trendPct ?? null,
+    trendDirection: (dto.trendDirection ?? null) as TrendDirection | null,
+  };
+}
+
+function adaptMrrMetric(dto: MrrMetricDto | null | undefined): MrrMetric | null {
+  if (!dto) return null;
+  return {
+    amount: dto.amount ?? 0,
+    activeSubscriptions: dto.activeSubscriptions ?? 0,
+    trendPct: dto.trendPct ?? null,
+    trendDirection: (dto.trendDirection ?? null) as TrendDirection | null,
+  };
+}
+
+function adaptNeedsAttentionItem(dto: NeedsAttentionItemDto): NeedsAttentionItem {
+  return {
+    key: dto.key as NeedsAttentionKey,
+    label: dto.label ?? '',
+    count: dto.count ?? 0,
+    tone: (dto.tone ?? 'NEUTRAL') as DashboardTone,
+    deepLinkScreen: dto.deepLinkScreen ?? '',
+    deepLinkParams: dto.deepLinkParams ?? null,
+  };
+}
+
+export function adaptDashboardSummary(dto: DashboardSummaryDto): DashboardSummary {
+  const counts: ManagementCounts = {
+    venues: dto.counts?.venues ?? 0,
+    players: dto.counts?.players ?? 0,
+    owners: dto.counts?.owners ?? 0,
+    bookings: dto.counts?.bookings ?? 0,
+    openDisputes: dto.counts?.openDisputes ?? 0,
+    activeCoupons: dto.counts?.activeCoupons ?? 0,
+  };
+  return {
+    asOf: dto.asOf,
+    period: dto.period as DashboardPeriod,
+    canViewFinancials: !!dto.canViewFinancials,
+    mrr: adaptMrrMetric(dto.mrr),
+    revenueThisPeriod: adaptMoneyMetric(dto.revenueThisPeriod),
+    gbvThisPeriod: adaptMoneyMetric(dto.gbvThisPeriod),
+    bookingsThisPeriod: adaptCountMetric(dto.bookingsThisPeriod),
+    newSignupsThisPeriod: adaptCountMetric(dto.newSignupsThisPeriod),
+    activeVenues: adaptCountMetric(dto.activeVenues),
+    pendingModeration: adaptCountMetric(dto.pendingModeration),
+    needsAttention: (dto.needsAttention ?? []).map(adaptNeedsAttentionItem),
+    counts,
   };
 }
 

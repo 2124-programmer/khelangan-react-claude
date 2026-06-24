@@ -142,8 +142,9 @@ export function useUpdateVenueStatus() {
       qc.invalidateQueries({ queryKey: VENUES_KEY });
       // ADMIN_VENUES_KEY cascades to the registry list, counts, and detail queries.
       qc.invalidateQueries({ queryKey: ADMIN_VENUES_KEY });
-      // Dashboard "Pending Approvals" badge.
+      // Dashboard "Pending Approvals" badge + aggregated summary (all periods).
       qc.invalidateQueries({ queryKey: ['admin', 'stats'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
     },
   });
 }

@@ -103,6 +103,7 @@ function invalidateAfterCoverageChange(qc: ReturnType<typeof useQueryClient>, ve
   qc.invalidateQueries({ queryKey: VENUES_KEY });           // player feed + venue detail
   qc.invalidateQueries({ queryKey: ADMIN_VENUE_SUBS_KEY });
   qc.invalidateQueries({ queryKey: ADMIN_CHANGE_REQ_KEY });
+  qc.invalidateQueries({ queryKey: ['admin', 'dashboard'] }); // MRR + needs-attention
 }
 
 export function useOwnerSubscriptionState(venueId: string | number | undefined) {
@@ -171,6 +172,7 @@ function invalidateAdminSub(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ADMIN_SUB_KEY });
   qc.invalidateQueries({ queryKey: ADMIN_VENUE_SUBS_KEY });
   qc.invalidateQueries({ queryKey: ADMIN_CHANGE_REQ_KEY });
+  qc.invalidateQueries({ queryKey: ['admin', 'dashboard'] }); // MRR + needs-attention
 }
 
 export function useCreateSubscription() {
@@ -215,10 +217,27 @@ export function useChangeRequests(status = 'PENDING') {
   });
 }
 
+/** Courts of a change request's venue for the admin court picker (isCovered = owner's request). */
+export function useChangeRequestCourts(requestId: string | number | undefined, enabled = true) {
+  const id = Number(requestId);
+  return useQuery({
+    queryKey: [...ADMIN_CHANGE_REQ_KEY, 'courts', id],
+    queryFn: () => subscriptionService.adminListChangeRequestCourts(id).then((l) => l.map(adaptSelectableCourt)),
+    enabled: enabled && !!requestId && !isNaN(id) && id > 0,
+  });
+}
+
+/**
+ * Approve + activate a change request (offline/cash received). Pass optional `courtIds` to override
+ * which courts the activated subscription covers; omit to keep the owner's requested selection.
+ */
 export function useActivateChangeRequest() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => subscriptionService.adminActivateChangeRequest(id).then(adaptSubscription),
+    mutationFn: ({ id, courtIds }: { id: number; courtIds?: string[] }) =>
+      subscriptionService
+        .adminActivateChangeRequest(id, courtIds ? { courtIds } : undefined)
+        .then(adaptSubscription),
     onSuccess: () => invalidateAdminSub(qc),
   });
 }

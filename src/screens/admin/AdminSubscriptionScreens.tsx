@@ -15,11 +15,12 @@ import { useDebounce } from '../../hooks/useDebounce';
 import {
   useAdminPlans, useUpdatePlan, useAdminVenueSubscription, useCreateSubscription,
   useEditSubscription, useVoidSubscription, useRenewSubscription,
-  useChangeRequests, useActivateChangeRequest, useRejectChangeRequest,
+  useChangeRequests, useActivateChangeRequest, useRejectChangeRequest, useChangeRequestCourts,
   useAdminVenueSubscriptions,
 } from '../../api/hooks/useSubscription';
 import type {
   SubscriptionPlan, SubscriptionStatus, VenueSubscriptionRow, VenueSubscriptionRowStatus,
+  SubscriptionChangeRequest, SelectableCourt,
 } from '../../types';
 
 const STATUS_COLOR: Record<SubscriptionStatus, string> = {
@@ -206,13 +207,9 @@ export function SubscriptionDetailScreen({ navigation, route }: any) {
   const editMut = useEditSubscription();
   const voidMut = useVoidSubscription();
   const renewMut = useRenewSubscription();
-  const activateMut = useActivateChangeRequest();
-  const rejectMut = useRejectChangeRequest();
 
   const [editing, setEditing] = useState(false);
   const [confirm, setConfirm] = useState<'renew' | 'suspend' | null>(null);
-  const [rejecting, setRejecting] = useState(false);
-  const [reason, setReason] = useState('');
 
   const view = subQ.data;
   const current = view?.current ?? null;
@@ -300,60 +297,8 @@ export function SubscriptionDetailScreen({ navigation, route }: any) {
             </View>
           )}
 
-          {/* Pending request */}
-          {pending && (
-            <View style={[styles.card, shadow.card, { borderColor: colors.warning, borderWidth: 1 }]}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.cardTitle}>Pending request</Text>
-                <View style={[styles.badge, { backgroundColor: colors.warning }]}>
-                  <Text style={styles.badgeText}>ACTION NEEDED</Text>
-                </View>
-              </View>
-              <View style={styles.reqPlanRow}>
-                <View style={styles.reqPlanBox}>
-                  <Text style={styles.reqPlanLabel}>Current</Text>
-                  <Text style={styles.reqPlanValue} numberOfLines={1}>{pending.currentPlanName ?? current?.planName ?? 'None'}</Text>
-                </View>
-                <Feather name="arrow-right" size={18} color={colors.textDim} />
-                <View style={styles.reqPlanBox}>
-                  <Text style={styles.reqPlanLabel}>Requested</Text>
-                  <Text style={[styles.reqPlanValue, { color: colors.admin }]} numberOfLines={1}>{pending.requestedPlanName}</Text>
-                </View>
-              </View>
-              <View style={styles.divider} />
-              <Field label="Billing" value={pending.requestedCycle === 'ANNUAL' ? 'Annual' : 'Monthly'} />
-              <Field label="Price" value={`₹${pending.requestedPlanPrice.toLocaleString('en-IN')} / ${pending.requestedCycle === 'ANNUAL' ? 'yr' : 'mo'}`} />
-              <Field label="Court limit" value={`up to ${pending.requestedPlanMaxCourts} courts`} />
-              <Field
-                label={`Courts requested (${pending.coveredCourtNames.length})`}
-                value={pending.coveredCourtNames.length ? pending.coveredCourtNames.join(', ') : '—'}
-              />
-              <Field label="Requested on" value={fmt(pending.createdAt)} />
-
-              {rejecting ? (
-                <View style={{ marginTop: spacing.sm }}>
-                  <AppInput placeholder="Reason for rejection" value={reason} onChangeText={setReason} />
-                  <View style={styles.actionRow}>
-                    <AppButton label="Confirm reject" variant="danger" style={{ flex: 1 }} disabled={rejectMut.isPending}
-                      onPress={() => rejectMut.mutate({ id: Number(pending.id), reason: reason || 'Not approved' }, {
-                        onSuccess: () => { toast.success('Request rejected.'); setRejecting(false); setReason(''); },
-                        onError: (e) => toast.error(extractApiError(e) || 'Failed'),
-                      })} />
-                    <AppButton label="Cancel" variant="secondary" style={{ flex: 1 }} onPress={() => setRejecting(false)} />
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.actionRow}>
-                  <AppButton label="Approve" variant="primary" style={{ flex: 1 }} disabled={activateMut.isPending}
-                    onPress={() => activateMut.mutate(Number(pending.id), {
-                      onSuccess: () => toast.success('Request approved.'),
-                      onError: (e) => toast.error(extractApiError(e) || 'Failed'),
-                    })} />
-                  <AppButton label="Reject" variant="secondary" style={{ flex: 1 }} onPress={() => { setRejecting(true); setReason(''); }} />
-                </View>
-              )}
-            </View>
-          )}
+          {/* Pending request — review, edit covered courts, approve (cash received) / reject */}
+          {pending && <PendingRequestCard pending={pending} currentPlanName={current?.planName ?? null} />}
 
           {/* Lifecycle timeline */}
           {view.timeline && (
@@ -403,6 +348,130 @@ export function SubscriptionDetailScreen({ navigation, route }: any) {
         onDismiss={() => setConfirm(null)}
       />
     </SafeAreaView>
+  );
+}
+
+/* ── Pending change-request card: review + edit covered courts + approve/reject ── */
+function PendingRequestCard({ pending, currentPlanName }: {
+  pending: SubscriptionChangeRequest; currentPlanName: string | null;
+}) {
+  const activateMut = useActivateChangeRequest();
+  const rejectMut = useRejectChangeRequest();
+  const courtsQ = useChangeRequestCourts(pending.id);
+  const courts: SelectableCourt[] = courtsQ.data ?? [];
+  const limit = pending.requestedPlanMaxCourts;
+
+  // Seed the admin's selection from the owner's requested coverage once the courts load.
+  const [selected, setSelected] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (selected === null && courts.length) {
+      setSelected(courts.filter((c) => c.isCovered && c.isActive).map((c) => c.courtId));
+    }
+  }, [courts, selected]);
+  const sel = selected ?? [];
+
+  const toggle = (c: SelectableCourt) => {
+    if (!c.isActive) return;
+    setSelected((prev) => {
+      const base = prev ?? sel;
+      if (base.includes(c.courtId)) return base.filter((x) => x !== c.courtId);
+      if (base.length >= limit) {
+        toast.error(`This plan covers up to ${limit} court${limit === 1 ? '' : 's'}.`);
+        return base;
+      }
+      return [...base, c.courtId];
+    });
+  };
+
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState('');
+
+  const approve = () => {
+    if (sel.length === 0) { toast.error('Select at least one court to cover.'); return; }
+    activateMut.mutate({ id: Number(pending.id), courtIds: sel }, {
+      onSuccess: () => toast.success('Payment recorded — subscription activated.'),
+      onError: (e) => toast.error(extractApiError(e) || 'Failed'),
+    });
+  };
+
+  return (
+    <View style={[styles.card, shadow.card, { borderColor: colors.warning, borderWidth: 1 }]}>
+      <View style={styles.rowBetween}>
+        <Text style={styles.cardTitle}>Pending request</Text>
+        <View style={[styles.badge, { backgroundColor: colors.warning }]}>
+          <Text style={styles.badgeText}>ACTION NEEDED</Text>
+        </View>
+      </View>
+      <View style={styles.reqPlanRow}>
+        <View style={styles.reqPlanBox}>
+          <Text style={styles.reqPlanLabel}>Current</Text>
+          <Text style={styles.reqPlanValue} numberOfLines={1}>{pending.currentPlanName ?? currentPlanName ?? 'None'}</Text>
+        </View>
+        <Feather name="arrow-right" size={18} color={colors.textDim} />
+        <View style={styles.reqPlanBox}>
+          <Text style={styles.reqPlanLabel}>Requested</Text>
+          <Text style={[styles.reqPlanValue, { color: colors.admin }]} numberOfLines={1}>{pending.requestedPlanName}</Text>
+        </View>
+      </View>
+      <View style={styles.divider} />
+      <Field label="Billing" value={pending.requestedCycle === 'ANNUAL' ? 'Annual' : 'Monthly'} />
+      <Field label="Price" value={`₹${pending.requestedPlanPrice.toLocaleString('en-IN')} / ${pending.requestedCycle === 'ANNUAL' ? 'yr' : 'mo'}`} />
+      <Field label="Court limit" value={`up to ${limit} court${limit === 1 ? '' : 's'}`} />
+      <Field label="Requested on" value={fmt(pending.createdAt)} />
+
+      {/* Court coverage editor — admin can change which courts the subscription covers */}
+      <View style={styles.divider} />
+      <View style={styles.rowBetween}>
+        <Text style={styles.label}>Courts to cover</Text>
+        <Text style={styles.hint}>{sel.length}/{limit} selected</Text>
+      </View>
+      <Text style={[styles.noteText, { marginTop: 0 }]}>
+        Adjust which courts go live, then approve once cash is received.
+      </Text>
+      {courtsQ.isLoading ? (
+        <ActivityIndicator color={colors.admin} style={{ marginVertical: spacing.md }} />
+      ) : courts.length === 0 ? (
+        <Text style={[styles.hint, { marginTop: spacing.sm }]}>This venue has no courts to cover.</Text>
+      ) : (
+        <View style={{ marginTop: spacing.sm, gap: spacing.sm }}>
+          {courts.map((c) => {
+            const on = sel.includes(c.courtId);
+            return (
+              <TouchableOpacity key={c.courtId} disabled={!c.isActive} activeOpacity={0.7} onPress={() => toggle(c)}
+                style={[styles.courtRow, on && styles.courtRowOn, !c.isActive && styles.courtRowDisabled]}>
+                <Feather name={on ? 'check-square' : 'square'} size={20}
+                  color={!c.isActive ? colors.textDim : on ? colors.admin : colors.textMid} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.courtName, !c.isActive && { color: colors.textDim }]} numberOfLines={1}>{c.name}</Text>
+                  {c.sport ? <Text style={styles.hint}>{c.sport}</Text> : null}
+                </View>
+                {!c.isActive ? <Text style={styles.courtInactive}>Inactive</Text> : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+      {rejecting ? (
+        <View style={{ marginTop: spacing.md }}>
+          <AppInput placeholder="Reason for rejection" value={reason} onChangeText={setReason} />
+          <View style={styles.actionRow}>
+            <AppButton label="Confirm reject" variant="danger" style={{ flex: 1 }} disabled={rejectMut.isPending}
+              onPress={() => rejectMut.mutate({ id: Number(pending.id), reason: reason || 'Not approved' }, {
+                onSuccess: () => { toast.success('Request rejected.'); setRejecting(false); setReason(''); },
+                onError: (e) => toast.error(extractApiError(e) || 'Failed'),
+              })} />
+            <AppButton label="Cancel" variant="secondary" style={{ flex: 1 }} onPress={() => setRejecting(false)} />
+          </View>
+        </View>
+      ) : (
+        <View style={styles.actionRow}>
+          <AppButton label="Approve (cash received)" variant="primary" style={{ flex: 1 }}
+            disabled={activateMut.isPending || sel.length === 0} onPress={approve} />
+          <AppButton label="Reject" variant="secondary" style={{ flex: 1 }} onPress={() => { setRejecting(true); setReason(''); }} />
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -509,10 +578,6 @@ function RequestsTab({ navigation }: { navigation: any }) {
   const debounced = useDebounce(search, 300).trim().toLowerCase();
   const reqQ = useChangeRequests(filter);
   const plansQ = useAdminPlans();
-  const activateMut = useActivateChangeRequest();
-  const rejectMut = useRejectChangeRequest();
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
-  const [reason, setReason] = useState('');
   const [infoPlan, setInfoPlan] = useState<SubscriptionPlan | null>(null);
 
   const plans = plansQ.data ?? [];
@@ -604,48 +669,28 @@ function RequestsTab({ navigation }: { navigation: any }) {
               <Field label="Requested on" value={fmt(r.createdAt)} />
               {!!r.decidedAt && <Field label="Decided on" value={fmt(r.decidedAt)} />}
 
-              {rejectingId === r.id ? (
-                <View style={{ marginTop: spacing.md }}>
-                  <AppInput placeholder="Reason for rejection" value={reason} onChangeText={setReason} />
-                  <View style={styles.actionRow}>
-                    <AppButton label="Confirm reject" variant="danger" style={{ flex: 1 }} disabled={rejectMut.isPending}
-                      onPress={() => rejectMut.mutate({ id: Number(r.id), reason: reason || 'Not approved' }, {
-                        onSuccess: () => { toast.success('Request rejected.'); setRejectingId(null); setReason(''); },
-                        onError: (e) => toast.error(extractApiError(e) || 'Failed'),
-                      })} />
-                    <AppButton label="Cancel" variant="secondary" style={{ flex: 1 }} onPress={() => setRejectingId(null)} />
+              <View style={styles.reqFooter}>
+                {/* Compact billing + price box */}
+                <View style={styles.bpBox}>
+                  <View style={styles.bpRow}>
+                    <Text style={styles.bpLabel}>Billing</Text>
+                    <Text style={styles.bpValue}>{r.requestedCycle === 'ANNUAL' ? 'Annual' : 'Monthly'}</Text>
+                  </View>
+                  <View style={styles.bpRow}>
+                    <Text style={styles.bpLabel}>Price</Text>
+                    <Text style={styles.bpValue}>₹{r.requestedPlanPrice.toLocaleString('en-IN')} / {r.requestedCycle === 'ANNUAL' ? 'yr' : 'mo'}</Text>
                   </View>
                 </View>
-              ) : (
-                <View style={styles.reqFooter}>
-                  {/* Compact billing + price box */}
-                  <View style={styles.bpBox}>
-                    <View style={styles.bpRow}>
-                      <Text style={styles.bpLabel}>Billing</Text>
-                      <Text style={styles.bpValue}>{r.requestedCycle === 'ANNUAL' ? 'Annual' : 'Monthly'}</Text>
-                    </View>
-                    <View style={styles.bpRow}>
-                      <Text style={styles.bpLabel}>Price</Text>
-                      <Text style={styles.bpValue}>₹{r.requestedPlanPrice.toLocaleString('en-IN')} / {r.requestedCycle === 'ANNUAL' ? 'yr' : 'mo'}</Text>
-                    </View>
-                  </View>
 
-                  {filter === 'PENDING' ? (
-                    <View style={styles.footerActionsCol}>
-                      <AppButton label="Activate" variant="primary" fullWidth={false} style={styles.footerBtn} disabled={activateMut.isPending}
-                        onPress={() => activateMut.mutate(Number(r.id), {
-                          onSuccess: () => toast.success('Upgrade activated.'),
-                          onError: (e) => toast.error(extractApiError(e) || 'Failed'),
-                        })} />
-                      <AppButton label="Reject" variant="secondary" fullWidth={false} style={styles.footerBtn}
-                        onPress={() => { setRejectingId(r.id); setReason(''); }} />
-                    </View>
-                  ) : (
-                    <AppButton label="View" variant="secondary" fullWidth={false} style={styles.footerViewBtn}
-                      onPress={() => navigation.navigate('SubscriptionDetail', { venueId: r.venueId })} />
-                  )}
-                </View>
-              )}
+                {/* Review + decide (approve/reject + court selection) on the detail page. */}
+                <AppButton
+                  label={filter === 'PENDING' ? 'Review' : 'View'}
+                  variant={filter === 'PENDING' ? 'primary' : 'secondary'}
+                  fullWidth={false}
+                  style={styles.footerViewBtn}
+                  onPress={() => navigation.navigate('SubscriptionDetail', { venueId: r.venueId })}
+                />
+              </View>
             </View>
           )}
         />
@@ -834,6 +879,17 @@ const styles = StyleSheet.create({
   infoBtnAdmin: { backgroundColor: '#EDE9FE', borderColor: '#DDD6FE' },
   reqPlanLabel: { fontSize: fontSize.xs, color: colors.textDim },
   reqPlanValue: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text, marginTop: 2 },
+
+  // Court coverage editor
+  courtRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    borderWidth: 1, borderColor: colors.border, borderRadius: radius.md,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.surface,
+  },
+  courtRowOn: { borderColor: colors.admin, backgroundColor: '#F5F3FF' },
+  courtRowDisabled: { backgroundColor: colors.surfaceAlt },
+  courtName: { fontSize: fontSize.md, color: colors.text, fontWeight: fontWeight.medium },
+  courtInactive: { fontSize: fontSize.xs, color: colors.textDim, fontStyle: 'italic' },
 
   // Plan info popup
   infoOverlay: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },

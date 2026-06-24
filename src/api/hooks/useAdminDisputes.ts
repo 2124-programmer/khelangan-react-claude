@@ -73,6 +73,8 @@ function useDisputeAction<TArgs>(fn: (args: TArgs) => Promise<unknown>) {
       qc.invalidateQueries({ queryKey: ADMIN_OWNERS_KEY });
       qc.invalidateQueries({ queryKey: ADMIN_VENUES_KEY });
       qc.invalidateQueries({ queryKey: ADMIN_VENUE_SUBS_KEY });
+      // Open-disputes count + needs-attention strip on the admin dashboard.
+      qc.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
     },
   });
 }
