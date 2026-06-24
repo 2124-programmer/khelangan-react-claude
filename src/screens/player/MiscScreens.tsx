@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Switch, Alert, ActivityIndicator, RefreshControl,
+  TouchableOpacity, Switch, Alert, ActivityIndicator, RefreshControl, Linking, LayoutAnimation,
+  Platform, UIManager,
 } from 'react-native';
 import { toast } from '../../toast';
 import * as ImagePicker from 'expo-image-picker';
@@ -80,25 +81,94 @@ export function WalletScreen({ navigation }: any) {
 }
 
 /* ───────────────── HelpSupportScreen ───────────────── */
+// Enable LayoutAnimation on Android (no-op on the new architecture / iOS).
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const SUPPORT_EMAIL = 'support@khelangan.com';
+
+// Answers reflect the platform money model: the platform processes no payments,
+// so refunds are settled by the venue/owner directly (never a platform refund).
+const FAQS: { q: string; a: string }[] = [
+  {
+    q: 'How do I cancel a booking?',
+    a: 'Open the booking from the Bookings tab and tap Cancel. Whether a cancellation is allowed and any cancellation window depend on the venue’s policy, shown on the booking. Once cancelled, you’ll see the updated status straight away.',
+  },
+  {
+    q: 'Can I reschedule a booking?',
+    a: 'Rescheduling depends on the venue. If the venue allows it, you can pick a new slot from the booking details; otherwise cancel (subject to the venue’s policy) and book the new slot. The venue’s contact is on the booking if you need to coordinate.',
+  },
+  {
+    q: 'When will I get my refund?',
+    a: 'Khelangan does not collect or hold your booking payment — you pay the venue directly. So refunds are handled by the venue/owner directly, as per their policy and the method you paid with. If you’re facing an issue, contact the venue first; if it isn’t resolved, raise a dispute and our team will help.',
+  },
+  {
+    q: 'How do I apply a coupon?',
+    a: 'Offers are run by venues (owner-funded promos). Find a code under Offers & Coupons, then enter or select it during checkout for a covered venue — the discount applies to what you pay the venue. A coupon must be active, within its validity window, and within its usage limit.',
+  },
+  {
+    q: 'Is my booking confirmed instantly?',
+    a: 'Yes — once a slot is booked it’s held for you and appears under Bookings with a confirmed status. You’ll also get a notification. If a venue requires approval, the status will show as pending until the venue confirms.',
+  },
+  {
+    q: 'How do I contact a venue?',
+    a: 'The venue’s phone and address are shown on the venue page and on your booking. For booking-specific questions (timing, equipment, access), contacting the venue directly is the fastest route.',
+  },
+];
+
+function FaqAccordion({ item, expanded, onToggle }: { item: { q: string; a: string }; expanded: boolean; onToggle: () => void }) {
+  return (
+    <View style={styles.faqItem}>
+      <TouchableOpacity
+        style={styles.faqRow}
+        onPress={onToggle}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+      >
+        <Text style={styles.faqText}>{item.q}</Text>
+        <Text style={[styles.faqChevron, expanded && styles.faqChevronOpen]}>{expanded ? '⌄' : '›'}</Text>
+      </TouchableOpacity>
+      {expanded ? (
+        <View style={styles.faqAnswerWrap}>
+          <Text style={styles.faqAnswer}>{item.a}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 export function HelpSupportScreen({ navigation }: any) {
-  const faqs = [
-    'How do I cancel a booking?',
-    'When will I get my refund?',
-    'How do I apply a coupon?',
-    'Can I reschedule a booking?',
-  ];
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  const toggle = (i: number) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setOpenIndex((prev) => (prev === i ? null : i));
+  };
+
+  const handleContact = async () => {
+    const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Khelangan support request')}`;
+    try {
+      const ok = await Linking.canOpenURL(url);
+      if (ok) await Linking.openURL(url);
+      else toast.info(`Email us at ${SUPPORT_EMAIL}`);
+    } catch {
+      toast.info(`Email us at ${SUPPORT_EMAIL}`);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader title="Help & Support" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         <Text style={styles.sectionTitle}>FAQs</Text>
-        {faqs.map((f, i) => (
-          <TouchableOpacity key={i} style={styles.faqRow}>
-            <Text style={styles.faqText}>{f}</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
+        {FAQS.map((f, i) => (
+          <FaqAccordion key={f.q} item={f} expanded={openIndex === i} onToggle={() => toggle(i)} />
         ))}
-        <AppButton label="Contact Support" onPress={() => {}} style={{ marginTop: spacing.xl }} />
+
+        <Text style={styles.faqHint}>Still need help? Reach our team directly.</Text>
+        <AppButton label="Contact Support" onPress={handleContact} style={{ marginTop: spacing.md }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -414,8 +484,14 @@ const styles = StyleSheet.create({
   walletCard: { backgroundColor: colors.primary, borderRadius: radius.lg, padding: spacing.xl, alignItems: 'center' },
   walletLabel: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.85)' },
   walletAmount: { fontSize: 40, fontWeight: fontWeight.bold, color: colors.white, marginTop: spacing.xs },
-  faqRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
-  faqText: { fontSize: fontSize.sm, color: colors.text, flex: 1 },
+  faqItem: { backgroundColor: colors.surface, borderRadius: radius.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  faqRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg, gap: spacing.md },
+  faqText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text, flex: 1 },
+  faqChevron: { fontSize: 22, color: colors.textDim },
+  faqChevronOpen: { color: colors.primary },
+  faqAnswerWrap: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, paddingTop: 0 },
+  faqAnswer: { fontSize: fontSize.sm, lineHeight: 20, color: colors.textMid },
+  faqHint: { fontSize: fontSize.sm, color: colors.textMid, textAlign: 'center', marginTop: spacing.xl },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   linkRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   toggleLabel: { fontSize: fontSize.md, color: colors.text },

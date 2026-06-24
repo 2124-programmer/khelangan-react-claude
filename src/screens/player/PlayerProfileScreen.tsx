@@ -35,6 +35,11 @@ export default function PlayerProfileScreen({ navigation }: any) {
   const displayAvatar = me?.avatar ?? user?.avatar;
   const isPremium = me?.isPremium ?? user?.isPremium ?? false;
   const totalBookings = me?.totalBookings ?? user?.totalBookings ?? 0;
+  const sportsCount = (me?.preferredSports ?? user?.preferredSports ?? []).length;
+  const createdAt = me?.createdAt ?? user?.createdAt;
+  const memberSince = createdAt
+    ? new Date(createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
+    : '—';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -44,12 +49,7 @@ export default function PlayerProfileScreen({ navigation }: any) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         <View style={[styles.profileCard, shadow.card]}>
-          <View style={styles.avatarWrapper}>
-            <AvatarImage uri={displayAvatar} name={displayName} size={72} />
-            <View style={styles.pencilBadge}>
-              <Text style={styles.pencilIcon}>✏️</Text>
-            </View>
-          </View>
+          <AvatarImage uri={displayAvatar} name={displayName} size={72} />
           <Text style={styles.name}>{displayName}</Text>
           <Text style={styles.email}>{displayEmail}</Text>
           {isPremium && <View style={styles.premiumBadge}><Text style={styles.premiumText}>⭐ Premium Member</Text></View>}
@@ -61,12 +61,12 @@ export default function PlayerProfileScreen({ navigation }: any) {
             <Text style={styles.statLabel}>Bookings</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statNum}>2</Text>
+            <Text style={styles.statNum}>{sportsCount}</Text>
             <Text style={styles.statLabel}>Sports</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statNum}>4.8</Text>
-            <Text style={styles.statLabel}>Avg Rating</Text>
+            <Text style={styles.statNum}>{memberSince}</Text>
+            <Text style={styles.statLabel}>Member since</Text>
           </View>
         </View>
 
@@ -114,9 +114,6 @@ export default function PlayerProfileScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   profileCard: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.xl },
-  avatarWrapper: { position: 'relative' },
-  pencilBadge: { position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  pencilIcon: { fontSize: 11 },
   name: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.md },
   email: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2 },
   premiumBadge: { backgroundColor: '#FEF3C7', paddingHorizontal: spacing.lg, paddingVertical: spacing.xs, borderRadius: radius.pill, marginTop: spacing.md },

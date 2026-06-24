@@ -74,6 +74,7 @@ export function adaptUser(dto: UserDto): User {
     preferredSports: dto.preferredSports ?? [],
     totalBookings: dto.totalBookings ?? 0,
     isPremium: dto.isPremium ?? false,
+    createdAt: dto.createdAt,
   };
 }
 

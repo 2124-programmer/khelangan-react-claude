@@ -31,6 +31,7 @@ export interface User {
   preferredSports?: string[];
   totalBookings?: number;
   isPremium?: boolean;
+  createdAt?: string;
 }
 
 export interface Sport {
