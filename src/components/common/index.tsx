@@ -4,6 +4,7 @@ import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
   ActivityIndicator, Image, ScrollView, ViewStyle, Modal, Pressable,
 } from 'react-native';
+import type { TextInputProps } from 'react-native';
 import BallOrbitLoader from '../BallOrbitLoader';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
@@ -75,11 +76,17 @@ interface AppInputProps {
   onSubmitEditing?: () => void;
   onBlur?: () => void;
   editable?: boolean;
+  /** Enables OS autofill / password managers (e.g. emailAddress, password, newPassword, oneTimeCode). */
+  textContentType?: TextInputProps['textContentType'];
+  autoComplete?: TextInputProps['autoComplete'];
+  /** Optional trailing element (rendered only for non-secure fields; secure fields use the built-in eye). */
+  rightElement?: React.ReactNode;
 }
 export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
   label, value, onChangeText, placeholder, error, secureTextEntry,
   keyboardType, multiline, maxLength, autoCapitalize = 'none',
   returnKeyType, onSubmitEditing, onBlur, editable,
+  textContentType, autoComplete, rightElement,
 }, ref) {
   const [passwordVisible, setPasswordVisible] = useState(false);
   return (
@@ -108,8 +115,11 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
           autoCapitalize={autoCapitalize}
           returnKeyType={returnKeyType}
           onSubmitEditing={onSubmitEditing}
+          textContentType={textContentType}
+          autoComplete={autoComplete}
           blurOnSubmit={returnKeyType === 'done' || returnKeyType === undefined}
         />
+        {!secureTextEntry && rightElement ? rightElement : null}
         {secureTextEntry ? (
           <TouchableOpacity
             style={styles.eyeToggle}

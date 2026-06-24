@@ -7,11 +7,15 @@ import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppInput, AppButton, AppHeader, LoadingOverlay } from '../../components/common';
 import { toast } from '../../toast';
 import { UserRole } from '../../types';
+import type { UserDto } from '../../api/types';
 import { useAuth } from '../../store/AuthContext';
 import { extractApiError, extractFieldErrors, getHttpStatus } from '../../api/client';
 import {
   validateEmail, validatePassword, validateName, validatePhone, collectErrors,
 } from '../../utils/validation';
+
+// Single source of truth for the password floor (shared with reset + backend policy).
+const PASSWORD_MIN = 8;
 
 type ScreenState = 'idle' | 'loading';
 
@@ -22,8 +26,16 @@ export default function RegisterScreen({ navigation, route }: any) {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('player');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [screenState, setScreenState] = useState<ScreenState>('idle');
+
+  // Live password checklist — each rule ticks green as it's satisfied.
+  const pwRules = {
+    length: password.length >= PASSWORD_MIN,
+    letter: /[a-zA-Z]/.test(password),
+    number: /[0-9]/.test(password),
+  };
 
   const nameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -37,7 +49,8 @@ export default function RegisterScreen({ navigation, route }: any) {
     !validateName(name) &&
     !validateEmail(email) &&
     !validatePhone(phone) &&
-    !validatePassword(password);
+    !validatePassword(password, PASSWORD_MIN) &&
+    acceptedTerms;
 
   const busy = screenState !== 'idle';
 
@@ -46,8 +59,12 @@ export default function RegisterScreen({ navigation, route }: any) {
       ['name', () => validateName(name)],
       ['email', () => validateEmail(email)],
       ['phone', () => validatePhone(phone)],
-      ['password', () => validatePassword(password)],
+      ['password', () => validatePassword(password, PASSWORD_MIN)],
     ]);
+    if (!acceptedTerms) {
+      toast.error('Please accept the Terms & Privacy Policy to continue.');
+      return;
+    }
     if (Object.keys(errors).length) {
       setFieldErrors(errors);
       if (errors.name) nameRef.current?.focus();
@@ -67,6 +84,7 @@ export default function RegisterScreen({ navigation, route }: any) {
         phone: phone.trim(),
         password,
         role,
+        acceptedTerms,
       });
     } catch (err) {
       const status = getHttpStatus(err);
@@ -74,7 +92,15 @@ export default function RegisterScreen({ navigation, route }: any) {
       if (Object.keys(fe).length) {
         setFieldErrors(fe);
       } else if (status === 409) {
-        setFieldErrors({ email: 'An account with this email already exists. Try logging in.' });
+        // The conflict can be on either identifier — route the inline error to the right field.
+        const msg = extractApiError(err) || '';
+        if (/phone/i.test(msg)) {
+          setFieldErrors({ phone: 'This phone number is already registered. Try logging in.' });
+          phoneRef.current?.focus();
+        } else {
+          setFieldErrors({ email: 'An account with this email already exists. Try logging in.' });
+          emailRef.current?.focus();
+        }
       } else {
         toast.error(extractApiError(err) || 'Registration failed. Please try again.');
       }
@@ -117,6 +143,8 @@ export default function RegisterScreen({ navigation, route }: any) {
             onBlur={() => setFieldError('name', validateName(name))}
             placeholder="Your name"
             autoCapitalize="words"
+            textContentType="name"
+            autoComplete="name"
             error={fieldErrors.name}
             returnKeyType="next"
             onSubmitEditing={() => emailRef.current?.focus()}
@@ -129,6 +157,8 @@ export default function RegisterScreen({ navigation, route }: any) {
             onBlur={() => setFieldError('email', validateEmail(email))}
             keyboardType="email-address"
             autoCapitalize="none"
+            textContentType="emailAddress"
+            autoComplete="email"
             placeholder="you@example.com"
             error={fieldErrors.email}
             returnKeyType="next"
@@ -141,6 +171,8 @@ export default function RegisterScreen({ navigation, route }: any) {
             onChangeText={(v) => { setPhone(v); setFieldError('phone', validatePhone(v)); }}
             onBlur={() => setFieldError('phone', validatePhone(phone))}
             keyboardType="phone-pad"
+            textContentType="telephoneNumber"
+            autoComplete="tel"
             placeholder="9876543210"
             error={fieldErrors.phone}
             returnKeyType="next"
@@ -150,20 +182,38 @@ export default function RegisterScreen({ navigation, route }: any) {
             ref={passwordRef}
             label="Password"
             value={password}
-            onChangeText={(v) => { setPassword(v); setFieldError('password', validatePassword(v)); }}
-            onBlur={() => setFieldError('password', validatePassword(password))}
+            onChangeText={(v) => { setPassword(v); setFieldError('password', validatePassword(v, PASSWORD_MIN)); }}
+            onBlur={() => setFieldError('password', validatePassword(password, PASSWORD_MIN))}
             secureTextEntry
-            placeholder="Min 6 characters"
+            textContentType="newPassword"
+            autoComplete="password-new"
+            placeholder="Min 8 characters"
             error={fieldErrors.password}
             returnKeyType="done"
             onSubmitEditing={handleRegister}
           />
           <View style={styles.passwordRules}>
-            <Text style={styles.passwordRuleItem}>• At least 6 characters</Text>
-            <Text style={styles.passwordRuleItem}>• At least one letter (a–z or A–Z)</Text>
-            <Text style={styles.passwordRuleItem}>• At least one number (0–9)</Text>
+            <PwRule ok={pwRules.length} label={`At least ${PASSWORD_MIN} characters`} />
+            <PwRule ok={pwRules.letter} label="At least one letter (a–z or A–Z)" />
+            <PwRule ok={pwRules.number} label="At least one number (0–9)" />
           </View>
         </View>
+
+        {/* Terms & Privacy consent (DPDP) — required before account creation. */}
+        <TouchableOpacity
+          style={styles.consentRow}
+          onPress={() => setAcceptedTerms((v) => !v)}
+          activeOpacity={0.7}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: acceptedTerms }}
+        >
+          <View style={[styles.checkbox, acceptedTerms && styles.checkboxOn]}>
+            {acceptedTerms ? <Text style={styles.checkboxTick}>✓</Text> : null}
+          </View>
+          <Text style={styles.consentText}>
+            I agree to the <Text style={styles.link}>Terms & Privacy Policy</Text>
+          </Text>
+        </TouchableOpacity>
 
         <AppButton
           label="Register"
@@ -186,6 +236,14 @@ export default function RegisterScreen({ navigation, route }: any) {
   );
 }
 
+function PwRule({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <Text style={[styles.passwordRuleItem, ok ? styles.passwordRuleOk : styles.passwordRuleFail]}>
+      {ok ? '✓' : '○'} {label}
+    </Text>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   body: { padding: spacing.xl },
@@ -199,6 +257,16 @@ const styles = StyleSheet.create({
   footerText: { color: colors.textMid, fontSize: fontSize.sm },
   passwordRules: { marginTop: spacing.xs, gap: 2 },
   passwordRuleItem: { fontSize: fontSize.xs, color: colors.textMid },
+  passwordRuleOk: { color: colors.success },
+  passwordRuleFail: { color: colors.textMid },
+  consentRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.lg, gap: spacing.sm },
+  checkbox: {
+    width: 22, height: 22, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface,
+  },
+  checkboxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  checkboxTick: { color: colors.white, fontSize: 14, fontWeight: fontWeight.bold },
+  consentText: { flex: 1, fontSize: fontSize.sm, color: colors.textMid },
   successTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: '#fff', textAlign: 'center' },
   successSub: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.85)', textAlign: 'center' },
 });

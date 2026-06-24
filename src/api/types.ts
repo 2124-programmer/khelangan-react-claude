@@ -12,6 +12,7 @@ export interface RegisterRequest {
   phone: string;
   password: string;
   role: 'PLAYER' | 'OWNER';
+  acceptedTerms: boolean;
 }
 
 export interface LoginRequest {

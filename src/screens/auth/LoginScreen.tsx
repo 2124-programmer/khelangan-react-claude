@@ -7,6 +7,7 @@ import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppInput, AppButton, AppHeader, LoadingOverlay } from '../../components/common';
 import { toast } from '../../toast';
 import { useAuth } from '../../store/AuthContext';
+import type { UserDto } from '../../api/types';
 import { extractApiError, extractFieldErrors, getHttpStatus, BASE_URL } from '../../api/client';
 import { authService } from '../../api/services/authService';
 import {
@@ -108,8 +109,8 @@ export default function LoginScreen({ navigation, route }: any) {
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <Text style={styles.heading}>Welcome back</Text>
         <Text style={styles.sub}>Login to book your next game</Text>
-        {/* DEBUG BANNER — remove after confirming LAN connectivity */}
-        <Text style={styles.debugBanner}>API: {BASE_URL}</Text>
+        {/* Debug-only API banner — never rendered in release builds */}
+        {__DEV__ ? <Text style={styles.debugBanner}>API: {BASE_URL}</Text> : null}
 
         <View style={{ marginTop: spacing.xl }}>
           <AppInput
