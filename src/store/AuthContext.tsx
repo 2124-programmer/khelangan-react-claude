@@ -172,7 +172,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateSession = useCallback(async (newToken: string, userDto: UserDto) => {
     await saveToken(newToken);
     await saveRefreshToken(newToken);
-    queryClient.clear();
+    // Do NOT clear the cache here. On login the only cached data is public (venues, sports,
+    // reviews) which is still valid; clearing it forced a full refetch of everything the user
+    // had already loaded (e.g. the venue they came from via Book Now). User-scoped queries are
+    // gated by `enabled: isLoggedIn` so they fetch fresh on their own, and logout() clears the
+    // cache — so there is no stale-private-data risk to guard against here.
     setToken(newToken);
     setUser(adaptUser(userDto));
     setIsDemoMode(false);

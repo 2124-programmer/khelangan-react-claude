@@ -35,7 +35,11 @@ export function useUnreadNotifications() {
     enabled: isLoggedIn,
     refetchInterval: NOTIFICATION_POLL_MS,
     refetchIntervalInBackground: false,
-    staleTime: 0,
+    // The bell lives in every screen header, so each navigation mounts a fresh observer.
+    // With staleTime 0 that re-fetched the count on every screen change. Treat the count as
+    // fresh for one poll cycle so remounts reuse the cache; the 30s poll + mark-read cache
+    // patches keep it current.
+    staleTime: NOTIFICATION_POLL_MS,
   });
 }
 

@@ -12,3 +12,8 @@ export function consumePendingNav(): PendingDest {
   _pending = null;
   return dest;
 }
+
+/** Read without clearing — lets auth screens know a deferred destination is queued. */
+export function peekPendingNav(): PendingDest {
+  return _pending;
+}

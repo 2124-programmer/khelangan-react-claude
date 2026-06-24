@@ -10,6 +10,7 @@ import { useAuth } from '../../store/AuthContext';
 import type { UserDto } from '../../api/types';
 import { extractApiError, extractFieldErrors, getHttpStatus, BASE_URL } from '../../api/client';
 import { authService } from '../../api/services/authService';
+import { peekPendingNav } from '../../store/pendingNav';
 import {
   validateEmail, validateLoginPassword, collectErrors,
 } from '../../utils/validation';
@@ -67,8 +68,12 @@ export default function LoginScreen({ navigation, route }: any) {
     }
 
     if (result) {
-      const firstName = result.user.name?.split(' ')[0] ?? '';
-      toast.success(firstName ? `Welcome back, ${firstName}!` : 'Login successful!');
+      // In a deferred flow (e.g. Book Now → login), the destination shows its own contextual
+      // toast on return — don't stack a second generic one here.
+      if (!peekPendingNav()) {
+        const firstName = result.user.name?.split(' ')[0] ?? '';
+        toast.success(firstName ? `Welcome back, ${firstName}!` : 'Login successful!');
+      }
       await updateSession(result.token, result.user);
     }
   };

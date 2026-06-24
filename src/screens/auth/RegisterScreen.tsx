@@ -9,6 +9,7 @@ import { toast } from '../../toast';
 import { UserRole } from '../../types';
 import type { UserDto } from '../../api/types';
 import { useAuth } from '../../store/AuthContext';
+import { peekPendingNav } from '../../store/pendingNav';
 import { extractApiError, extractFieldErrors, getHttpStatus } from '../../api/client';
 import {
   validateEmail, validatePassword, validateName, validatePhone, collectErrors,
@@ -108,8 +109,11 @@ export default function RegisterScreen({ navigation, route }: any) {
     }
 
     if (result) {
-      const firstName = result.user.name?.split(' ')[0] ?? '';
-      toast.success(firstName ? `Welcome, ${firstName}! Your account is ready.` : 'Account created successfully!');
+      // Skip the generic welcome toast when a deferred destination will show its own.
+      if (!peekPendingNav()) {
+        const firstName = result.user.name?.split(' ')[0] ?? '';
+        toast.success(firstName ? `Welcome, ${firstName}! Your account is ready.` : 'Account created successfully!');
+      }
       await updateSession(result.token, result.user);
     }
   };

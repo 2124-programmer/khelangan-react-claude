@@ -81,7 +81,11 @@ apiClient.interceptors.response.use(
       `| ${durationMs}ms | cid:`, cid);
 
     const original = cfg;
-    if (error.response?.status === 401 && original && !original._retry) {
+    // Auth endpoints (login, register, otp, password-reset, change-password, refresh) own their
+    // 401s — a 401 here means "bad credentials / invalid code", NOT an expired session. Never try
+    // to refresh or fire the session-expired flow for these; let the original error reach the caller.
+    const isAuthEndpoint = (original?.url ?? '').includes('/api/v1/auth/');
+    if (error.response?.status === 401 && original && !original._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject });
