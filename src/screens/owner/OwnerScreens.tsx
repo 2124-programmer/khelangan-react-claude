@@ -4,6 +4,9 @@ import {
   TouchableOpacity, Switch, ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { PlanBadge } from '../../components/PlanBadge';
+import { PlanComparison } from '../../components/PlanComparison';
+import { resolvePlanCode } from '../../theme/planMeta';
 import {
   AppHeader, AppButton, AppInput, SectionTabBar,
   StatusBadge, EmptyState, SportChip, HourPickerDropdown, AvatarImage, LoadingOverlay
@@ -1295,7 +1298,11 @@ export function SubscriptionScreen({ navigation, route }: any) {
             {current ? (
               <View style={[styles.card, shadow.card]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Text style={styles.planName}>{current.planName}</Text>
+                  {resolvePlanCode(current.planCode) ?? resolvePlanCode(current.planName) ? (
+                    <PlanBadge plan={(resolvePlanCode(current.planCode) ?? resolvePlanCode(current.planName))!} showInfo />
+                  ) : (
+                    <Text style={styles.planName}>{current.planName}</Text>
+                  )}
                   {meta && (
                     <View style={[subStyles.badge, { backgroundColor: meta.color }]}>
                       <Text style={subStyles.badgeText}>{meta.label}</Text>
@@ -1326,9 +1333,15 @@ export function SubscriptionScreen({ navigation, route }: any) {
             {pending && (
               <View style={[subStyles.pendingBox]}>
                 <Text style={subStyles.pendingTitle}>Pending plan change</Text>
-                <Text style={subStyles.pendingText}>
-                  {pending.requestedPlanName} ({pending.requestedCycle === 'ANNUAL' ? 'Annual' : 'Monthly'}) —
-                  awaiting admin activation.
+                {resolvePlanCode(pending.requestedPlanCode) ? (
+                  <PlanComparison
+                    current={resolvePlanCode(pending.currentPlanName ?? current?.planName)}
+                    requested={resolvePlanCode(pending.requestedPlanCode)!}
+                    showInfo
+                  />
+                ) : null}
+                <Text style={[subStyles.pendingText, { marginTop: spacing.sm }]}>
+                  {pending.requestedCycle === 'ANNUAL' ? 'Annual' : 'Monthly'} billing — awaiting admin activation.
                 </Text>
               </View>
             )}
@@ -1350,7 +1363,11 @@ export function SubscriptionScreen({ navigation, route }: any) {
                   .filter((p) => !current || p.id !== current.planId)
                   .map((p) => (
                     <View key={p.id} style={[styles.planCard, shadow.card]}>
-                      <Text style={styles.planName}>{p.name}</Text>
+                      {resolvePlanCode(p.code) ? (
+                        <PlanBadge plan={resolvePlanCode(p.code)!} showInfo />
+                      ) : (
+                        <Text style={styles.planName}>{p.name}</Text>
+                      )}
                       <Text style={styles.planPrice}>₹{p.priceMonthly}/mo · ₹{p.priceAnnual}/yr</Text>
                       <Text style={styles.planFeature}>Up to {p.maxCourts} courts · {p.photoLimit} photos</Text>
                       {p.features.map((f) => (
@@ -1373,10 +1390,11 @@ export function SubscriptionScreen({ navigation, route }: any) {
                 <Text style={styles.sectionTitle}>History</Text>
                 {view.history.map((h) => {
                   const m = SUB_STATUS_META[h.status];
+                  const hCode = resolvePlanCode(h.planCode) ?? resolvePlanCode(h.planName);
                   return (
                     <View key={h.id} style={[styles.reviewCard]}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                        <Text style={styles.reviewName}>{h.planName}</Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        {hCode ? <PlanBadge plan={hCode} size="sm" /> : <Text style={styles.reviewName}>{h.planName}</Text>}
                         <Text style={{ color: m.color, fontWeight: fontWeight.semibold, fontSize: fontSize.xs }}>
                           {m.label}
                         </Text>

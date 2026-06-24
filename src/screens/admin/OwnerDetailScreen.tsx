@@ -7,6 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader, AppButton, EmptyState, AvatarImage } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { PlanBadge } from '../../components/PlanBadge';
+import { resolvePlanCode } from '../../theme/planMeta';
 import { formatRelativeTime } from '../../utils/dateUtils';
 import { venueStatusBadge } from '../../utils/venueUtils';
 import { extractApiError } from '../../api/client';
@@ -360,9 +362,14 @@ function SubscriptionsSection({ id, navigation }: { id: string; navigation: any 
           onPress={() => navigation.navigate('SubscriptionDetail', { venueId: r.venueId })}>
           <View style={{ flex: 1 }}>
             <Text style={styles.listTitle} numberOfLines={1}>{r.venueName}</Text>
-            <Text style={styles.listSub} numberOfLines={1}>
-              {r.currentPlanName ?? 'No plan'}{r.endDate ? ` · ends ${formatRelativeTime(r.endDate)}` : ''}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 2 }}>
+              {resolvePlanCode(r.currentPlanName) ? (
+                <PlanBadge plan={resolvePlanCode(r.currentPlanName)!} size="sm" />
+              ) : (
+                <Text style={styles.listSub}>No plan</Text>
+              )}
+              {r.endDate ? <Text style={styles.listSub} numberOfLines={1}>· ends {formatRelativeTime(r.endDate)}</Text> : null}
+            </View>
           </View>
           <Text style={styles.listStatus}>{r.currentStatus}</Text>
         </TouchableOpacity>

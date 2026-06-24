@@ -11,6 +11,7 @@ import type {
   UpgradeRequestCreate, CourtSelectionBody, PaidRequestBody,
 } from '../types';
 import { VENUES_KEY, OWNER_VENUES_KEY } from './useVenues';
+import { useAuth } from '../../store/AuthContext';
 
 export const SUBS_PLANS_KEY = ['subscription-plans'] as const;
 export const OWNER_SUB_KEY = ['owner', 'venue-subscription'] as const;
@@ -43,18 +44,32 @@ export function useAdminVenueSubscriptions(params: { q?: string; status?: string
 }
 
 // ─── Plans ──────────────────────────────────────────────────────────────────
-export function useOwnerPlans() {
+export function useOwnerPlans(enabled = true) {
   return useQuery({
     queryKey: [...SUBS_PLANS_KEY, 'owner'],
     queryFn: () => subscriptionService.ownerListPlans().then((l) => l.map(adaptSubscriptionPlan)),
+    enabled,
   });
 }
 
-export function useAdminPlans() {
+export function useAdminPlans(enabled = true) {
   return useQuery({
     queryKey: [...SUBS_PLANS_KEY, 'admin'],
     queryFn: () => subscriptionService.adminListPlans().then((l) => l.map(adaptSubscriptionPlan)),
+    enabled,
   });
+}
+
+/**
+ * Role-agnostic plan catalog for shared plan components (e.g. PlanInfoSheet): admins read the admin
+ * catalog, everyone else reads the owner catalog. Cached once per role and shared across badges.
+ */
+export function useSubscriptionPlans() {
+  const { role } = useAuth();
+  const isAdmin = role === 'admin';
+  const adminQ = useAdminPlans(isAdmin);
+  const ownerQ = useOwnerPlans(!isAdmin);
+  return isAdmin ? adminQ : ownerQ;
 }
 
 export function useUpdatePlan() {

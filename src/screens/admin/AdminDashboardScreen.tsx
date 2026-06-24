@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   topBarActions: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
   greeting: { fontSize: fontSize.sm, color: colors.textMid },
   name: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  cardGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  cardGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginTop: spacing.xl, marginBottom: spacing.md },
   loading: { fontSize: fontSize.md, color: colors.textMid, textAlign: 'center', marginTop: spacing.xxl },
 });

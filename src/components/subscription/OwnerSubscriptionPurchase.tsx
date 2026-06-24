@@ -4,6 +4,8 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { PlanBadge } from '../PlanBadge';
+import { resolvePlanCode } from '../../theme/planMeta';
 import { AppButton } from '../common';
 import { toast } from '../../toast';
 import { extractApiError } from '../../api/client';
@@ -189,7 +191,14 @@ function RequestDetailsSheet({ visible, venueId, state, onClose }: RequestSheetP
             <Text style={styles.statusPillText}>Pending admin activation after payment</Text>
           </View>
 
-          <Row label="Plan" value={pr.planName ?? pr.planCode} />
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Plan</Text>
+            {resolvePlanCode(pr.planCode) ? (
+              <PlanBadge plan={resolvePlanCode(pr.planCode)!} showInfo />
+            ) : (
+              <Text style={styles.detailValue}>{pr.planName ?? pr.planCode}</Text>
+            )}
+          </View>
           <Row
             label={`Courts (${pr.coveredCourtNames.length})`}
             value={pr.coveredCourtNames.length ? pr.coveredCourtNames.join(', ') : '—'}
@@ -341,7 +350,7 @@ function PurchaseFlow({ visible, venueId, state, onClose }: FlowProps) {
                   >
                     <View style={{ flex: 1 }}>
                       <View style={styles.planRowTop}>
-                        <Text style={styles.planName}>{opt.name}</Text>
+                        <PlanBadge plan={opt.code} />
                         {opt.kind === 'TRIAL' && <View style={styles.freeTag}><Text style={styles.freeTagText}>FREE</Text></View>}
                       </View>
                       <Text style={styles.planMeta}>
@@ -371,7 +380,10 @@ function PurchaseFlow({ visible, venueId, state, onClose }: FlowProps) {
             {/* ── Paid plan details ── */}
             {step === 'planDetails' && plan && (
               <View style={styles.detailBox}>
-                <Text style={styles.detailLead}>{plan.name} · ₹{plan.price}/mo</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs }}>
+                  <PlanBadge plan={plan.code} />
+                  <Text style={styles.detailLead}>₹{plan.price}/mo</Text>
+                </View>
                 <Bullet text={`Cover up to ${plan.courtLimit} courts`} />
                 <Bullet text="Payment is collected offline; an admin activates your plan" />
                 <Bullet text="Only the courts you select become bookable" />
@@ -382,12 +394,16 @@ function PurchaseFlow({ visible, venueId, state, onClose }: FlowProps) {
             {step === 'courts' && plan && (
               loadingCourts ? <ActivityIndicator color={colors.owner} style={{ marginVertical: spacing.xl }} /> : (
                 <View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+                    <Text style={styles.instruction}>Courts for</Text>
+                    <PlanBadge plan={plan.code} size="sm" />
+                  </View>
                   <Text style={styles.instruction}>
                     {autoCover
-                      ? `Your ${activeCourts.length} court${activeCourts.length === 1 ? '' : 's'} will be activated${plan.kind === 'TRIAL' ? ' for your free trial' : ` for the ${plan.name} plan`}.`
+                      ? `Your ${activeCourts.length} court${activeCourts.length === 1 ? '' : 's'} will be activated${plan.kind === 'TRIAL' ? ' for your free trial' : ''}.`
                       : plan.kind === 'TRIAL'
                         ? `Choose up to ${plan.courtLimit} courts to activate for your free trial.`
-                        : `Choose up to ${plan.courtLimit} courts for the ${plan.name} plan.`}
+                        : `Choose up to ${plan.courtLimit} courts to cover.`}
                   </Text>
                   {!autoCover && (
                     <Text style={styles.counter}>{selected.size}/{limit} selected</Text>

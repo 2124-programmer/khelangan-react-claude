@@ -5,6 +5,8 @@ import Animated, {
   useSharedValue, useAnimatedProps, withRepeat, withTiming, Easing, cancelAnimation,
 } from 'react-native-reanimated';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
+import { PlanBadge } from '../PlanBadge';
+import { resolvePlanCode } from '../../theme/planMeta';
 import type { SubscriptionTimeline as Timeline, Subscription } from '../../types';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -121,18 +123,21 @@ export function RecentSubscriptionsStrip({ items }: { items: Subscription[] }) {
   if (recent.length === 0) return null;
   return (
     <View style={styles.recentWrap}>
-      {recent.map((s) => (
-        <View key={s.id} style={styles.recentRow}>
-          <View style={styles.recentDot} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.recentPlan}>{s.planName}</Text>
-            <Text style={styles.recentMeta}>
-              {fmtDate(s.periodStart)} → {fmtDate(s.periodEnd)} · ₹{s.price.toLocaleString('en-IN')}
-            </Text>
+      {recent.map((s) => {
+        const code = resolvePlanCode(s.planCode) ?? resolvePlanCode(s.planName);
+        return (
+          <View key={s.id} style={styles.recentRow}>
+            <View style={styles.recentDot} />
+            <View style={{ flex: 1, gap: 2 }}>
+              {code ? <PlanBadge plan={code} size="sm" /> : <Text style={styles.recentPlan}>{s.planName}</Text>}
+              <Text style={styles.recentMeta}>
+                {fmtDate(s.periodStart)} → {fmtDate(s.periodEnd)} · ₹{s.price.toLocaleString('en-IN')}
+              </Text>
+            </View>
+            <Text style={[styles.recentStatus, { color: statusColor(s.status) }]}>{s.status}</Text>
           </View>
-          <Text style={[styles.recentStatus, { color: statusColor(s.status) }]}>{s.status}</Text>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
@@ -157,7 +162,7 @@ const styles = StyleSheet.create({
   date: { fontSize: 9, color: colors.textDim, marginTop: 2, textAlign: 'center' },
   recentWrap: { marginTop: spacing.md, gap: spacing.sm },
   recentRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  recentDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.admin },
+  recentDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.borderDark },
   recentPlan: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
   recentMeta: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 1 },
   recentStatus: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },

@@ -190,28 +190,21 @@ export function NeedsAttentionRow({
   return (
     <View style={styles.attentionWrap}>
       {items.map((item) => {
-        const zero = item.count <= 0;
+        const active = item.count > 0;
         return (
           <TouchableOpacity
             key={item.key}
-            style={[styles.attentionPill, zero && styles.attentionPillZero]}
+            style={styles.attnCard}
             onPress={() => onPressItem(item)}
-            disabled={zero}
-            activeOpacity={0.7}
+            activeOpacity={0.75}
             accessibilityRole="button"
             accessibilityLabel={`${item.label}: ${item.count}`}
           >
-            <Text style={[styles.attentionIcon, zero && styles.attentionDim]}>
-              {ATTENTION_ICON[item.key] ?? '•'}
+            <Text style={styles.attnIcon}>{ATTENTION_ICON[item.key] ?? '•'}</Text>
+            <Text style={styles.attnLabel} numberOfLines={2}>{item.label}</Text>
+            <Text style={[styles.attnValue, active ? styles.attnValueActive : styles.attnValueZero]}>
+              {formatCount(item.count)}
             </Text>
-            <Text style={[styles.attentionLabel, zero && styles.attentionDim]} numberOfLines={1}>
-              {item.label}
-            </Text>
-            <View style={[styles.attentionBadge, zero ? styles.attentionBadgeZero : styles.attentionBadgeActive]}>
-              <Text style={[styles.attentionBadgeText, zero && styles.attentionBadgeTextZero]}>
-                {formatCount(item.count)}
-              </Text>
-            </View>
           </TouchableOpacity>
         );
       })}
@@ -277,14 +270,14 @@ export function ManagementGrid({
             accessibilityRole="button"
             accessibilityLabel={showCount ? `${tile.label}: ${count}` : tile.label}
           >
-            <Text style={styles.tileIcon}>{tile.icon}</Text>
+            <View style={styles.tileIconBox}>
+              <Text style={styles.tileIconText}>{tile.icon}</Text>
+            </View>
             <Text style={styles.tileLabel} numberOfLines={1}>{tile.label}</Text>
             {showCount ? (
-              <View style={[styles.tileChip, danger && styles.tileChipDanger]}>
-                <Text style={[styles.tileChipText, danger && styles.tileChipTextDanger]}>
-                  {formatCount(count as number)}
-                </Text>
-              </View>
+              <Text style={[styles.tileCount, danger && styles.tileCountDanger]}>
+                {formatCount(count as number)}
+              </Text>
             ) : (
               <Text style={styles.tileChevron}>›</Text>
             )}
@@ -318,12 +311,12 @@ const styles = StyleSheet.create({
   trendChip: { borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 2 },
   trendText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold },
 
-  // metric card
+  // metric card — 3 per row
   card: {
-    width: '47%',
+    width: '31%',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.lg,
+    padding: spacing.md,
     gap: spacing.xs,
   },
   cardLabel: { fontSize: fontSize.xs, color: colors.textMid },
@@ -343,51 +336,54 @@ const styles = StyleSheet.create({
   heroValue: { fontSize: fontSize.display, fontWeight: fontWeight.bold, color: colors.white },
   heroSub: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.9)' },
 
-  // attention
+  // attention — icon + label + count inline, 3 per row
   attentionWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  attentionPill: {
+  attnCard: {
+    width: '31%',
+    minHeight: 58,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    width: '47%',
+    gap: spacing.xs,
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  attentionPillZero: { opacity: 0.45, backgroundColor: colors.surfaceAlt },
-  attentionIcon: { fontSize: 16 },
-  attentionLabel: { flex: 1, fontSize: fontSize.xs, color: colors.text },
-  attentionDim: { color: colors.textDim },
-  attentionBadge: { borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 1, minWidth: 24, alignItems: 'center' },
-  attentionBadgeActive: { backgroundColor: colors.danger },
-  attentionBadgeZero: { backgroundColor: colors.border },
-  attentionBadgeText: { fontSize: fontSize.xs, color: colors.white, fontWeight: fontWeight.bold },
-  attentionBadgeTextZero: { color: colors.textDim },
+  attnIcon: { fontSize: 13 },
+  attnLabel: { flex: 1, fontSize: 10, color: colors.textMid },
+  attnValue: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
+  attnValueActive: { color: colors.danger },
+  attnValueZero: { color: colors.text },
 
   // quiet
   quiet: { paddingVertical: spacing.sm },
   quietText: { fontSize: fontSize.sm, color: colors.textMid, fontStyle: 'italic' },
 
-  // tiles
-  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  // tiles — Quick-Actions-style (icon square on top, label, count below), 4 per row
+  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   tile: {
-    width: '47%',
-    flexDirection: 'row',
+    width: '22%',
+    flexDirection: 'column',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.xs,
   },
-  tileIcon: { fontSize: 22 },
-  tileLabel: { flex: 1, fontSize: fontSize.sm, color: colors.text, fontWeight: fontWeight.medium },
-  tileChip: { backgroundColor: colors.surfaceAlt, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 2, minWidth: 26, alignItems: 'center' },
-  tileChipDanger: { backgroundColor: colors.danger },
-  tileChipText: { fontSize: fontSize.xs, color: colors.textMid, fontWeight: fontWeight.bold },
-  tileChipTextDanger: { color: colors.white },
-  tileChevron: { fontSize: fontSize.lg, color: colors.textDim },
+  tileIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileIconText: { fontSize: 20 },
+  tileLabel: { fontSize: fontSize.xs, color: colors.text, fontWeight: fontWeight.medium, textAlign: 'center' },
+  tileCount: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
+  tileCountDanger: { color: colors.danger },
+  tileChevron: { fontSize: fontSize.md, color: colors.textDim },
 });

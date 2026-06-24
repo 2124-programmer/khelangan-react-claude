@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { PlanBadge } from '../../components/PlanBadge';
+import { resolvePlanCode } from '../../theme/planMeta';
 import { AppHeader, AppButton, StatusBadge, EmptyState, LoadingOverlay } from '../../components/common';
 import { VenueSubscriptionStrip } from '../../components/subscription/OwnerSubscriptionPurchase';
 import { useOwnerVenues, useSubmitVenue } from '../../api/hooks/useVenues';
@@ -191,8 +193,12 @@ export default function MyVenuesScreen({ navigation }: any) {
                     activeOpacity={0.8}
                     style={[styles.planRow, !fits && styles.planRowDisabled]}
                   >
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.planName}>{p.name}</Text>
+                    <View style={{ flex: 1, gap: 4 }}>
+                      {resolvePlanCode(p.code) ? (
+                        <PlanBadge plan={resolvePlanCode(p.code)!} />
+                      ) : (
+                        <Text style={styles.planName}>{p.name}</Text>
+                      )}
                       <Text style={styles.planMeta}>Up to {p.maxCourts} courts · ₹{p.priceMonthly}/mo</Text>
                     </View>
                     {fits

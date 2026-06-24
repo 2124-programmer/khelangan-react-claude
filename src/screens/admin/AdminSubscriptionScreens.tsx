@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, ActivityIndicator,
-  FlatList, TextInput, Linking, Modal,
+  FlatList, TextInput, Linking,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader, AppButton, AppInput, SectionTabBar, EmptyState } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
 import { SubscriptionTimeline, RecentSubscriptionsStrip } from '../../components/subscription/SubscriptionTimeline';
+import { PlanBadge } from '../../components/PlanBadge';
+import { PlanComparison } from '../../components/PlanComparison';
+import { resolvePlanCode } from '../../theme/planMeta';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { extractApiError } from '../../api/client';
 import { toast } from '../../toast';
@@ -159,6 +162,9 @@ function ActivateTab({ navigation }: { navigation: any }) {
 
 function VenueRowCard({ row, onView }: { row: VenueSubscriptionRow; onView: () => void }) {
   const pillColor = ROW_STATUS_COLOR[row.currentStatus];
+  const currentPlanCode = resolvePlanCode(row.currentPlanName);
+  const pendingCurrentCode = resolvePlanCode(row.pendingCurrentPlanName ?? row.currentPlanName);
+  const pendingRequestedCode = resolvePlanCode(row.pendingRequestedPlanName);
   return (
     <View style={[styles.card, shadow.card]}>
       <View style={styles.rowBetween}>
@@ -178,16 +184,21 @@ function VenueRowCard({ row, onView }: { row: VenueSubscriptionRow; onView: () =
           </TouchableOpacity>
         </View>
       ) : null}
-      <Field label="Current plan" value={row.currentPlanName ?? '—'} />
+      <View style={styles.fieldRow}>
+        <Text style={styles.rLabel}>Current plan</Text>
+        {currentPlanCode ? <PlanBadge plan={currentPlanCode} size="sm" /> : <Text style={styles.rValue}>—</Text>}
+      </View>
       <Field label="End date" value={fmt(row.endDate)} />
       <Field label="Courts" value={`${row.courtsUsed}${row.courtLimit != null ? ` / ${row.courtLimit}` : ''}`} />
 
       {row.pendingRequestId ? (
         <View style={styles.pendingStrip}>
           <Feather name="clock" size={13} color={colors.warning} />
-          <Text style={styles.pendingStripText} numberOfLines={1}>
-            {(row.pendingCurrentPlanName ?? row.currentPlanName ?? 'None')} → {row.pendingRequestedPlanName}
-          </Text>
+          {pendingCurrentCode ? <PlanBadge plan={pendingCurrentCode} size="sm" /> : <Text style={styles.pendingStripText}>None</Text>}
+          <Feather name="arrow-right" size={13} color={colors.textDim} />
+          {pendingRequestedCode ? <PlanBadge plan={pendingRequestedCode} size="sm" /> : (
+            <Text style={styles.pendingStripText} numberOfLines={1}>{row.pendingRequestedPlanName}</Text>
+          )}
           <View style={styles.pendingTag}><Text style={styles.pendingTagText}>Requested</Text></View>
         </View>
       ) : null}
@@ -255,11 +266,15 @@ export function SubscriptionDetailScreen({ navigation, route }: any) {
             {owner?.email ? <Field label="Email" value={owner.email} /> : null}
           </View>
 
-          {/* Current subscription + actions */}
+          {/* Current subscription + actions — plan colour (badge) sits beside the status pill */}
           {current ? (
             <View style={[styles.card, shadow.card]}>
               <View style={styles.rowBetween}>
-                <Text style={styles.cardTitle}>{current.planName}</Text>
+                {resolvePlanCode(current.planCode) ?? resolvePlanCode(current.planName) ? (
+                  <PlanBadge plan={(resolvePlanCode(current.planCode) ?? resolvePlanCode(current.planName))!} showInfo />
+                ) : (
+                  <Text style={styles.cardTitle}>{current.planName}</Text>
+                )}
                 <View style={[styles.badge, { backgroundColor: STATUS_COLOR[current.status] }]}>
                   <Text style={styles.badgeText}>{current.status}</Text>
                 </View>
@@ -402,17 +417,13 @@ function PendingRequestCard({ pending, currentPlanName }: {
           <Text style={styles.badgeText}>ACTION NEEDED</Text>
         </View>
       </View>
-      <View style={styles.reqPlanRow}>
-        <View style={styles.reqPlanBox}>
-          <Text style={styles.reqPlanLabel}>Current</Text>
-          <Text style={styles.reqPlanValue} numberOfLines={1}>{pending.currentPlanName ?? currentPlanName ?? 'None'}</Text>
-        </View>
-        <Feather name="arrow-right" size={18} color={colors.textDim} />
-        <View style={styles.reqPlanBox}>
-          <Text style={styles.reqPlanLabel}>Requested</Text>
-          <Text style={[styles.reqPlanValue, { color: colors.admin }]} numberOfLines={1}>{pending.requestedPlanName}</Text>
-        </View>
-      </View>
+      {resolvePlanCode(pending.requestedPlanCode) ? (
+        <PlanComparison
+          current={resolvePlanCode(pending.currentPlanName ?? currentPlanName)}
+          requested={resolvePlanCode(pending.requestedPlanCode)!}
+          showInfo
+        />
+      ) : null}
       <View style={styles.divider} />
       <Field label="Billing" value={pending.requestedCycle === 'ANNUAL' ? 'Annual' : 'Monthly'} />
       <Field label="Price" value={`₹${pending.requestedPlanPrice.toLocaleString('en-IN')} / ${pending.requestedCycle === 'ANNUAL' ? 'yr' : 'mo'}`} />
@@ -577,13 +588,6 @@ function RequestsTab({ navigation }: { navigation: any }) {
   const [filter, setFilter] = useState('PENDING');
   const debounced = useDebounce(search, 300).trim().toLowerCase();
   const reqQ = useChangeRequests(filter);
-  const plansQ = useAdminPlans();
-  const [infoPlan, setInfoPlan] = useState<SubscriptionPlan | null>(null);
-
-  const plans = plansQ.data ?? [];
-  // Requested values are plan codes; current is a plan name — match either.
-  const findPlan = (codeOrName?: string | null): SubscriptionPlan | null =>
-    codeOrName ? (plans.find((p) => p.code === codeOrName) ?? plans.find((p) => p.name === codeOrName) ?? null) : null;
 
   const all = reqQ.data ?? [];
   const requests = (debounced
@@ -634,31 +638,13 @@ function RequestsTab({ navigation }: { navigation: any }) {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.reqPlanRow}>
-                <View style={styles.reqPlanBox}>
-                  <View style={styles.reqPlanLabelRow}>
-                    <Text style={styles.reqPlanLabel}>Current</Text>
-                    {!!findPlan(r.currentPlanName) && (
-                      <TouchableOpacity style={styles.infoBtn} onPress={() => setInfoPlan(findPlan(r.currentPlanName))} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                        <Feather name="info" size={13} color={colors.textMid} />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                  <Text style={styles.reqPlanValue} numberOfLines={1}>{r.currentPlanName ?? 'None'}</Text>
-                </View>
-                <Feather name="arrow-right" size={18} color={colors.textDim} />
-                <View style={styles.reqPlanBox}>
-                  <View style={styles.reqPlanLabelRow}>
-                    <Text style={styles.reqPlanLabel}>Requested</Text>
-                    {!!findPlan(r.requestedPlanCode) && (
-                      <TouchableOpacity style={[styles.infoBtn, styles.infoBtnAdmin]} onPress={() => setInfoPlan(findPlan(r.requestedPlanCode))} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                        <Feather name="info" size={13} color={colors.admin} />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                  <Text style={[styles.reqPlanValue, { color: colors.admin }]} numberOfLines={1}>{r.requestedPlanName}</Text>
-                </View>
-              </View>
+              {resolvePlanCode(r.requestedPlanCode) ? (
+                <PlanComparison
+                  current={resolvePlanCode(r.currentPlanName)}
+                  requested={resolvePlanCode(r.requestedPlanCode)!}
+                  showInfo
+                />
+              ) : null}
 
               <View style={styles.divider} />
               <Field label="Court limit" value={`up to ${r.requestedPlanMaxCourts} court${r.requestedPlanMaxCourts === 1 ? '' : 's'}`} />
@@ -695,53 +681,7 @@ function RequestsTab({ navigation }: { navigation: any }) {
           )}
         />
       )}
-      <PlanInfoModal plan={infoPlan} onClose={() => setInfoPlan(null)} />
     </View>
-  );
-}
-
-/** Prettify a feature code like AUTO_ACCEPT → "Auto Accept". */
-function prettyFeature(code: string): string {
-  return code.toLowerCase().split('_').map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w)).join(' ');
-}
-
-/* ── Plan info popup (price, court limit, features) ───────────────────────── */
-function PlanInfoModal({ plan, onClose }: { plan: SubscriptionPlan | null; onClose: () => void }) {
-  return (
-    <Modal transparent visible={!!plan} animationType="fade" onRequestClose={onClose}>
-      <View style={styles.infoOverlay}>
-        <View style={[styles.infoCard, shadow.modal]}>
-          {plan && (
-            <>
-              <View style={styles.rowBetween}>
-                <Text style={styles.infoTitle}>{plan.name} plan</Text>
-                <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={styles.infoCloseX}>✕</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.divider} />
-              <Field label="Monthly" value={`₹${plan.priceMonthly.toLocaleString('en-IN')}`} />
-              <Field label="Annual" value={`₹${plan.priceAnnual.toLocaleString('en-IN')}`} />
-              <Field label="Court limit" value={`up to ${plan.maxCourts} court${plan.maxCourts === 1 ? '' : 's'}`} />
-              <Field label="Photos" value={`up to ${plan.photoLimit}`} />
-              <Field label="Free trial" value={`${plan.trialDays} days`} />
-              {plan.features.length > 0 && (
-                <>
-                  <Text style={[styles.reqPlanLabel, { marginTop: spacing.md, marginBottom: spacing.xs }]}>Features</Text>
-                  {plan.features.map((f) => (
-                    <View key={f} style={styles.featureRow}>
-                      <Feather name="check" size={14} color={colors.success} />
-                      <Text style={styles.featureText}>{prettyFeature(f)}</Text>
-                    </View>
-                  ))}
-                </>
-              )}
-              <AppButton label="Close" variant="secondary" onPress={onClose} style={{ marginTop: spacing.md }} />
-            </>
-          )}
-        </View>
-      </View>
-    </Modal>
   );
 }
 
@@ -781,10 +721,14 @@ function PlanEditorCard({ plan }: { plan: SubscriptionPlan }) {
     );
   };
 
+  const planCode = resolvePlanCode(plan.code);
   return (
     <View style={[styles.card, shadow.card]}>
       <TouchableOpacity style={styles.rowBetween} onPress={() => setOpen((s) => !s)}>
-        <Text style={styles.cardTitle}>{plan.name}{!plan.active ? ' (inactive)' : ''}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1 }}>
+          {planCode ? <PlanBadge plan={planCode} showInfo /> : <Text style={styles.cardTitle}>{plan.name}</Text>}
+          {!plan.active ? <Text style={styles.hint}>(inactive)</Text> : null}
+        </View>
         <Text style={styles.hint}>₹{plan.priceMonthly}/mo · {plan.maxCourts} courts</Text>
       </TouchableOpacity>
       {open && (

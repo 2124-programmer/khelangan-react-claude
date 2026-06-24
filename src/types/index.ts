@@ -406,7 +406,9 @@ export interface SubscriptionPlan {
 
 // ─── Owner subscription purchase + court coverage ─────────────────────────────
 export type PlanKind = 'TRIAL' | 'PAID';
-export type PlanOptionCode = 'TRIAL' | 'STARTER' | 'GROWTH' | 'PRO' | 'PRO_MAX';
+/** The five subscription plans. Single shared union — keep in sync with the backend PlanCode enum. */
+export type PlanCode = 'TRIAL' | 'STARTER' | 'GROWTH' | 'PRO' | 'PRO_MAX';
+export type PlanOptionCode = PlanCode;
 export type PaidPlanCode = 'STARTER' | 'GROWTH' | 'PRO' | 'PRO_MAX';
 export type VenueSubState = 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'CANCELED' | 'NONE';
 

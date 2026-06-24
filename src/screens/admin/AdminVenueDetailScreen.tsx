@@ -7,6 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader, AppButton, EmptyState } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { PlanBadge } from '../../components/PlanBadge';
+import { resolvePlanCode } from '../../theme/planMeta';
 import { formatVenueAddress, getOpenStatus } from '../../utils/venueUtils';
 import { formatRelativeTime } from '../../utils/dateUtils';
 import { extractApiError } from '../../api/client';
@@ -180,9 +182,14 @@ export default function AdminVenueDetailScreen({ navigation, route }: any) {
               </View>
               {currentSub ? (
                 <View style={{ marginTop: spacing.sm, gap: 4 }}>
-                  <Text style={styles.muted}>
-                    {currentSub.planName} · ₹{currentSub.price.toLocaleString('en-IN')}/{currentSub.billingCycle === 'ANNUAL' ? 'yr' : 'mo'}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                    {resolvePlanCode(currentSub.planCode) ?? resolvePlanCode(currentSub.planName) ? (
+                      <PlanBadge plan={(resolvePlanCode(currentSub.planCode) ?? resolvePlanCode(currentSub.planName))!} size="sm" />
+                    ) : null}
+                    <Text style={styles.muted}>
+                      ₹{currentSub.price.toLocaleString('en-IN')}/{currentSub.billingCycle === 'ANNUAL' ? 'yr' : 'mo'}
+                    </Text>
+                  </View>
                   <Text style={styles.muted}>
                     Covered courts ({currentSub.coveredCourtNames.length}/{currentSub.maxCourts}): {currentSub.coveredCourtNames.length ? currentSub.coveredCourtNames.join(', ') : '—'}
                   </Text>
