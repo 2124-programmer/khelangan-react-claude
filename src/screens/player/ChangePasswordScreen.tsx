@@ -78,6 +78,15 @@ export default function ChangePasswordScreen({ navigation }: any) {
           }
         />
 
+        {/* Escape hatch for users who don't remember their current password → email-OTP reset. */}
+        <TouchableOpacity
+          style={styles.forgotRow}
+          onPress={() => navigation.navigate('ForgotPassword', { fromSecurity: true })}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.forgotLink}>Forgot password?</Text>
+        </TouchableOpacity>
+
         <AppInput
           label="New Password"
           value={next}
@@ -135,6 +144,8 @@ function Hint({ ok, label }: { ok: boolean; label: string }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   toggleEye: { fontSize: 18, padding: spacing.xs },
+  forgotRow: { alignSelf: 'flex-end', marginTop: -spacing.sm, marginBottom: spacing.lg, padding: spacing.xs },
+  forgotLink: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.semibold },
   hints: { marginBottom: spacing.md, paddingLeft: spacing.xs },
   hint: { fontSize: fontSize.xs, marginBottom: 2 },
   hintOk: { color: colors.success },

@@ -18,6 +18,7 @@ import { RoleChangeScreen, EditProfileScreen } from '../screens/player/MiscScree
 import SecurityScreen from '../screens/player/SecurityScreen';
 import ChangePasswordScreen from '../screens/player/ChangePasswordScreen';
 import EmailChangeScreen from '../screens/player/EmailChangeScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import VenueDetailScreen from '../screens/player/VenueDetailScreen';
 import VenueReviewsScreen from '../screens/player/VenueReviewsScreen';
 
@@ -38,6 +39,7 @@ const SHARED = [
   { name: 'Security', component: SecurityScreen },
   { name: 'ChangePassword', component: ChangePasswordScreen },
   { name: 'EmailChange', component: EmailChangeScreen },
+  { name: 'ForgotPassword', component: ForgotPasswordScreen },
 ];
 
 function makeStack(initialName: string, initialComponent: any) {

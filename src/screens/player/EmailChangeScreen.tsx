@@ -10,8 +10,10 @@ import { extractApiError, getHttpStatus } from '../../api/client';
 import {
   useCreateEmailChangeRequest, useVerifyEmailChangeOtp, useEmailChangeStatus,
 } from '../../api/hooks/useEmailChange';
+import { useAuth } from '../../store/AuthContext';
+import { userService } from '../../api/services/userService';
 
-type Step = 'newEmail' | 'otp' | 'pending';
+type Step = 'newEmail' | 'otp' | 'done';
 
 const RESEND_COOLDOWN = 60;
 
@@ -40,6 +42,7 @@ const STATUS_COPY: Record<string, { label: string; color: string; desc: string }
 
 export default function EmailChangeScreen({ navigation }: any) {
   const { data: existing, isLoading } = useEmailChangeStatus();
+  const { updateUser } = useAuth();
   const createRequest = useCreateEmailChangeRequest();
   const verifyOtp = useVerifyEmailChangeOtp();
 
@@ -52,8 +55,8 @@ export default function EmailChangeScreen({ navigation }: any) {
   const otpRefs = useRef<(TextInput | null)[]>([]);
 
   useEffect(() => {
+    // Only an unverified request resumes mid-flow; a verified change applies immediately.
     if (existing?.status === 'PENDING_VERIFICATION') setStep('otp');
-    else if (existing?.status === 'PENDING') setStep('pending');
   }, [existing]);
 
   useEffect(() => {
@@ -99,7 +102,18 @@ export default function EmailChangeScreen({ navigation }: any) {
   const otpValue = otp.join('');
 
   const handleOtpChange = (text: string, idx: number) => {
-    const char = text.slice(-1);
+    if (errors.otp) setErrors((e) => ({ ...e, otp: '' }));
+    const digits = text.replace(/\D/g, '');
+    // Paste / autofill: a multi-digit value lands in one box — spread it across the row.
+    if (digits.length > 1) {
+      const next = [...otp];
+      for (let i = 0; i < digits.length && idx + i < 6; i++) next[idx + i] = digits[i];
+      setOtp(next);
+      const lastFilled = Math.min(idx + digits.length, 6) - 1;
+      otpRefs.current[lastFilled]?.focus();
+      return;
+    }
+    const char = digits.slice(-1);
     const next = [...otp];
     next[idx] = char;
     setOtp(next);
@@ -120,8 +134,11 @@ export default function EmailChangeScreen({ navigation }: any) {
     setErrors({});
     try {
       await verifyOtp.mutateAsync({ otp: otpValue });
-      toast.success('Email verified! Your request is now under admin review.');
-      setStep('pending');
+      // Self-service: the change is applied immediately. Refresh the signed-in user so the new
+      // email shows everywhere (best-effort — the change already succeeded server-side).
+      try { updateUser(await userService.getMe()); } catch { /* non-blocking */ }
+      toast.success('Your email address has been updated.');
+      setStep('done');
     } catch (err) {
       const status = getHttpStatus(err);
       if (status === 401 || status === 400) {
@@ -172,8 +189,8 @@ export default function EmailChangeScreen({ navigation }: any) {
           <>
             <Text style={styles.heading}>Request email change</Text>
             <Text style={styles.sub}>
-              Enter the new email address. We'll send a verification code to it, then a platform
-              admin will review and approve the change.
+              Enter the new email address. We'll send a verification code to confirm it's yours,
+              then update your email right away.
             </Text>
             <AppInput
               label="New Email Address"
@@ -213,7 +230,9 @@ export default function EmailChangeScreen({ navigation }: any) {
                   onChangeText={(t) => handleOtpChange(t, idx)}
                   onKeyPress={({ nativeEvent }) => handleOtpKeyPress(nativeEvent.key, idx)}
                   keyboardType="number-pad"
-                  maxLength={1}
+                  maxLength={idx === 0 ? 6 : 1}
+                  textContentType="oneTimeCode"
+                  autoComplete="one-time-code"
                   selectTextOnFocus
                 />
               ))}
@@ -241,15 +260,15 @@ export default function EmailChangeScreen({ navigation }: any) {
         )}
 
         {/* ── Step 3 ── */}
-        {step === 'pending' && (
+        {step === 'done' && (
           <>
             <View style={styles.pendingCard}>
-              <Text style={styles.pendingIcon}>⏳</Text>
-              <Text style={styles.pendingTitle}>Request submitted</Text>
+              <Text style={styles.pendingIcon}>✅</Text>
+              <Text style={styles.pendingTitle}>Email updated</Text>
               <Text style={styles.pendingDesc}>
-                A platform admin will review your request to change your email to{'\n'}
-                <Text style={{ color: colors.primary }}>{existing?.newEmail}</Text>.{'\n\n'}
-                You'll be notified once a decision has been made.
+                Your account email is now{'\n'}
+                <Text style={{ color: colors.primary }}>{existing?.newEmail ?? newEmail}</Text>.{'\n\n'}
+                Use this address the next time you sign in.
               </Text>
             </View>
             <AppButton label="Done" onPress={() => navigation.goBack()} style={{ marginTop: spacing.xl }} />

@@ -23,6 +23,7 @@ import {
 import SecurityScreen from '../screens/player/SecurityScreen';
 import ChangePasswordScreen from '../screens/player/ChangePasswordScreen';
 import EmailChangeScreen from '../screens/player/EmailChangeScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
 // Screens reachable from anywhere in the player app. Registered in every tab's
 // stack so any `navigation.navigate('X')` resolves regardless of the active tab.
@@ -47,6 +48,7 @@ const SHARED = [
   { name: 'Security', component: SecurityScreen },
   { name: 'ChangePassword', component: ChangePasswordScreen },
   { name: 'EmailChange', component: EmailChangeScreen },
+  { name: 'ForgotPassword', component: ForgotPasswordScreen },
 ];
 
 function makeStack(initialName: string, initialComponent: any) {

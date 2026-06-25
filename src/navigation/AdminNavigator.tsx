@@ -14,8 +14,9 @@ import DisputeDetailScreen from '../screens/admin/DisputeDetailScreen';
 import AdminProfileScreen from '../screens/admin/AdminProfileScreen';
 import { EditProfileScreen } from '../screens/player/MiscScreens';
 import ChangePasswordScreen from '../screens/player/ChangePasswordScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import NotificationsScreen from '../screens/player/NotificationsScreen';
-import AdminEmailChangeScreen from '../screens/admin/AdminEmailChangeScreen';
+import EmailChangeScreen from '../screens/player/EmailChangeScreen';
 import { SubscriptionManagementScreen, SubscriptionDetailScreen } from '../screens/admin/AdminSubscriptionScreens';
 import AdminVenuesScreen from '../screens/admin/AdminVenuesScreen';
 import AdminVenueDetailScreen from '../screens/admin/AdminVenueDetailScreen';
@@ -56,11 +57,12 @@ export default function AdminNavigator() {
       <Stack.Screen name="SubscriptionManagement" component={SubscriptionManagementScreen} />
       <Stack.Screen name="SubscriptionDetail" component={SubscriptionDetailScreen} />
       <Stack.Screen name="AdminSettings" component={AdminSettingsScreen} />
-      <Stack.Screen name="AdminEmailChange" component={AdminEmailChangeScreen} />
+      <Stack.Screen name="EmailChange" component={EmailChangeScreen} />
       {/* Admin Profile hub + reused personal-account screens */}
       <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
       <Stack.Screen name="AdminEditProfile" component={EditProfileScreen} />
       <Stack.Screen name="AdminChangePassword" component={ChangePasswordScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       {/* Admin notification inbox — the NotificationBell (dashboard + profile header) routes here. */}
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>

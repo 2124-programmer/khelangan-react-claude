@@ -37,7 +37,7 @@ export default function AdminProfileScreen({ navigation }: any) {
             onPress={() => navigation.navigate('AdminEditProfile')} />
           <Divider />
           <Row icon="mail" label="Change Email" hint="Requires verification"
-            onPress={() => navigation.navigate('AdminEmailChange')} />
+            onPress={() => navigation.navigate('EmailChange')} />
           <Divider />
           <Row icon="lock" label="Change Password" hint="You'll stay signed in"
             onPress={() => navigation.navigate('AdminChangePassword')} />
