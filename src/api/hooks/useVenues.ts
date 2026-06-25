@@ -6,8 +6,16 @@ import {
   adaptVenueSummary, adaptVenueDetail, adaptAdminVenueDetail, adaptVenueCounts,
 } from '../adapters';
 import type { CreateVenueRequest, UpdateVenueRequest, VenueStatusRequest } from '../types';
+import type { Venue } from '../../types';
+import { toast } from '../../toast';
 
 export const VENUES_KEY = ['venues'] as const;
+
+type VenueListData = { venues: Venue[]; totalPages: number; totalElements: number };
+type InfiniteVenueData = { pages: { venues: Venue[] }[]; pageParams: unknown[] };
+
+const flipFavorite = (venues: Venue[], venueId: string, next: boolean): Venue[] =>
+  venues.map((v) => (v.id === venueId ? { ...v, isFavorite: next } : v));
 export const OWNER_VENUES_KEY = ['owner', 'venues'] as const;
 export const ADMIN_VENUES_KEY = ['admin', 'venues'] as const;
 
@@ -22,6 +30,35 @@ export function useVenues(params?: { city?: string; sport?: string; search?: str
         totalElements: page.totalElements,
       };
     },
+  });
+}
+
+export const VENUES_PAGE_SIZE = 15;
+
+export type VenueDiscoveryParams = {
+  sport?: string;
+  search?: string;
+  sort?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minRating?: number;
+};
+
+/** Home/discovery feed with server-side filter/sort + infinite scroll (page size 15). */
+export function useInfiniteVenues(params: VenueDiscoveryParams) {
+  return useInfiniteQuery({
+    queryKey: [...VENUES_KEY, 'infinite', params],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const page = await venueService.list({ ...params, page: pageParam as number, size: VENUES_PAGE_SIZE });
+      return {
+        venues: page.content.map(adaptVenueSummary),
+        number: page.number ?? (pageParam as number),
+        totalPages: page.totalPages ?? 1,
+        totalElements: page.totalElements ?? 0,
+      };
+    },
+    getNextPageParam: (last) => (last.number < last.totalPages - 1 ? last.number + 1 : undefined),
   });
 }
 
@@ -100,6 +137,46 @@ export function useAdminVenues(params?: { page?: number; size?: number; status?:
         totalPages: page.totalPages,
         totalElements: page.totalElements,
       };
+    },
+  });
+}
+
+/**
+ * Toggle a venue favorite with an optimistic flip across every cached venue list.
+ * The detail query shares the `['venues', …]` prefix but holds a single Venue (no
+ * `.venues` array), so the updater leaves it untouched. Rolls back on error.
+ */
+export function useToggleFavorite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ venueId, next }: { venueId: string; next: boolean }) =>
+      next ? venueService.favorite(Number(venueId)) : venueService.unfavorite(Number(venueId)),
+    onMutate: async ({ venueId, next }) => {
+      await qc.cancelQueries({ queryKey: VENUES_KEY });
+      const snapshots = qc.getQueriesData({ queryKey: VENUES_KEY });
+      qc.setQueriesData({ queryKey: VENUES_KEY }, (old: unknown) => {
+        if (!old || typeof old !== 'object') return old;
+        // Infinite feed: { pages: [{ venues }], pageParams }
+        if ('pages' in old && Array.isArray((old as InfiniteVenueData).pages)) {
+          const inf = old as InfiniteVenueData;
+          return {
+            ...inf,
+            pages: inf.pages.map((pg) =>
+              Array.isArray(pg?.venues) ? { ...pg, venues: flipFavorite(pg.venues, venueId, next) } : pg),
+          };
+        }
+        // Regular list query: { venues: [...] }
+        if ('venues' in old && Array.isArray((old as VenueListData).venues)) {
+          const list = old as VenueListData;
+          return { ...list, venues: flipFavorite(list.venues, venueId, next) };
+        }
+        return old;
+      });
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      ctx?.snapshots?.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error('Could not update favorite. Please try again.');
     },
   });
 }

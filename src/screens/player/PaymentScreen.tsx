@@ -56,7 +56,7 @@ export default function PaymentScreen({ navigation, route }: any) {
 
         {processing ? (
           <View style={styles.processing}>
-            <LoadingOverlay visible={isLoading} />
+            <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.processingText}>Processing payment...</Text>
           </View>
         ) : (

@@ -4,12 +4,30 @@ import {
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 
-export type SortOption = 'default' | 'price_asc' | 'price_desc' | 'rating_desc';
+export type SortOption = 'default' | 'price_asc' | 'price_desc' | 'rating_desc' | 'newest';
 
 export interface VenueFilters {
   maxPrice: number | null;
   minRating: number | null;
   sortBy: SortOption;
+}
+
+// Maps the UI filter state to the server query params (/api/v1/venues).
+export function filtersToServerParams(f: VenueFilters): {
+  sort?: string; maxPrice?: number; minRating?: number;
+} {
+  const sortMap: Record<SortOption, string> = {
+    default: 'DEFAULT',
+    price_asc: 'PRICE_LOW',
+    price_desc: 'PRICE_HIGH',
+    rating_desc: 'RATING',
+    newest: 'NEWEST',
+  };
+  return {
+    sort: f.sortBy === 'default' ? undefined : sortMap[f.sortBy],
+    maxPrice: f.maxPrice ?? undefined,
+    minRating: f.minRating ?? undefined,
+  };
 }
 
 export const DEFAULT_FILTERS: VenueFilters = {
@@ -57,6 +75,7 @@ interface FilterModalProps {
 
 const SORT_OPTIONS: { label: string; value: SortOption }[] = [
   { label: 'Default', value: 'default' },
+  { label: 'Newest', value: 'newest' },
   { label: 'Price: Low → High', value: 'price_asc' },
   { label: 'Price: High → Low', value: 'price_desc' },
   { label: 'Highest Rated', value: 'rating_desc' },

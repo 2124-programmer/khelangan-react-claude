@@ -94,6 +94,8 @@ export interface Venue {
   isActive: boolean;
   lat: number;
   lng: number;
+  isFavorite?: boolean;
+  activeOfferLabel?: string; // best active owner-funded promo label, e.g. "10% off"
   isMostBooked?: boolean;
   submittedAt?: string;  // ISO submission/registration timestamp (admin/owner contexts)
   subscriptionBadge?: VenueSubscriptionBadge; // owner list only

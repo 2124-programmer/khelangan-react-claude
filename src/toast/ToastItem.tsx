@@ -112,7 +112,7 @@ export function ToastItem({ entry, index, onDismiss }: Props) {
     transform: [
       { translateY: translateY.value },
       { translateX: translateX.value },
-    ],
+    ] as any,
     opacity: opacity.value,
   }));
 

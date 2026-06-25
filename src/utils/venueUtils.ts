@@ -83,6 +83,35 @@ export function getOpenStatus(openTime: string, closeTime: string): OpenStatus {
   return { isOpen, label };
 }
 
+// ─── Amenity icons ────────────────────────────────────────────────────────────
+
+export const AMENITY_ICON: Record<string, string> = {
+  'Locker Room': '🔒',
+  'Floodlights': '💡',
+  'Drinking Water': '💧',
+  'Washroom': '🚿',
+  'Shower': '🚿',
+  'Parking': '🅿️',
+  'Cafeteria': '🍽️',
+  'First Aid': '⛑️',
+  'WiFi': '📶',
+  'Changing Room': '👕',
+  'Scoreboard': '📊',
+  'Referee': '🦺',
+  'Equipment Rental': '🎒',
+  'CCTV': '📹',
+  'AC': '❄️',
+  'Gym': '🏋️',
+  'Swimming Pool': '🏊',
+  'Spectator Seating': '🪑',
+  'Turf': '🌿',
+  'Ball': '⚽',
+};
+
+export function amenityIcon(name: string): string {
+  return AMENITY_ICON[name] ?? '✓';
+}
+
 // ─── Status badge mapping ─────────────────────────────────────────────────────
 
 import type { VenueStatus, VenueStatusTone } from '../types';

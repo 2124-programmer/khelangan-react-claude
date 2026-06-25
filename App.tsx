@@ -26,7 +26,7 @@ export default function App() {
   const pendingVenueId = useRef<string | null>(null);
 
   const navigateToVenue = (venueId: string) => {
-    navigationRef.current?.navigate('VenueDetail' as never, { venueId } as never);
+    (navigationRef.current as any)?.navigate('VenueDetail', { venueId });
   };
 
   const handleDeepLink = (url: string | null) => {

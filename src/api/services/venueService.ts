@@ -8,11 +8,22 @@ import type {
 
 export const venueService = {
   // Public — no token required
-  list: (params?: { city?: string; sport?: string; search?: string; page?: number; size?: number }) =>
+  list: (params?: {
+    city?: string; sport?: string; search?: string;
+    sort?: string; minPrice?: number; maxPrice?: number; minRating?: number;
+    page?: number; size?: number;
+  }) =>
     apiClient.get<Page<VenueSummaryDto>>('/api/v1/venues', { params }).then((r) => r.data),
 
   getById: (id: number) =>
     apiClient.get<VenueDetailDto>(`/api/v1/venues/${id}`).then((r) => r.data),
+
+  // Favorites (Player) — idempotent; server returns 204
+  favorite: (venueId: number) =>
+    apiClient.post<void>(`/api/v1/venues/${venueId}/favorite`).then((r) => r.data),
+
+  unfavorite: (venueId: number) =>
+    apiClient.delete<void>(`/api/v1/venues/${venueId}/favorite`).then((r) => r.data),
 
   // Owner
   create: (data: CreateVenueRequest) =>

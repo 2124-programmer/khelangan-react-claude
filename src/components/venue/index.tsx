@@ -1,13 +1,14 @@
 // Venue and booking related reusable components.
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, Linking } from 'react-native';
-import { haversineKm, formatDistance } from '../../utils/locationUtils';
+import { haversineKm } from '../../utils/locationUtils';
 import type { LatLng } from '../../store/LocationContext';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { Venue, Slot, Booking, BookingGroup, CancellationReason } from '../../types';
 import { StatusBadge, AppButton } from '../common';
 import { formatRelativeTime } from '../../utils/dateUtils';
 import { getSportIcon, getSportName } from '../../utils/sportUtils';
+import { getOpenStatus, amenityIcon } from '../../utils/venueUtils';
 import { RatingSummary } from '../reviews';
 
 function callPhone(phone: string | undefined) {
@@ -107,10 +108,28 @@ function MostBookedBadge() {
   );
 }
 
-function SportIcon({ sportId }: { sportId: string }) {
+// Icon-only sport in a white circle, overlaid on the cover image (per the target design).
+function SportCircle({ sportId }: { sportId: string }) {
   return (
-    <View style={vc.sportIcon}>
-      <Text style={vc.sportIconText}>{getSportIcon(sportId)}</Text>
+    <View style={vc.sportCircle}>
+      <Text style={vc.sportCircleIcon}>{getSportIcon(sportId)}</Text>
+    </View>
+  );
+}
+
+// Centered row of up to 4 white sport circles on the image bottom, then a "+N" circle.
+function SportCircles({ sports }: { sports: string[] }) {
+  const MAX = 4;
+  const shown = sports.slice(0, MAX);
+  const extra = sports.length - shown.length;
+  return (
+    <View style={vc.sportCircleRow} pointerEvents="none">
+      {shown.map((s) => <SportCircle key={s} sportId={s} />)}
+      {extra > 0 && (
+        <View style={vc.sportCircle}>
+          <Text style={vc.sportCirclePlus}>+{extra}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -123,26 +142,53 @@ function BookNowButton({ onPress }: { onPress: () => void }) {
   );
 }
 
+// Heart overlay — nested touchable captures the tap so the card's onPress doesn't fire.
+function FavoriteHeart({ active, onPress }: { active: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      style={vc.heart}
+      onPress={onPress}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      accessibilityRole="button"
+      accessibilityLabel={active ? 'Remove from favorites' : 'Add to favorites'}
+    >
+      <Text style={[vc.heartIcon, active && vc.heartIconActive]}>{active ? '♥' : '♡'}</Text>
+    </TouchableOpacity>
+  );
+}
+
 /* ───────────────── VenueCard ───────────────── */
 interface VenueCardProps {
   venue: Venue;
   onPress: () => void;
   userLocation?: LatLng;
+  onToggleFavorite?: () => void;
 }
 
-export function VenueCard({ venue, onPress, userLocation }: VenueCardProps) {
+export function VenueCard({ venue, onPress, userLocation, onToggleFavorite }: VenueCardProps) {
   const coverUri =
     venue.images?.find((i) => i.isPrimary)?.url ??
     venue.images?.[0]?.url ??
     venue.coverPhoto;
 
+  // Distance by the name (target style: "3.2 km" / "850 m", no "away"). Shown only when known.
   const distanceLabel = useMemo(() => {
+    let km: number | null = null;
     if (userLocation && venue.lat && venue.lng) {
-      return formatDistance(haversineKm(userLocation.lat, userLocation.lng, venue.lat, venue.lng));
+      km = haversineKm(userLocation.lat, userLocation.lng, venue.lat, venue.lng);
+    } else if (venue.distanceKm > 0) {
+      km = venue.distanceKm;
     }
-    if (venue.distanceKm > 0) return `${venue.distanceKm} km away`;
-    return null;
+    if (km == null) return null;
+    return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
   }, [userLocation, venue.lat, venue.lng, venue.distanceKm]);
+
+  // Open/closed is an enrichment — only render the pill when we have both hours.
+  const openStatus = useMemo(
+    () => (venue.openTime && venue.closeTime ? getOpenStatus(venue.openTime, venue.closeTime) : null),
+    [venue.openTime, venue.closeTime],
+  );
+  const topAmenities = (venue.amenities ?? []).slice(0, 4);
 
   return (
     <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={[vc.card, shadow.card]}>
@@ -151,36 +197,64 @@ export function VenueCard({ venue, onPress, userLocation }: VenueCardProps) {
       <View style={vc.imageWrap}>
         <Image source={{ uri: coverUri }} style={vc.image} resizeMode="cover" />
         <View style={vc.imageOverlay} />
+
+        {/* Top overlay: New/rating (+ offer) left, favorite right */}
         <View style={vc.imageBadgeRow}>
-          <View style={vc.ratingBadge}>
-            <RatingSummary
-              ratingAverage={venue.ratingAverage}
-              ratingCount={venue.ratingCount}
-              variant="compact"
-              darkBg
-            />
+          <View style={vc.topLeftStack}>
+            <View style={vc.ratingBadge}>
+              <RatingSummary
+                ratingAverage={venue.ratingAverage}
+                ratingCount={venue.ratingCount}
+                variant="compact"
+                darkBg
+              />
+            </View>
+            {venue.activeOfferLabel ? (
+              <View style={vc.offerBadge}>
+                <Text style={vc.offerBadgeText}>🏷 {venue.activeOfferLabel}</Text>
+              </View>
+            ) : null}
           </View>
-          {venue.isMostBooked && <MostBookedBadge />}
+          <View style={vc.badgeRight}>
+            {venue.isMostBooked && <MostBookedBadge />}
+            {onToggleFavorite && <FavoriteHeart active={!!venue.isFavorite} onPress={onToggleFavorite} />}
+          </View>
         </View>
+
+        {/* Sport icons in white circles, overlaid on the image bottom */}
+        {venue.sports?.length > 0 && <SportCircles sports={venue.sports} />}
       </View>
 
       {/* ── Body ── */}
       <View style={vc.body}>
 
-        <Text style={vc.venueName} numberOfLines={1}>{venue.name}</Text>
-
-        <View style={vc.locationRow}>
-          <Text style={vc.venueAddr} numberOfLines={1}>
-            📍 {venue.address}
-          </Text>
-          {distanceLabel && (
-            <Text style={vc.distanceText}>{distanceLabel}</Text>
-          )}
+        {/* Row 1: name + distance on one line */}
+        <View style={vc.nameRow}>
+          <Text style={vc.venueName} numberOfLines={1}>{venue.name}</Text>
+          {distanceLabel && <Text style={vc.distanceText}>{distanceLabel}</Text>}
         </View>
 
-        {venue.sports?.length > 0 && (
-          <View style={vc.sportRow}>
-            {venue.sports.map((s) => <SportIcon key={s} sportId={s} />)}
+        {/* Row 2: locality */}
+        <Text style={vc.venueAddr} numberOfLines={1}>📍 {venue.address}</Text>
+
+        {/* Meta row: open/closed · courts · amenity highlights — each degrades gracefully */}
+        {(openStatus || venue.courtCount > 0 || topAmenities.length > 0) && (
+          <View style={vc.metaRow}>
+            {openStatus && (
+              <View style={[vc.openPill, openStatus.isOpen ? vc.openPillOpen : vc.openPillClosed]}>
+                <Text style={[vc.openPillText, openStatus.isOpen ? vc.openPillTextOpen : vc.openPillTextClosed]}>
+                  {openStatus.label}
+                </Text>
+              </View>
+            )}
+            {venue.courtCount > 0 && (
+              <Text style={vc.metaText}>{venue.courtCount} {venue.courtCount === 1 ? 'court' : 'courts'}</Text>
+            )}
+            {topAmenities.length > 0 && (
+              <Text style={vc.amenityIcons} numberOfLines={1}>
+                {topAmenities.map((a) => amenityIcon(a)).join('  ')}
+              </Text>
+            )}
           </View>
         )}
 
@@ -228,8 +302,9 @@ const vc = StyleSheet.create({
     right: spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
+  topLeftStack: { gap: spacing.sm, alignItems: 'flex-start' },
   ratingBadge: {
     backgroundColor: 'rgba(0,0,0,0.55)',
     paddingHorizontal: spacing.md,
@@ -241,6 +316,20 @@ const vc = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
   },
+  badgeRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  offerBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#16A34A', paddingHorizontal: spacing.md, paddingVertical: 4,
+    borderRadius: radius.sm,
+  },
+  offerBadgeText: { color: colors.white, fontSize: fontSize.xs, fontWeight: fontWeight.bold },
+  heart: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  heartIcon: { fontSize: 18, color: colors.white, lineHeight: 20 },
+  heartIconActive: { color: '#FF4D67' },
   mostBookedBadge: {
     backgroundColor: '#FF6B00',
     paddingHorizontal: spacing.md,
@@ -255,21 +344,16 @@ const vc = StyleSheet.create({
   body: {
     padding: spacing.lg,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
   venueName: {
     fontSize: 18,
     fontWeight: fontWeight.bold,
     color: colors.text,
-    marginBottom: 4,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  venueAddr: {
-    fontSize: fontSize.sm,
-    color: colors.textMid,
     flex: 1,
     marginRight: spacing.sm,
   },
@@ -278,26 +362,52 @@ const vc = StyleSheet.create({
     color: colors.textMid,
     fontWeight: fontWeight.medium,
   },
-  sportRow: {
+  venueAddr: {
+    fontSize: fontSize.sm,
+    color: colors.textMid,
+    marginTop: 2,
+    marginBottom: spacing.md,
+  },
+  sportCircleRow: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    left: spacing.md,
+    right: spacing.md,
     flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  sportCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.12)',
+  },
+  sportCircleIcon: { fontSize: 15 },
+  sportCirclePlus: { fontSize: 12, fontWeight: fontWeight.bold, color: colors.textMid },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flexWrap: 'wrap',
     gap: spacing.sm,
     marginBottom: spacing.sm,
-    justifyContent: 'center',
   },
-  sportIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
+  openPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
   },
-  sportIconText: {
-    fontSize: 18,
-  },
+  openPillOpen: { backgroundColor: '#DCFCE7' },
+  openPillClosed: { backgroundColor: '#FEE2E2' },
+  openPillText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
+  openPillTextOpen: { color: '#15803D' },
+  openPillTextClosed: { color: '#B91C1C' },
+  metaText: { fontSize: fontSize.xs, color: colors.textMid },
+  amenityIcons: { fontSize: 13, marginLeft: 'auto' },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',

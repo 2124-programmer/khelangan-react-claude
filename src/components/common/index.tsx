@@ -383,8 +383,8 @@ export function SportChip({ icon, name, active, onPress }: { icon: string; name:
       onPress={onPress}
       style={[styles.sportChip, active && styles.sportChipActive]}
     >
-      <Text style={{ fontSize: 14 }}>{icon}</Text>
-      <Text style={[styles.sportChipText, active && { color: colors.white }]}>{name}</Text>
+      {icon ? <Text style={styles.sportChipIcon}>{icon}</Text> : null}
+      <Text style={[styles.sportChipText, active && styles.sportChipTextActive]} numberOfLines={1}>{name}</Text>
     </TouchableOpacity>
   );
 }
@@ -592,11 +592,14 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 2 },
   sportChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.pill,
-    backgroundColor: colors.surfaceAlt, marginRight: spacing.sm,
+    paddingHorizontal: spacing.lg, minHeight: 38,
+    borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, marginRight: spacing.sm,
+    borderWidth: 1, borderColor: colors.border,
   },
-  sportChipActive: { backgroundColor: colors.primary },
+  sportChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  sportChipIcon: { fontSize: 15, lineHeight: 18 },
   sportChipText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid },
+  sportChipTextActive: { color: colors.white },
 
   dropdownTrigger: {
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,

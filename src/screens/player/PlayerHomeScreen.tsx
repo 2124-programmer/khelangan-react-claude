@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, TextInput, RefreshControl,
+  View, Text, StyleSheet, SafeAreaView, ScrollView, FlatList, ActivityIndicator,
+  TouchableOpacity, TextInput, RefreshControl, Linking, Platform,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -10,12 +10,14 @@ import { SportChip, EmptyState, AppHeader, LoadingOverlay } from '../../componen
 import { VenueCard } from '../../components/venue';
 import { useAuth } from '../../store/AuthContext';
 import { useSports } from '../../api/hooks/useSports';
-import { useVenues } from '../../api/hooks/useVenues';
+import { useInfiniteVenues, useToggleFavorite } from '../../api/hooks/useVenues';
+import type { Venue } from '../../types';
 import { useLocation } from '../../store/LocationContext';
+import { toast } from '../../toast';
 import { consumePendingNav } from '../../store/pendingNav';
 import { useDebounce } from '../../hooks/useDebounce';
 import {
-  FilterModal, VenueFilters, DEFAULT_FILTERS, activeFilterCount, applyFilters,
+  FilterModal, VenueFilters, DEFAULT_FILTERS, activeFilterCount, filtersToServerParams,
 } from '../../components/venue/FilterModal';
 
 export default function PlayerHomeScreen({ navigation }: any) {
@@ -27,15 +29,29 @@ export default function PlayerHomeScreen({ navigation }: any) {
   const [filters, setFilters] = useState<VenueFilters>(DEFAULT_FILTERS);
   const [showFilter, setShowFilter] = useState(false);
   const filterBadge = activeFilterCount(filters);
-  const { location: userLocation, permission, isResolving } = useLocation();
+  const { location: userLocation, isResolving, refresh: refreshLocation } = useLocation();
+
+  // "Enable" opens device settings on native (the foreground re-check then picks up the change).
+  // On web, geolocation only works on a secure origin (https or http://localhost); on a LAN IP over
+  // http the browser rejects it silently, so we re-request AND surface guidance instead of no-op'ing.
+  const handleEnableLocation = useCallback(() => {
+    if (Platform.OS === 'web') {
+      refreshLocation();
+      const insecure = typeof window !== 'undefined' && window.isSecureContext === false;
+      toast.info(
+        insecure
+          ? 'Your browser blocks location on this address. Open the app at http://localhost to use it.'
+          : 'If location stays off, allow it for this site in your browser settings.',
+      );
+    } else {
+      Linking.openSettings().catch(() => refreshLocation());
+    }
+  }, [refreshLocation]);
 
   useFocusEffect(
     useCallback(() => {
       const dest = consumePendingNav();
       if (!dest) return;
-      // setTimeout(0) defers until after the navigator's state machine has
-      // finished initializing. navigation.reset() writes stack state directly
-      // and cannot be dropped the way navigate() can during init.
       const id = setTimeout(() => {
         navigation.reset({
           index: 1,
@@ -53,18 +69,32 @@ export default function PlayerHomeScreen({ navigation }: any) {
     if (isLoggedIn) { action(); } else { navigation.navigate('Login'); }
   };
 
+  const toggleFavorite = useToggleFavorite();
+  const handleToggleFavorite = (v: Venue) => {
+    // Favoriting requires a player session — guests are routed to login first.
+    requireAuth(() => toggleFavorite.mutate({ venueId: v.id, next: !v.isFavorite }));
+  };
+
   const sportsQuery = useSports();
-  const venuesQuery = useVenues(
-    activeSport || debouncedQuery
-      ? { sport: activeSport ?? undefined, search: debouncedQuery || undefined }
-      : undefined
+  const sports = sportsQuery.data ?? [];
+
+  // Search, sport filter, and the filter sheet all drive server-side query params now.
+  const serverParams = useMemo(() => ({
+    sport: activeSport ?? undefined,
+    search: debouncedQuery || undefined,
+    ...filtersToServerParams(filters),
+  }), [activeSport, debouncedQuery, filters]);
+
+  const venuesQuery = useInfiniteVenues(serverParams);
+  const venues = useMemo(
+    () => venuesQuery.data?.pages.flatMap((p) => p.venues) ?? [],
+    [venuesQuery.data],
   );
 
-  const sports = sportsQuery.data ?? [];
-  const venues = useMemo(
-    () => applyFilters(venuesQuery.data?.venues ?? [], filters),
-    [venuesQuery.data, filters]
-  );
+  const loadMore = () => {
+    if (venuesQuery.hasNextPage && !venuesQuery.isFetchingNextPage) venuesQuery.fetchNextPage();
+  };
+
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -73,110 +103,114 @@ export default function PlayerHomeScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AppHeader
-        userName={user ? `Hi, ${user.name.split(' ')[0]} !!` : ''}
-      />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
-      >
+      <AppHeader userName={user ? `Hi, ${user.name.split(' ')[0]} !!` : ''} />
 
-        {/* Search bar */}
-        <View style={styles.searchRow}>
-          <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
-            <Text style={{ fontSize: 18 }}>🔍</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search turfs, sports..."
-              placeholderTextColor={colors.textDim}
-              value={query}
-              onChangeText={setQuery}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
+      {/* Pinned discovery controls — search, filter, sport chips */}
+      <View style={styles.searchRow}>
+        <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
+          <Text style={{ fontSize: 18 }}>🔍</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search turfs, sports..."
+            placeholderTextColor={colors.textDim}
+            value={query}
+            onChangeText={setQuery}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+          />
+        </View>
+        <TouchableOpacity
+          style={[styles.filterBtn, shadow.card, filterBadge > 0 && styles.filterBtnActive]}
+          onPress={() => setShowFilter(true)}
+        >
+          <Feather name="sliders" size={20} color={filterBadge > 0 ? colors.white : colors.textMid} />
+          {filterBadge > 0 && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{filterBadge}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.sectionTitle}>Choose a sport</Text>
+      {sportsQuery.isLoading ? (
+        <LoadingOverlay visible={sportsQuery.isLoading} />
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipScroll}
+          contentContainerStyle={styles.chipScrollContent}
+        >
+          <SportChip
+            icon=""
+            name="All"
+            active={activeSport === null}
+            onPress={() => setActiveSport(null)}
+          />
+          {sports.map((s) => (
+            <SportChip
+              key={s.id}
+              icon={s.icon}
+              name={s.name}
+              active={activeSport === s.id}
+              onPress={() => setActiveSport(activeSport === s.id ? null : s.id)}
             />
-          </View>
-          <TouchableOpacity
-            style={[styles.filterBtn, shadow.card, filterBadge > 0 && styles.filterBtnActive]}
-            onPress={() => setShowFilter(true)}
-          >
-            <Feather name="sliders" size={20} color={filterBadge > 0 ? colors.white : colors.textMid} />
-            {filterBadge > 0 && (
-              <View style={styles.filterBadge}>
-                <Text style={styles.filterBadgeText}>{filterBadge}</Text>
-              </View>
-            )}
+          ))}
+        </ScrollView>
+      )}
+
+      <View style={styles.listHeaderRow}>
+        <Text style={styles.sectionTitleInline}>Nearby Venues</Text>
+      </View>
+
+      {/* Slim location strip — only when location is off; auto-hides once granted */}
+      {!isResolving && !userLocation && (
+        <View style={styles.locationStrip}>
+          <Text style={styles.locationStripText} numberOfLines={1}>
+            📍 Location off — enable to sort by distance
+          </Text>
+          <TouchableOpacity onPress={handleEnableLocation} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={styles.locationStripBtn}>Enable</Text>
           </TouchableOpacity>
         </View>
+      )}
 
-        {/* Banner */}
-        {/* <TouchableOpacity style={styles.banner} onPress={() => navigation.navigate('Offers')}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.bannerTitle}>Get 20% OFF</Text>
-            <Text style={styles.bannerSub}>On your next booking. Code: TURF20</Text>
-          </View>
-          <Text style={{ fontSize: 40 }}>🎉</Text>
-        </TouchableOpacity> */}
-
-        {/* Sport filter */}
-        <Text style={styles.sectionTitle}>Choose a sport</Text>
-        {sportsQuery.isLoading ? (
-          <LoadingOverlay visible={sportsQuery.isLoading}/>
-        ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ paddingLeft: spacing.lg }}
-            contentContainerStyle={{ paddingRight: spacing.lg }}
-          >
-            {sports.map((s) => (
-              <SportChip
-                key={s.id}
-                icon={s.icon}
-                name={s.name}
-                active={activeSport === s.id}
-                onPress={() => setActiveSport(activeSport === s.id ? null : s.id)}
-              />
-            ))}
-          </ScrollView>
-        )}
-
-        {/* Venues */}
-        <Text style={styles.sectionTitle}>Nearby Venues</Text>
-
-        {/* Location status — visible indicator for debugging */}
-        <Text style={styles.locationStatus}>
-          {isResolving
-            ? '📍 Getting your location...'
-            : permission === 'denied'
-            ? '📍 Location access denied — enable in browser/device settings'
-            : userLocation
-            ? `📍 ${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`
-            : '📍 Location unavailable'}
-        </Text>
-
-        <View style={{ paddingHorizontal: spacing.lg }}>
-          {venuesQuery.isLoading ? (
-            <LoadingOverlay visible={venuesQuery.isLoading} />
-          ) : venuesQuery.isError ? (
-            <EmptyState
-              icon="⚠️"
-              title="Could not load venues"
-              subtitle="Check your connection and try again"
+      <FlatList
+        data={venues}
+        keyExtractor={(v) => v.id}
+        renderItem={({ item }) => (
+          <View style={styles.cardWrap}>
+            <VenueCard
+              venue={item}
+              userLocation={userLocation ?? undefined}
+              onPress={() => navigation.navigate('VenueDetail', { venueId: item.id })}
+              onToggleFavorite={() => handleToggleFavorite(item)}
             />
-          ) : venues.length === 0 ? (
-            <EmptyState icon="🏟" title="No venues found" subtitle="Try a different sport or area" />
+          </View>
+        )}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={venues.length === 0 ? styles.emptyContent : { paddingBottom: spacing.lg }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />
+        }
+        ListEmptyComponent={
+          venuesQuery.isLoading ? (
+            <LoadingOverlay visible />
+          ) : venuesQuery.isError ? (
+            <EmptyState icon="⚠️" title="Could not load venues" subtitle="Check your connection and try again" />
           ) : (
-            venues.map((v) => (
-              <VenueCard
-                key={v.id}
-                venue={v}
-                userLocation={userLocation ?? undefined}
-                onPress={() => navigation.navigate('VenueDetail', { venueId: v.id })}
-              />
-            ))
-          )}
-        </View>
-      </ScrollView>
+            <EmptyState icon="🏟" title="No venues found" subtitle="Try a different sport, area, or filter" />
+          )
+        }
+        ListFooterComponent={
+          venuesQuery.isFetchingNextPage ? (
+            <ActivityIndicator style={{ paddingVertical: spacing.lg }} color={colors.primary} />
+          ) : null
+        }
+      />
 
       <FilterModal
         visible={showFilter}
@@ -197,18 +231,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg, height: 50,
     borderWidth: 1.5, borderColor: colors.borderDark,
   },
-  searchBarFocused: {
-    borderColor: colors.primary,
-    borderWidth: 2,
-  },
+  searchBarFocused: { borderColor: colors.primary, borderWidth: 2 },
   searchInput: { flex: 1, fontSize: fontSize.md, color: colors.text, outlineWidth: 0 } as any,
   filterBtn: { width: 50, height: 50, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   filterBtnActive: { backgroundColor: colors.primary },
   filterBadge: { position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
   filterBadgeText: { fontSize: 9, fontWeight: fontWeight.bold, color: colors.white },
-  banner: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, margin: spacing.lg, borderRadius: radius.lg, padding: spacing.lg },
-  bannerTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.white },
-  bannerSub: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
   sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, paddingHorizontal: spacing.lg, marginTop: spacing.md, marginBottom: spacing.md },
-  locationStatus: { fontSize: fontSize.xs, color: colors.textDim, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
+  chipScroll: { flexGrow: 0 },
+  chipScrollContent: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, alignItems: 'center' },
+  listHeaderRow: { paddingHorizontal: spacing.lg, marginTop: spacing.md },
+  sectionTitleInline: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
+  cardWrap: { paddingHorizontal: spacing.lg },
+  emptyContent: { flexGrow: 1, justifyContent: 'center', paddingVertical: spacing.xxl },
+  locationStrip: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginHorizontal: spacing.lg, marginTop: spacing.xs, marginBottom: spacing.sm,
+    paddingVertical: spacing.sm, paddingHorizontal: spacing.md,
+    backgroundColor: colors.surfaceAlt, borderRadius: radius.sm,
+  },
+  locationStripText: { flex: 1, fontSize: fontSize.xs, color: colors.textMid, marginRight: spacing.sm },
+  locationStripBtn: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.primary },
 });

@@ -181,6 +181,8 @@ export interface VenueSummaryDto {
   amenities?: string[];
   courtCount?: number;     // returned by owner list endpoint
   featured?: boolean;
+  isFavorite?: boolean;    // true when the current authenticated player has favorited this venue
+  activeOffer?: { label?: string } | null; // best active owner-funded promo, or null
   createdAt?: string;      // submission/registration timestamp (ISO); used for submission age + oldest-first
   subscription?: VenueSubscriptionSummary; // owner list only — compact badge data
 }

@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { Platform, AppState } from 'react-native';
 import * as Location from 'expo-location';
 
 export interface LatLng {
@@ -13,12 +13,15 @@ interface LocationState {
   location: LatLng | null;
   permission: PermissionStatus;
   isResolving: boolean;
+  /** Re-request permission + coordinates (e.g. after the user enables location in settings). */
+  refresh: () => void;
 }
 
 const LocationContext = createContext<LocationState>({
   location: null,
   permission: 'unknown',
   isResolving: true,
+  refresh: () => {},
 });
 
 const TIMEOUT_MS = 10_000;
@@ -126,10 +129,9 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   const [isResolving, setIsResolving] = useState(true);
   const mounted = useRef(true);
 
-  useEffect(() => {
-    mounted.current = true;
-    console.log(TAG, 'Provider mounted, Platform.OS =', Platform.OS);
-
+  const resolve = useCallback(() => {
+    if (!mounted.current) return;
+    setIsResolving(true);
     if (Platform.OS === 'web') {
       resolveWebLocation(
         (pos) => { if (mounted.current) setLocation(pos); },
@@ -148,12 +150,26 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         () => mounted.current,
       );
     }
-
-    return () => { mounted.current = false; };
   }, []);
 
+  useEffect(() => {
+    mounted.current = true;
+    console.log(TAG, 'Provider mounted, Platform.OS =', Platform.OS);
+    resolve();
+    return () => { mounted.current = false; };
+  }, [resolve]);
+
+  // Re-check when the app returns to the foreground — the user may have just
+  // enabled location in settings. Only re-resolve while we don't already have it.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && permission !== 'granted') resolve();
+    });
+    return () => sub.remove();
+  }, [permission, resolve]);
+
   return (
-    <LocationContext.Provider value={{ location, permission, isResolving }}>
+    <LocationContext.Provider value={{ location, permission, isResolving, refresh: resolve }}>
       {children}
     </LocationContext.Provider>
   );

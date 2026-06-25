@@ -144,6 +144,8 @@ export function adaptVenueSummary(dto: VenueSummaryDto): Venue {
     isActive: dto.isActive ?? true,
     lat: dto.lat ?? 0,
     lng: dto.lng ?? 0,
+    isFavorite: dto.isFavorite ?? false,
+    activeOfferLabel: dto.activeOffer?.label ?? undefined,
     submittedAt: dto.createdAt ?? undefined,
     subscriptionBadge: adaptSubscriptionBadge(dto.subscription),
   };

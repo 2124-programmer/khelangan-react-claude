@@ -196,7 +196,7 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
     if (!isToday) return new Set<string>();
     const now = new Date();
     const nowMins = now.getHours() * 60 + now.getMinutes();
-    return new Set(
+    return new Set<string>(
       slots
         .filter((sl) => {
           const [h, m] = sl.startTime.split(':').map(Number);
@@ -218,7 +218,7 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
     });
   }, [slots]);
 
-  const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
+  const selectedIds = useMemo(() => new Set<string>(selected.map((s) => s.id)), [selected]);
   const totalPrice = useMemo(() => selected.reduce((sum, s) => sum + s.price, 0), [selected]);
 
   const getSportLabel = (sportId: string) => {
