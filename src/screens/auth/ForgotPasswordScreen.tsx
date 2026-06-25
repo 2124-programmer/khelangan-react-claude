@@ -13,8 +13,8 @@ import {
 
 type Step = 'email' | 'otp' | 'newPassword';
 
-const OTP_EXPIRY_SECS = 300;
-const RESEND_COOLDOWN = 60;
+const OTP_EXPIRY_SECS = 600; // 10 min — mirrors backend OTP_EXPIRY_SEC
+const RESEND_COOLDOWN = 45;  // mirrors backend OTP_RESEND_SEC
 
 function meetsPolicy(pwd: string) {
   return pwd.length >= 8 && /[a-zA-Z]/.test(pwd) && /[0-9]/.test(pwd);
@@ -86,7 +86,18 @@ export default function ForgotPasswordScreen({ navigation, route }: any) {
   const otpValue = otp.join('');
 
   const handleOtpChange = (text: string, idx: number) => {
-    const char = text.slice(-1);
+    if (errors.otp) setErrors((e) => ({ ...e, otp: '' }));
+    const digits = text.replace(/\D/g, '');
+    // Paste / SMS-style autofill: a 6-digit value lands in one box — spread it across the row.
+    if (digits.length > 1) {
+      const next = [...otp];
+      for (let i = 0; i < digits.length && idx + i < 6; i++) next[idx + i] = digits[i];
+      setOtp(next);
+      const lastFilled = Math.min(idx + digits.length, 6) - 1;
+      otpRefs.current[lastFilled]?.focus();
+      return;
+    }
+    const char = digits.slice(-1);
     const next = [...otp];
     next[idx] = char;
     setOtp(next);
@@ -195,7 +206,7 @@ export default function ForgotPasswordScreen({ navigation, route }: any) {
           <>
             <Text style={styles.heading}>Enter the code</Text>
             <Text style={styles.sub}>
-              A 6-digit code was sent to your email. It expires in 5 minutes.
+              A 6-digit code was sent to your email. It expires in {OTP_EXPIRY_SECS / 60} minutes.
             </Text>
 
             <View style={styles.otpRow}>
@@ -208,7 +219,9 @@ export default function ForgotPasswordScreen({ navigation, route }: any) {
                   onChangeText={(t) => handleOtpChange(t, idx)}
                   onKeyPress={({ nativeEvent }) => handleOtpKeyPress(nativeEvent.key, idx)}
                   keyboardType="number-pad"
-                  maxLength={1}
+                  maxLength={idx === 0 ? 6 : 1}
+                  textContentType="oneTimeCode"
+                  autoComplete="one-time-code"
                   selectTextOnFocus
                 />
               ))}
