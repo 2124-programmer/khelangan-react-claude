@@ -204,7 +204,8 @@ export interface VenueDetailDto {
   state?: string;
   pincode?: string;
   description?: string;
-  contactPhone?: string;
+  contactPhone?: string;    // returned only to authenticated callers; null/omitted for guests
+  contactAvailable?: boolean; // true when the venue has a contact number on file (no number leaked)
   contactEmail?: string; // stripped from public player-detail response; may appear on owner-facing calls
   status?: string;
   ratingAverage?: number | null;

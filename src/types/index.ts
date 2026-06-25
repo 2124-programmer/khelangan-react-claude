@@ -76,6 +76,7 @@ export interface Venue {
   pincode: string;
   description: string;
   contactPhone: string;
+  contactAvailable?: boolean; // venue has a contact number; true even for guests (no number leaked)
   contactEmail?: string; // owner-facing only; not returned by player-detail endpoint
   openTime: string;    // "HH:00"
   closeTime: string;   // "HH:00"

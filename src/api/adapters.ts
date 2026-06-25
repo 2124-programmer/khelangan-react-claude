@@ -165,6 +165,7 @@ export function adaptVenueDetail(dto: VenueDetailDto): Venue {
     pincode: dto.pincode ?? '',
     description: dto.description ?? '',
     contactPhone: dto.contactPhone ?? '',
+    contactAvailable: dto.contactAvailable ?? !!dto.contactPhone,
     contactEmail: dto.contactEmail ?? '',
     openTime: dto.openTime ?? '05:00',
     closeTime: dto.closeTime ?? '23:00',

@@ -26,6 +26,13 @@ export const venueService = {
   unfavorite: (venueId: number) =>
     apiClient.delete<void>(`/api/v1/venues/${venueId}/favorite`).then((r) => r.data),
 
+  // Contact (Player) — records the intent + notifies the owner (deduped server-side).
+  // Best-effort: callers launch the dialer/WhatsApp regardless of the result.
+  contact: (venueId: number, channel: 'CALL' | 'WHATSAPP') =>
+    apiClient
+      .post<{ ok?: boolean; notified?: boolean }>(`/api/v1/venues/${venueId}/contact`, { channel })
+      .then((r) => r.data),
+
   // Owner
   create: (data: CreateVenueRequest) =>
     apiClient.post<VenueDetailDto>('/api/v1/venues', data).then((r) => r.data),

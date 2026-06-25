@@ -183,6 +183,21 @@ export function useToggleFavorite() {
   });
 }
 
+/**
+ * Records a contact intent (Call/WhatsApp) and notifies the venue owner. Best-effort: the
+ * caller launches the dialer/WhatsApp regardless of the outcome, so errors are swallowed here
+ * (no toast, no cache writes) and never block the user's intent to reach the venue.
+ */
+export function useContactVenue() {
+  return useMutation({
+    mutationFn: ({ venueId, channel }: { venueId: string; channel: 'CALL' | 'WHATSAPP' }) =>
+      venueService.contact(Number(venueId), channel),
+    onError: (err) => {
+      if (__DEV__) console.warn('contactVenue failed (non-blocking):', err);
+    },
+  });
+}
+
 export function useCreateVenue() {
   const qc = useQueryClient();
   return useMutation({

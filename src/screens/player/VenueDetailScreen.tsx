@@ -11,7 +11,7 @@ import { VenueImageCarousel } from '../../components/venue';
 import { VenueMap } from '../../components/venue/VenueMap';
 import { ConfirmActionModal, ContactSheet } from '../../modals';
 import { RatingSummary, ReviewCard, ReviewsEmptyState, WriteReviewSheet } from '../../components/reviews';
-import { useVenueDetail, useAdminVenueDetail, useUpdateVenueStatus } from '../../api/hooks/useVenues';
+import { useVenueDetail, useAdminVenueDetail, useUpdateVenueStatus, useContactVenue } from '../../api/hooks/useVenues';
 import { extractApiError } from '../../api/client';
 import { formatRelativeTime } from '../../utils/dateUtils';
 import { useVenueReviews } from '../../api/hooks/useReviews';
@@ -66,6 +66,8 @@ export default function VenueDetailScreen({ navigation, route }: any) {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [writeReviewOpen, setWriteReviewOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
+  const [showContactLogin, setShowContactLogin] = useState(false);
+  const contactVenue = useContactVenue();
 
   useEffect(() => {
     if (route.params?._successToast) toast.success(route.params._successToast as string);
@@ -80,6 +82,15 @@ export default function VenueDetailScreen({ navigation, route }: any) {
   const isLoading = isReview ? adminQuery.isLoading : playerQuery.isLoading;
   const isError = isReview ? adminQuery.isError : playerQuery.isError;
   const refetchVenue = isReview ? adminQuery.refetch : playerQuery.refetch;
+
+  // Returning from the login gate with an openContact intent: refetch first so the now-authenticated
+  // payload includes the contact number (the cached guest fetch had it nulled), then open the sheet.
+  useEffect(() => {
+    if (route.params?.openContact) {
+      refetchVenue();
+      setContactOpen(true);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: reviewsData, refetch: refetchReviews } = useVenueReviews(venueId);
   const { data: sports = [] } = useSports();
@@ -179,6 +190,13 @@ export default function VenueDetailScreen({ navigation, route }: any) {
   // Approval thread: admin review uses the enriched history; owner preview uses the venue's own comments.
   const approvalThread = isReview ? (adminContext?.commentHistory ?? []) : (venue.approvalComments ?? []);
   const intendedPlanCode = adminContext?.intendedPlanCode;
+
+  // Login-gated: guests get an info prompt → auth gate → returns here and auto-opens the sheet.
+  // The number itself is never in a guest's payload, so it can't be revealed without logging in.
+  const handleContactPress = () => {
+    if (isLoggedIn) setContactOpen(true);
+    else setShowContactLogin(true);
+  };
 
   const handleBookNow = () => {
     if (isLoggedIn) {
@@ -501,10 +519,10 @@ export default function VenueDetailScreen({ navigation, route }: any) {
                 <Text style={styles.infoLabel}>Operating Hours</Text>
                 <Text style={styles.infoValue}>{hoursLabel}</Text>
               </View>
-              {!!venue.contactPhone && (
+              {venue.contactAvailable && (
                 <TouchableOpacity
                   style={styles.contactIconBtn}
-                  onPress={() => setContactOpen(true)}
+                  onPress={handleContactPress}
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
@@ -631,7 +649,29 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         visible={contactOpen}
         phone={venue.contactPhone}
         venueName={venue.name}
+        whatsappMessage={`Hi! I'd like to know more about ${venue.name}.`}
+        onContact={(channel) => contactVenue.mutate({ venueId: venue.id, channel })}
         onClose={() => setContactOpen(false)}
+      />
+
+      <ConfirmActionModal
+        visible={showContactLogin}
+        title="Log in to contact the venue"
+        message={`Please log in to call or message ${venue.name}.`}
+        confirmLabel="Log in"
+        onDismiss={() => setShowContactLogin(false)}
+        onConfirm={() => {
+          setShowContactLogin(false);
+          setPendingNav({
+            screen: 'VenueDetail',
+            params: {
+              venueId: venue.id,
+              openContact: true,
+              _successToast: 'Logged in. Choose how to contact the venue.',
+            },
+          });
+          navigation.navigate('Login');
+        }}
       />
 
       {!readOnly && (

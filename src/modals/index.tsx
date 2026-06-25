@@ -132,17 +132,27 @@ interface ContactSheetProps {
   phone?: string;
   venueName?: string;
   onClose: () => void;
+  /**
+   * Fired the instant a channel is chosen, before the dialer/WhatsApp launches. Best-effort —
+   * the launch happens regardless of what this callback does (e.g. a failing network call).
+   * Bookings omit it; the venue-detail screen uses it to notify the owner.
+   */
+  onContact?: (channel: 'CALL' | 'WHATSAPP') => void;
+  /** Overrides the WhatsApp prefill text. Defaults to a booking-oriented message. */
+  whatsappMessage?: string;
 }
-export function ContactSheet({ visible, phone, venueName, onClose }: ContactSheetProps) {
+export function ContactSheet({ visible, phone, venueName, onClose, onContact, whatsappMessage }: ContactSheetProps) {
   const cleaned = (phone ?? '').replace(/[\s\-()]/g, '');
 
   const handleCall = () => {
+    onContact?.('CALL');
     if (cleaned) Linking.openURL(`tel:${cleaned}`).catch(() => {});
     onClose();
   };
   const handleWhatsApp = () => {
+    onContact?.('WHATSAPP');
     if (cleaned) {
-      const msg = `Hi! Regarding my booking${venueName ? ` at ${venueName}` : ''}.`;
+      const msg = whatsappMessage ?? `Hi! Regarding my booking${venueName ? ` at ${venueName}` : ''}.`;
       Linking.openURL(`https://wa.me/${cleaned}?text=${encodeURIComponent(msg)}`).catch(() => {});
     }
     onClose();
