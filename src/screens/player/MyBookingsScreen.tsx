@@ -3,7 +3,7 @@ import { View, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Alert, R
 import { colors, spacing } from '../../theme';
 import { AppHeader, SectionTabBar, EmptyState, LoadingOverlay} from '../../components/common';
 import { BookingCard, GroupedBookingCard } from '../../components/venue';
-import { CancelBookingModal } from '../../modals';
+import { CancelBookingModal, ContactSheet } from '../../modals';
 import { useBookings, useCancelBooking, useCancelBookingGroup } from '../../api/hooks/useBookings';
 import { Booking, BookingGroup } from '../../types';
 import { extractApiError } from '../../api/client';
@@ -19,6 +19,7 @@ const STATUS_MAP: Record<string, string> = {
 export default function MyBookingsScreen({ navigation }: any) {
   const [tab, setTab] = useState<string>('pending');
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
+  const [contactTarget, setContactTarget] = useState<{ phone?: string; venueName?: string } | null>(null);
   const cancelBooking = useCancelBooking();
   const cancelBookingGroup = useCancelBookingGroup();
 
@@ -125,6 +126,7 @@ export default function MyBookingsScreen({ navigation }: any) {
                   showContact={showContact}
                   tabCtx={tabCtx}
                   onCancelAll={() => handleCancelGroup(item)}
+                  onContact={() => setContactTarget({ phone: item.venuePhone, venueName: item.venueName })}
                 />
               );
             }
@@ -138,6 +140,7 @@ export default function MyBookingsScreen({ navigation }: any) {
                 onCancel={() => setCancelTarget(item)}
                 onReview={() => navigation.navigate('RateReview', { venueId: item.venueId })}
                 onRebook={() => navigation.navigate('VenueDetail', { venueId: item.venueId })}
+                onContact={() => setContactTarget({ phone: item.venuePhone, venueName: item.venueName })}
               />
             );
           })
@@ -151,6 +154,13 @@ export default function MyBookingsScreen({ navigation }: any) {
         refundAmount={cancelTarget ? Math.round(cancelTarget.amount * 0.5) : 0}
         onConfirm={handleCancel}
         onDismiss={() => setCancelTarget(null)}
+      />
+
+      <ContactSheet
+        visible={!!contactTarget}
+        phone={contactTarget?.phone}
+        venueName={contactTarget?.venueName}
+        onClose={() => setContactTarget(null)}
       />
     </SafeAreaView>
   );

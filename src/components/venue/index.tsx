@@ -94,6 +94,15 @@ const cbStyles = StyleSheet.create({
   waText: { color: '#fff', fontSize: 13, fontWeight: fontWeight.bold },
 });
 
+// Single "Contact" pill — opens a Call/WhatsApp chooser handled by the screen.
+function ContactButton({ onPress }: { onPress: () => void }) {
+  return (
+    <TouchableOpacity style={styles.contactBtn} onPress={onPress} activeOpacity={0.8}>
+      <Text style={styles.contactBtnText}>📞</Text>
+    </TouchableOpacity>
+  );
+}
+
 export { VenueImagePicker } from './VenueImagePicker';
 export type { PickedImage } from './VenueImagePicker';
 export { VenueImageCarousel } from './VenueImageCarousel';
@@ -543,11 +552,12 @@ interface BookingCardProps {
   onReview?: () => void;
   onRebook?: () => void;
   onCheckIn?: () => void;
+  onContact?: () => void;
   viewAs?: 'player' | 'owner';
   showContact?: boolean;
   tabCtx?: TabCtx;
 }
-export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, onCheckIn, viewAs = 'player', showContact, tabCtx }: BookingCardProps) {
+export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, onCheckIn, onContact, viewAs = 'player', showContact, tabCtx }: BookingCardProps) {
   const counterpartPhone = viewAs === 'owner' ? booking.playerPhone : booking.venuePhone;
   const waMsg = viewAs === 'owner'
     ? waOwnerBookingMsg(booking, tabCtx)
@@ -588,7 +598,7 @@ export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, on
           {viewAs === 'player' && (
             <View style={[styles.bcRow, { marginTop: 4 }]}>
               <Text style={styles.bookingAmount}>₹{booking.amount}</Text>
-              {showContact && <ContactBtns phone={counterpartPhone} waMsg={waMsg} />}
+              {onContact && counterpartPhone ? <ContactButton onPress={onContact} /> : null}
             </View>
           )}
 
@@ -633,6 +643,7 @@ interface GroupedBookingCardProps {
   acceptPending?: boolean;
   rejectPending?: boolean;
   checkInPending?: boolean;
+  onContact?: () => void;
   showContact?: boolean;
   tabCtx?: TabCtx;
 }
@@ -640,7 +651,7 @@ export function GroupedBookingCard({
   group, viewAs = 'player', onPress,
   onAcceptAll, onRejectAll, onCancelAll, onCheckInAll,
   acceptPending, rejectPending, checkInPending,
-  showContact, tabCtx,
+  onContact, showContact, tabCtx,
 }: GroupedBookingCardProps) {
   const sorted = group.bookings.slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
   const isContiguous =
@@ -691,13 +702,6 @@ export function GroupedBookingCard({
         </View>
       )}
 
-      {/* Row 4 (player): Contact buttons aligned right */}
-      {viewAs === 'player' && showContact && counterpartPhone && (
-        <View style={[gbStyles.row, { marginTop: 6, justifyContent: 'flex-end' }]}>
-          <ContactBtns phone={counterpartPhone} waMsg={waMsg} />
-        </View>
-      )}
-
       {/* Status-aware timestamp */}
       {tsInfo && (
         <Text style={gbStyles.updatedAt}>{tsInfo.label} {formatRelativeTime(tsInfo.ts)}</Text>
@@ -743,14 +747,19 @@ export function GroupedBookingCard({
             style={{ height: 40, paddingHorizontal: 24 }}
           />
         )}
-        {viewAs === 'player' && canAct && onCancelAll && (
-          <AppButton
-            label="Cancel"
-            variant="danger"
-            fullWidth={false}
-            onPress={onCancelAll}
-            style={{ height: 38, paddingHorizontal: 14 }}
-          />
+        {viewAs === 'player' && (onContact || (canAct && onCancelAll)) && (
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {onContact && counterpartPhone ? <ContactButton onPress={onContact} /> : null}
+            {canAct && onCancelAll && (
+              <AppButton
+                label="Cancel"
+                variant="danger"
+                fullWidth={false}
+                onPress={onCancelAll}
+                style={{ height: 38, paddingHorizontal: 14 }}
+              />
+            )}
+          </View>
         )}
       </View>
     </TouchableOpacity>
@@ -840,6 +849,12 @@ const styles = StyleSheet.create({
   bookingAmount: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text, marginTop: 4 },
   bcRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   actionRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  contactBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+    height: 38, paddingHorizontal: 14, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.primaryLight,
+  },
+  contactBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.primaryDark },
   priceBox: { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.lg },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
   priceLabel: { fontSize: fontSize.sm, color: colors.textMid },

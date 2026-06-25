@@ -1,6 +1,6 @@
 // Reusable modal/popup overlays.
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Linking } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../theme';
 import { AppButton, StarRating } from '../components/common';
 
@@ -120,6 +120,62 @@ export function PaymentFailedModal({ visible, onRetry, onDismiss }: { visible: b
             <AppButton label="Retry Payment" onPress={onRetry} />
             <AppButton label="Cancel" variant="secondary" onPress={onDismiss} />
           </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+/* ───────────────── ContactSheet ───────────────── */
+interface ContactSheetProps {
+  visible: boolean;
+  phone?: string;
+  venueName?: string;
+  onClose: () => void;
+}
+export function ContactSheet({ visible, phone, venueName, onClose }: ContactSheetProps) {
+  const cleaned = (phone ?? '').replace(/[\s\-()]/g, '');
+
+  const handleCall = () => {
+    if (cleaned) Linking.openURL(`tel:${cleaned}`).catch(() => {});
+    onClose();
+  };
+  const handleWhatsApp = () => {
+    if (cleaned) {
+      const msg = `Hi! Regarding my booking${venueName ? ` at ${venueName}` : ''}.`;
+      Linking.openURL(`https://wa.me/${cleaned}?text=${encodeURIComponent(msg)}`).catch(() => {});
+    }
+    onClose();
+  };
+
+  return (
+    <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={styles.sheetOverlay}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
+        <View style={[styles.sheet, shadow.modal]}>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.dialogTitle}>Contact venue</Text>
+          <Text style={styles.dialogMsg}>
+            {venueName ? `Reach out to ${venueName}` : 'Reach out to the venue'}
+          </Text>
+
+          <TouchableOpacity style={styles.contactRow} onPress={handleCall} activeOpacity={0.8}>
+            <View style={styles.contactCircleCall}><Text style={styles.contactCallIcon}>📞</Text></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.contactLabel}>Call</Text>
+              {phone ? <Text style={styles.contactSub}>{phone}</Text> : null}
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.contactRow} onPress={handleWhatsApp} activeOpacity={0.8}>
+            <View style={styles.contactCircleWa}><Text style={styles.contactWaLetter}>W</Text></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.contactLabel}>WhatsApp</Text>
+              <Text style={styles.contactSub}>Chat on WhatsApp</Text>
+            </View>
+          </TouchableOpacity>
+
+          <AppButton label="Cancel" variant="secondary" onPress={onClose} style={{ marginTop: spacing.md }} />
         </View>
       </View>
     </Modal>
@@ -458,6 +514,18 @@ const styles = StyleSheet.create({
   sheetOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.xl, paddingBottom: spacing.xxl },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: spacing.md },
+  contactRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    paddingVertical: spacing.md, paddingHorizontal: spacing.md,
+    borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
+    marginTop: spacing.md, backgroundColor: colors.surface,
+  },
+  contactCircleCall: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  contactCallIcon: { fontSize: 18 },
+  contactCircleWa: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#25D366', alignItems: 'center', justifyContent: 'center' },
+  contactWaLetter: { color: '#fff', fontSize: 18, fontWeight: fontWeight.bold },
+  contactLabel: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
+  contactSub: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 1 },
   closeX: { fontSize: fontSize.lg, color: colors.textDim },
   refundBox: { backgroundColor: colors.primaryLight, borderRadius: radius.md, padding: spacing.lg, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.lg },
   refundLabel: { fontSize: fontSize.sm, color: colors.primaryDark },
