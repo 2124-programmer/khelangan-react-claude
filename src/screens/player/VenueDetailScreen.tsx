@@ -9,7 +9,7 @@ import { AppHeader, AppButton, AppInput, EmptyState, LoadingOverlay, StatusBadge
 import { toast } from '../../toast';
 import { VenueImageCarousel } from '../../components/venue';
 import { VenueMap } from '../../components/venue/VenueMap';
-import { ConfirmActionModal } from '../../modals';
+import { ConfirmActionModal, ContactSheet } from '../../modals';
 import { RatingSummary, ReviewCard, ReviewsEmptyState, WriteReviewSheet } from '../../components/reviews';
 import { useVenueDetail, useAdminVenueDetail, useUpdateVenueStatus } from '../../api/hooks/useVenues';
 import { extractApiError } from '../../api/client';
@@ -65,6 +65,7 @@ export default function VenueDetailScreen({ navigation, route }: any) {
   const { isLoggedIn, role } = useAuth();
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [writeReviewOpen, setWriteReviewOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
 
   useEffect(() => {
     if (route.params?._successToast) toast.success(route.params._successToast as string);
@@ -291,14 +292,15 @@ export default function VenueDetailScreen({ navigation, route }: any) {
 
         <View style={styles.body}>
 
-          {/* Name + Open/Closed badge */}
+          {/* Name + rating badge */}
           <View style={styles.nameRow}>
             <Text style={styles.name}>{venue.name}</Text>
-            <View style={[styles.openBadge, openStatus.isOpen ? styles.openBadgeOpen : styles.openBadgeClosed]}>
-              <Text style={[styles.openBadgeText, openStatus.isOpen ? styles.openBadgeTextOpen : styles.openBadgeTextClosed]}>
-                {openStatus.isOpen ? '● Open' : '○ Closed'}
-              </Text>
-            </View>
+            <RatingSummary
+              ratingAverage={venue.ratingAverage}
+              ratingCount={venue.ratingCount}
+              variant="compact"
+              onPress={() => navigation.navigate('VenueReviews', { venueId: venue.id })}
+            />
           </View>
 
           {/* Tappable address → directions + Share button */}
@@ -315,22 +317,15 @@ export default function VenueDetailScreen({ navigation, route }: any) {
 
           {/* Quick-facts strip */}
           <View style={styles.factsStrip}>
-            <RatingSummary
-              ratingAverage={venue.ratingAverage}
-              ratingCount={venue.ratingCount}
-              variant="compact"
-              onPress={() => navigation.navigate('VenueReviews', { venueId: venue.id })}
-            />
+            <Text style={[styles.factsItem, openStatus.isOpen ? styles.factsOpen : styles.factsClosed]}>
+              {openStatus.label}
+            </Text>
             {distLabel && (
               <>
                 <Text style={styles.factsDot}>·</Text>
                 <Text style={styles.factsItem}>📍 {distLabel}</Text>
               </>
             )}
-            <Text style={styles.factsDot}>·</Text>
-            <Text style={[styles.factsItem, openStatus.isOpen ? styles.factsOpen : styles.factsClosed]}>
-              {openStatus.label}
-            </Text>
             <Text style={styles.factsDot}>·</Text>
             <Text style={styles.factsItem}>₹{venue.pricePerHour}/hr</Text>
           </View>
@@ -494,13 +489,30 @@ export default function VenueDetailScreen({ navigation, route }: any) {
             })
           )}
 
-          {/* About */}
+          {/* About — description + operating hours + contact */}
+          <Text style={styles.sectionTitle}>About</Text>
           {!!venue.description && (
-            <>
-              <Text style={styles.sectionTitle}>About</Text>
-              <Text style={styles.desc}>{venue.description}</Text>
-            </>
+            <Text style={[styles.desc, { marginBottom: spacing.md }]}>{venue.description}</Text>
           )}
+          <View style={[styles.infoCard, shadow.card]}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoIcon}>⏰</Text>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Operating Hours</Text>
+                <Text style={styles.infoValue}>{hoursLabel}</Text>
+              </View>
+              {!!venue.contactPhone && (
+                <TouchableOpacity
+                  style={styles.contactIconBtn}
+                  onPress={() => setContactOpen(true)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Feather name="phone" size={18} color={colors.primary} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
 
           {/* Amenities */}
           {venue.amenities.length > 0 && (
@@ -516,45 +528,6 @@ export default function VenueDetailScreen({ navigation, route }: any) {
               </View>
             </>
           )}
-
-          {/* Info Card: Hours / Phone */}
-          <View style={[styles.infoCard, shadow.card]}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoIcon}>⏰</Text>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Operating Hours</Text>
-                <Text style={styles.infoValue}>{hoursLabel}</Text>
-              </View>
-            </View>
-
-            {!!venue.contactPhone && (
-              <>
-                <View style={styles.infoDivider} />
-                <TouchableOpacity
-                  style={styles.infoRow}
-                  onPress={() => Linking.openURL(`tel:${venue.contactPhone}`)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.infoIcon}>📞</Text>
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Phone</Text>
-                    <Text style={[styles.infoValue, styles.infoLink]}>{venue.contactPhone}</Text>
-                  </View>
-                  <Text style={styles.infoChevron}>›</Text>
-                </TouchableOpacity>
-              </>
-            )}
-
-            <View style={styles.infoDivider} />
-            <TouchableOpacity style={styles.infoRow} onPress={handleDirections} activeOpacity={0.7}>
-              <Text style={styles.infoIcon}>🗺️</Text>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Directions</Text>
-                <Text style={[styles.infoValue, styles.infoLink]} numberOfLines={1}>{fullAddress}</Text>
-              </View>
-              <Text style={styles.infoChevron}>›</Text>
-            </TouchableOpacity>
-          </View>
 
           {/* Location */}
           <Text style={styles.sectionTitle}>Location</Text>
@@ -654,6 +627,13 @@ export default function VenueDetailScreen({ navigation, route }: any) {
         </View>
       )}
 
+      <ContactSheet
+        visible={contactOpen}
+        phone={venue.contactPhone}
+        venueName={venue.name}
+        onClose={() => setContactOpen(false)}
+      />
+
       {!readOnly && (
         <>
           <WriteReviewSheet
@@ -725,15 +705,9 @@ const styles = StyleSheet.create({
   },
   body: { padding: spacing.lg, paddingBottom: 120 },
 
-  // Name + badge
+  // Name + rating badge
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap', marginTop: spacing.sm },
   name: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text, flex: 1 },
-  openBadge: { paddingHorizontal: spacing.md, paddingVertical: 3, borderRadius: radius.pill },
-  openBadgeOpen: { backgroundColor: '#DCFCE7' },
-  openBadgeClosed: { backgroundColor: '#FEE2E2' },
-  openBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold },
-  openBadgeTextOpen: { color: '#15803D' },
-  openBadgeTextClosed: { color: '#B91C1C' },
 
   // Address + Share row
   addrRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
@@ -820,6 +794,11 @@ const styles = StyleSheet.create({
   infoValue: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text, marginTop: 1 },
   infoLink: { color: colors.primary },
   infoChevron: { fontSize: 20, color: colors.textDim, marginLeft: spacing.sm },
+  contactIconBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center', marginLeft: spacing.sm,
+  },
 
   // Reviews
   reviewsSectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.xl, marginBottom: spacing.md },
