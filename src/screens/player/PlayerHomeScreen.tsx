@@ -2,6 +2,7 @@ import React, { useCallback, useState, useMemo, useEffect, useRef } from 'react'
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView, FlatList, ActivityIndicator,
   TouchableOpacity, TextInput, RefreshControl, Linking, Platform,
+  NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -122,11 +123,20 @@ export default function PlayerHomeScreen({ navigation }: any) {
     try { await Promise.all([sportsQuery.refetch(), venuesQuery.refetch()]); } finally { setRefreshing(false); }
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <AppHeader userName={user ? `Hi, ${user.name.split(' ')[0]} !!` : ''} />
+  // Scroll-to-top: surfaces a floating button once the player scrolls past the fold.
+  const listRef = useRef<FlatList<Venue>>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setShowScrollTop(e.nativeEvent.contentOffset.y > 400);
+  }, []);
+  const scrollToTop = useCallback(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
 
-      {/* Pinned discovery controls — search, filter, sport chips */}
+  // Everything above the venue feed now scrolls with the list (was previously pinned).
+  const listHeader = (
+    <>
+      {/* Search + filter */}
       <View style={styles.searchRow}>
         <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
           <Text style={{ fontSize: 18 }}>🔍</Text>
@@ -196,10 +206,20 @@ export default function PlayerHomeScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
       )}
+    </>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <AppHeader userName={user ? `Hi, ${user.name.split(' ')[0]} !!` : ''} />
 
       <FlatList
+        ref={listRef}
         data={venues}
         keyExtractor={(v) => v.id}
+        ListHeaderComponent={listHeader}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         renderItem={({ item }) => (
           <View style={styles.cardWrap}>
             <VenueCard
@@ -213,7 +233,8 @@ export default function PlayerHomeScreen({ navigation }: any) {
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={venues.length === 0 ? styles.emptyContent : { paddingBottom: spacing.lg }}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: spacing.lg, flexGrow: 1 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />
         }
@@ -232,6 +253,16 @@ export default function PlayerHomeScreen({ navigation }: any) {
           ) : null
         }
       />
+
+      {showScrollTop && (
+        <TouchableOpacity
+          style={[styles.scrollTopBtn, shadow.modal]}
+          onPress={scrollToTop}
+          activeOpacity={0.85}
+        >
+          <Feather name="arrow-up" size={22} color={colors.white} />
+        </TouchableOpacity>
+      )}
 
       <FilterModal
         visible={showFilter}
@@ -265,7 +296,12 @@ const styles = StyleSheet.create({
   listHeaderRow: { paddingHorizontal: spacing.lg, marginTop: spacing.md },
   sectionTitleInline: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
   cardWrap: { paddingHorizontal: spacing.lg },
-  emptyContent: { flexGrow: 1, justifyContent: 'center', paddingVertical: spacing.xxl },
+  scrollTopBtn: {
+    position: 'absolute', right: spacing.lg, bottom: spacing.xl,
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
   locationStrip: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     marginHorizontal: spacing.lg, marginTop: spacing.xs, marginBottom: spacing.sm,
