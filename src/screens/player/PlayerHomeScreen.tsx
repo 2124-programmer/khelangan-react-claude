@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView, FlatList, ActivityIndicator,
   TouchableOpacity, TextInput, RefreshControl, Linking, Platform,
@@ -78,12 +78,33 @@ export default function PlayerHomeScreen({ navigation }: any) {
   const sportsQuery = useSports();
   const sports = sportsQuery.data ?? [];
 
+  // ── Landing defaults (applied once; the player can still change them) ──
+  // Pre-select the Cricket sport as soon as the sports list loads.
+  const sportInitRef = useRef(false);
+  useEffect(() => {
+    if (sportInitRef.current || sports.length === 0) return;
+    sportInitRef.current = true;
+    const cricket = sports.find((s) => s.name.toLowerCase() === 'cricket');
+    if (cricket) setActiveSport(cricket.id);
+  }, [sports]);
+
+  // Default the sort to "Nearest" the first time the player's location is available.
+  const sortInitRef = useRef(false);
+  useEffect(() => {
+    if (sortInitRef.current || !userLocation) return;
+    sortInitRef.current = true;
+    setFilters((f) => (f.sortBy === 'default' ? { ...f, sortBy: 'distance' } : f));
+  }, [userLocation]);
+
   // Search, sport filter, and the filter sheet all drive server-side query params now.
+  // lat/lng are sent when location is on, enabling the "Nearest" (distance) sort server-side.
   const serverParams = useMemo(() => ({
     sport: activeSport ?? undefined,
     search: debouncedQuery || undefined,
+    lat: userLocation?.lat,
+    lng: userLocation?.lng,
     ...filtersToServerParams(filters),
-  }), [activeSport, debouncedQuery, filters]);
+  }), [activeSport, debouncedQuery, filters, userLocation]);
 
   const venuesQuery = useInfiniteVenues(serverParams);
   const venues = useMemo(
@@ -217,6 +238,7 @@ export default function PlayerHomeScreen({ navigation }: any) {
         filters={filters}
         onApply={setFilters}
         onClose={() => setShowFilter(false)}
+        locationAvailable={!!userLocation}
       />
     </SafeAreaView>
   );

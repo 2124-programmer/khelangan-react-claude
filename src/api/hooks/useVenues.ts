@@ -39,6 +39,8 @@ export type VenueDiscoveryParams = {
   sport?: string;
   search?: string;
   sort?: string;
+  lat?: number;
+  lng?: number;
   minPrice?: number;
   maxPrice?: number;
   minRating?: number;

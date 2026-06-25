@@ -10,7 +10,8 @@ export const venueService = {
   // Public — no token required
   list: (params?: {
     city?: string; sport?: string; search?: string;
-    sort?: string; minPrice?: number; maxPrice?: number; minRating?: number;
+    sort?: string; lat?: number; lng?: number;
+    minPrice?: number; maxPrice?: number; minRating?: number;
     page?: number; size?: number;
   }) =>
     apiClient.get<Page<VenueSummaryDto>>('/api/v1/venues', { params }).then((r) => r.data),

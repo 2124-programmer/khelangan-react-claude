@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 
-export type SortOption = 'default' | 'price_asc' | 'price_desc' | 'rating_desc' | 'newest';
+export type SortOption = 'default' | 'distance' | 'price_asc' | 'price_desc' | 'rating_desc' | 'newest';
 
 export interface VenueFilters {
   maxPrice: number | null;
@@ -18,6 +18,7 @@ export function filtersToServerParams(f: VenueFilters): {
 } {
   const sortMap: Record<SortOption, string> = {
     default: 'DEFAULT',
+    distance: 'DISTANCE',
     price_asc: 'PRICE_LOW',
     price_desc: 'PRICE_HIGH',
     rating_desc: 'RATING',
@@ -71,10 +72,13 @@ interface FilterModalProps {
   filters: VenueFilters;
   onApply: (f: VenueFilters) => void;
   onClose: () => void;
+  /** When false/absent, the "Nearest" (distance) sort is hidden — it needs the user's location. */
+  locationAvailable?: boolean;
 }
 
-const SORT_OPTIONS: { label: string; value: SortOption }[] = [
+const SORT_OPTIONS: { label: string; value: SortOption; needsLocation?: boolean }[] = [
   { label: 'Default', value: 'default' },
+  { label: 'Nearest', value: 'distance', needsLocation: true },
   { label: 'Newest', value: 'newest' },
   { label: 'Price: Low → High', value: 'price_asc' },
   { label: 'Price: High → Low', value: 'price_desc' },
@@ -95,8 +99,9 @@ const RATING_OPTIONS: { label: string; value: number | null }[] = [
   { label: '4.5+ ★', value: 4.5 },
 ];
 
-export function FilterModal({ visible, filters, onApply, onClose }: FilterModalProps) {
+export function FilterModal({ visible, filters, onApply, onClose, locationAvailable }: FilterModalProps) {
   const [local, setLocal] = useState<VenueFilters>(filters);
+  const sortOptions = SORT_OPTIONS.filter((o) => !o.needsLocation || locationAvailable);
 
   useEffect(() => {
     if (visible) setLocal(filters);
@@ -137,7 +142,7 @@ export function FilterModal({ visible, filters, onApply, onClose }: FilterModalP
             {/* Sort by */}
             <Text style={s.sectionLabel}>Sort by</Text>
             <View style={s.optionRow}>
-              {SORT_OPTIONS.map((o) => {
+              {sortOptions.map((o) => {
                 const active = local.sortBy === o.value;
                 return (
                   <TouchableOpacity
