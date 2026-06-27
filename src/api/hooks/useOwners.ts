@@ -95,7 +95,8 @@ function detailListHook(kind: 'bookings' | 'audit', adapt: (d: any) => any) {
           totalElements: page.totalElements ?? 0,
         };
       },
-      getNextPageParam: (last: any) => (last.number < last.totalPages - 1 ? last.number + 1 : undefined),
+      getNextPageParam: (last: { number: number; totalPages: number }) =>
+        (last.number < last.totalPages - 1 ? last.number + 1 : undefined),
     });
   };
 }

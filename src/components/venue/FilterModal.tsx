@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView,
 } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import type { Venue } from '../../types';
 
 export type SortOption = 'default' | 'distance' | 'price_asc' | 'price_desc' | 'rating_desc' | 'newest';
 
@@ -45,7 +46,7 @@ export function activeFilterCount(f: VenueFilters): number {
   return n;
 }
 
-export function applyFilters(venues: any[], f: VenueFilters): any[] {
+export function applyFilters(venues: Venue[], f: VenueFilters): Venue[] {
   let list = [...venues];
   if (f.maxPrice !== null) {
     list = list.filter((v) => v.pricePerHour <= f.maxPrice!);

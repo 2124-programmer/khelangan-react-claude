@@ -65,7 +65,8 @@ function detailListHook(kind: 'bookings' | 'payments' | 'audit', adapt: (d: any)
           totalElements: page.totalElements ?? 0,
         };
       },
-      getNextPageParam: (last: any) => (last.number < last.totalPages - 1 ? last.number + 1 : undefined),
+      getNextPageParam: (last: { number: number; totalPages: number }) =>
+        (last.number < last.totalPages - 1 ? last.number + 1 : undefined),
     });
   };
 }
@@ -93,6 +94,9 @@ export function useBanPlayer() {
 }
 export function useUnbanPlayer() {
   return usePlayerAction<number>((_qc, id) => playerService.unban(id));
+}
+export function useDeletePlayer() {
+  return usePlayerAction<{ id: number; body: PlayerReasonBody }>((_qc, { id, body }) => playerService.remove(id, body));
 }
 export function useSetPlayerVerification() {
   return usePlayerAction<{ id: number; body: PlayerVerificationBody }>((_qc, { id, body }) => playerService.verification(id, body));

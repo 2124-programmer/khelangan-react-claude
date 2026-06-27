@@ -12,7 +12,7 @@ import { extractApiError } from '../../api/client';
 import { toast } from '../../toast';
 import {
   usePlayerDetail, usePlayerBookings, usePlayerPayments, usePlayerAudit,
-  useSuspendPlayer, useReactivatePlayer, useBanPlayer, useUnbanPlayer,
+  useSuspendPlayer, useReactivatePlayer, useBanPlayer, useUnbanPlayer, useDeletePlayer,
   useSetPlayerVerification, useForceLogoutPlayer, useResetPlayerPassword, useMessagePlayer,
 } from '../../api/hooks/usePlayers';
 import { PLAYER_STATUS_COLOR } from './AdminPlayersScreen';
@@ -26,9 +26,10 @@ const BAR_ACTIONS: Record<string, { label: string; variant: 'primary' | 'seconda
   FORCE_LOGOUT: { label: 'Force logout', variant: 'secondary' },
   RESET_PASSWORD: { label: 'Reset password', variant: 'secondary' },
   MESSAGE: { label: 'Message', variant: 'secondary' },
+  DELETE: { label: 'Delete', variant: 'danger' },
 };
 // Verify/Unverify are surfaced as toggles in the identity card, not bar buttons.
-const BAR_ORDER: PlayerActionCode[] = ['REACTIVATE', 'UNBAN', 'MESSAGE', 'FORCE_LOGOUT', 'RESET_PASSWORD', 'SUSPEND', 'BAN'];
+const BAR_ORDER: PlayerActionCode[] = ['REACTIVATE', 'UNBAN', 'MESSAGE', 'FORCE_LOGOUT', 'RESET_PASSWORD', 'SUSPEND', 'BAN', 'DELETE'];
 
 export default function PlayerDetailScreen({ navigation, route }: any) {
   const playerId: string = String(route?.params?.playerId ?? '');
@@ -40,19 +41,20 @@ export default function PlayerDetailScreen({ navigation, route }: any) {
   const reactivateMut = useReactivatePlayer();
   const banMut = useBanPlayer();
   const unbanMut = useUnbanPlayer();
+  const deleteMut = useDeletePlayer();
   const verifyMut = useSetPlayerVerification();
   const forceLogoutMut = useForceLogoutPlayer();
   const resetMut = useResetPlayerPassword();
   const messageMut = useMessagePlayer();
 
-  const [reasonFor, setReasonFor] = useState<'SUSPEND' | 'BAN' | null>(null);
+  const [reasonFor, setReasonFor] = useState<'SUSPEND' | 'BAN' | 'DELETE' | null>(null);
   const [reason, setReason] = useState('');
   const [confirmFor, setConfirmFor] = useState<PlayerActionCode | null>(null);
   const [composing, setComposing] = useState(false);
 
   const d = detailQ.data;
   const busy = suspendMut.isPending || banMut.isPending || reactivateMut.isPending || unbanMut.isPending
-    || forceLogoutMut.isPending || resetMut.isPending;
+    || forceLogoutMut.isPending || resetMut.isPending || deleteMut.isPending;
 
   const ok = (msg: string) => toast.success(msg);
   const err = (e: unknown, m: string) => toast.error(extractApiError(e) || m);
@@ -61,6 +63,7 @@ export default function PlayerDetailScreen({ navigation, route }: any) {
     switch (a) {
       case 'SUSPEND': setReason(''); setReasonFor('SUSPEND'); break;
       case 'BAN': setReason(''); setReasonFor('BAN'); break;
+      case 'DELETE': setReason(''); setReasonFor('DELETE'); break;
       case 'MESSAGE': setComposing(true); break;
       default: setConfirmFor(a); break;
     }
@@ -199,14 +202,18 @@ export default function PlayerDetailScreen({ navigation, route }: any) {
         </>
       )}
 
-      {/* Reason sheet (suspend / ban) */}
+      {/* Reason sheet (suspend / ban / delete) */}
       <Modal visible={reasonFor !== null} transparent animationType="fade" onRequestClose={() => setReasonFor(null)}>
         <View style={styles.sheetOverlay}>
           <View style={[styles.sheet, shadow.modal]}>
-            <Text style={styles.sheetTitle}>{reasonFor === 'BAN' ? 'Ban player' : 'Suspend player'}</Text>
+            <Text style={styles.sheetTitle}>
+              {reasonFor === 'BAN' ? 'Ban player' : reasonFor === 'DELETE' ? 'Delete player' : 'Suspend player'}
+            </Text>
             <Text style={styles.sheetSub}>
               {reasonFor === 'BAN'
                 ? 'The player is locked out and cannot re-register with the same email/phone.'
+                : reasonFor === 'DELETE'
+                ? 'Permanently closes the account: cancels upcoming bookings and frees the email/phone for reuse. This cannot be undone.'
                 : 'A temporary cool-down. The player cannot log in until reactivated.'}
             </Text>
             <TextInput
@@ -221,7 +228,7 @@ export default function PlayerDetailScreen({ navigation, route }: any) {
             <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
               <AppButton label="Cancel" variant="secondary" style={{ flex: 1 }} onPress={() => setReasonFor(null)} />
               <AppButton
-                label={reasonFor === 'BAN' ? 'Ban' : 'Suspend'}
+                label={reasonFor === 'BAN' ? 'Ban' : reasonFor === 'DELETE' ? 'Delete' : 'Suspend'}
                 variant="danger"
                 style={{ flex: 1 }}
                 disabled={!reason.trim() || busy}
@@ -229,6 +236,7 @@ export default function PlayerDetailScreen({ navigation, route }: any) {
                   const action = reasonFor;
                   setReasonFor(null);
                   if (action === 'BAN') banMut.mutate({ id: numId, body: { reason: reason.trim() } }, { onSuccess: () => ok('Player banned.'), onError: (e) => err(e, 'Failed') });
+                  else if (action === 'DELETE') deleteMut.mutate({ id: numId, body: { reason: reason.trim() } }, { onSuccess: () => ok('Player account closed.'), onError: (e) => err(e, 'Failed') });
                   else suspendMut.mutate({ id: numId, body: { reason: reason.trim() } }, { onSuccess: () => ok('Player suspended.'), onError: (e) => err(e, 'Failed') });
                 }}
               />

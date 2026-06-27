@@ -23,11 +23,6 @@ const STATUS_COPY: Record<string, { label: string; color: string; desc: string }
     color: colors.warning,
     desc: 'Enter the code sent to your new email to continue.',
   },
-  PENDING: {
-    label: 'Under admin review',
-    color: colors.info,
-    desc: 'Your request has been submitted. A platform admin will review it shortly.',
-  },
   APPROVED: {
     label: 'Approved',
     color: colors.success,
