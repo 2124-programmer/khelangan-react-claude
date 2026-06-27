@@ -39,6 +39,15 @@ export function OffersScreen({ navigation }: any) {
       >
         {isLoading ? (
           <LoadingOverlay visible={isLoading} />
+        ) : active.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>🎟️</Text>
+            <Text style={styles.emptyTitle}>No offers right now</Text>
+            <Text style={styles.emptyDesc}>
+              There are no active coupons at the moment. Pull down to refresh, or check back later for
+              venue promotions.
+            </Text>
+          </View>
         ) : (
           active.map((c) => (
             <View key={c.id} style={[styles.couponCard, shadow.card]}>
@@ -604,4 +613,8 @@ const styles = StyleSheet.create({
   roleInfoBody: { fontSize: fontSize.sm, color: colors.textMid, textAlign: 'center', lineHeight: 20 },
   emailChangeLink: { marginTop: -spacing.xs, marginBottom: spacing.md, alignSelf: 'flex-end' },
   emailChangeLinkText: { fontSize: fontSize.xs, color: colors.primary, fontWeight: fontWeight.medium },
+  emptyState: { alignItems: 'center', paddingVertical: spacing.xl * 2, paddingHorizontal: spacing.lg },
+  emptyIcon: { fontSize: 48, marginBottom: spacing.md },
+  emptyTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.xs },
+  emptyDesc: { fontSize: fontSize.sm, color: colors.textMid, textAlign: 'center', lineHeight: 20 },
 });
