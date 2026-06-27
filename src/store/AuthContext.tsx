@@ -9,6 +9,7 @@ import { setSessionExpiredCallback } from '../api/client';
 import { queryClient } from '../api/queryClient';
 import { toast } from '../toast';
 import { unregisterPushNotifications } from '../push/registerPush';
+import { classifyError, type AppError } from '../lib/errors';
 import type { RegisterRequest, UserDto } from '../api/types';
 
 interface AuthState {
@@ -19,6 +20,13 @@ interface AuthState {
   isDemoMode: boolean;
   isLoading: boolean;
   authError: string | null;
+  /**
+   * Set when the cold-start session restore failed for a NON-auth reason (offline / unreachable /
+   * server). The user is NOT logged out — App shows a full-screen retry overlay. `null` otherwise.
+   */
+  bootstrapError: AppError | null;
+  /** Re-run cold-start session restore (called from the retry overlay). */
+  retryBootstrap: () => void;
   /** Demo mode: pick a role without a real backend (SplashScreen) */
   login: (role: UserRole) => void;
   /** Real auth: email + password against /api/v1/auth/login */
@@ -45,26 +53,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [bootstrapError, setBootstrapError] = useState<AppError | null>(null);
 
-  // Restore session from secure storage on startup
-  useEffect(() => {
-    (async () => {
-      try {
-        const stored = await getToken();
-        if (stored) {
-          setToken(stored);
-          const dto = await userService.getMe();
-          setUser(adaptUser(dto));
-          setIsDemoMode(false);
-        }
-      } catch {
-        // Token stale — clear silently
-        await clearTokens();
-      } finally {
-        setIsLoading(false);
+  // Cold-start session restore. CRITICAL: a network failure must NOT log the user out — only a
+  // genuine 'auth' error (the server actually returned 401/403) clears the session and routes to
+  // Sign In. For offline / unreachable / server (and any other non-auth failure) we keep the tokens
+  // and surface a full-screen retry overlay (App.tsx) so the user stays authenticated.
+  const bootstrap = useCallback(async () => {
+    setIsLoading(true);
+    setBootstrapError(null);
+    try {
+      const stored = await getToken();
+      if (!stored) {
+        // No stored session — land on the normal guest/Sign In flow.
+        setUser(null);
+        setToken(null);
+        return;
       }
-    })();
+      setToken(stored);
+      const dto = await userService.getMe();
+      setUser(adaptUser(dto));
+      setIsDemoMode(false);
+    } catch (e) {
+      const kind = classifyError(e);
+      if (kind === 'auth') {
+        // Token genuinely rejected → real sign-out.
+        await clearTokens();
+        setUser(null);
+        setToken(null);
+      } else {
+        // Backend unreachable / offline / 5xx — keep the session, show the retry overlay.
+        setBootstrapError(kind);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    bootstrap();
+  }, [bootstrap]);
+
+  const retryBootstrap = useCallback(() => {
+    bootstrap();
+  }, [bootstrap]);
 
   // Wire the 401-expired callback so the interceptor can trigger logout
   useEffect(() => {
@@ -201,6 +233,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isDemoMode,
     isLoading,
     authError,
+    bootstrapError,
+    retryBootstrap,
     login,
     loginWithCredentials,
     loginWithCredentialsDeferred,

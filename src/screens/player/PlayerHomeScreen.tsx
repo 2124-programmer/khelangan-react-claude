@@ -7,7 +7,8 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { SportChip, EmptyState, AppHeader, LoadingOverlay } from '../../components/common';
+import { SportChip, AppHeader, LoadingOverlay } from '../../components/common';
+import { QueryState } from '../../components/QueryState';
 import { VenueCard } from '../../components/venue';
 import { useAuth } from '../../store/AuthContext';
 import { useSports } from '../../api/hooks/useSports';
@@ -238,14 +239,18 @@ export default function PlayerHomeScreen({ navigation }: any) {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />
         }
+        // The search bar + sport chips live in ListHeaderComponent and stay visible always, so the
+        // screen remains usable offline. The feed area below shows the loader / inline ErrorState (with
+        // Retry) / empty state via <QueryState>. A failed load no longer fires a toast (see useVenues).
         ListEmptyComponent={
-          venuesQuery.isLoading ? (
-            <LoadingOverlay visible />
-          ) : venuesQuery.isError ? (
-            <EmptyState icon="⚠️" title="Could not load venues" subtitle="Check your connection and try again" />
-          ) : (
-            <EmptyState icon="🏟" title="No venues found" subtitle="Try a different sport, area, or filter" />
-          )
+          <QueryState
+            query={venuesQuery}
+            center
+            isEmpty={() => venues.length === 0}
+            empty={{ icon: '🏟', title: 'No venues found', subtitle: 'Try a different sport, area, or filter' }}
+          >
+            {() => null}
+          </QueryState>
         }
         ListFooterComponent={
           venuesQuery.isFetchingNextPage ? (

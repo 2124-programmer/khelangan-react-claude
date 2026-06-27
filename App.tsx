@@ -9,6 +9,7 @@ import { LocationProvider } from './src/store/LocationContext';
 import { queryClient } from './src/api/queryClient';
 import RootNavigator from './src/navigation/RootNavigator';
 import { ToastHost } from './src/toast';
+import { BootstrapGate } from './src/components/BootstrapGate';
 
 function AppStateBridge() {
   useEffect(() => {
@@ -67,6 +68,8 @@ export default function App() {
               <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
               <RootNavigator />
             </NavigationContainer>
+            {/* Full-screen retry overlay when cold-start session restore fails for a non-auth reason. */}
+            <BootstrapGate />
           </LocationProvider>
         </AuthProvider>
         <ToastHost />

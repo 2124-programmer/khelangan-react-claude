@@ -12,6 +12,7 @@ import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../the
 import { BookingStatus, VenueStatus, PaymentStatus } from '../../types';
 import { useAuth } from '../../store/AuthContext';
 import { useUnreadNotifications } from '../../api/hooks/useNotifications';
+import type { AppError } from '../../lib/errors';
 
 /* ───────────────── AppButton ───────────────── */
 interface AppButtonProps {
@@ -359,6 +360,47 @@ export function EmptyState({ icon = '📭', title, subtitle }: { icon?: string; 
   );
 }
 
+/* ───────────────── ErrorState ───────────────── */
+// Presentational inline failure state for screen/section data. Copy is driven by the classified
+// AppError kind ('offline' → "You're offline", others → "Could not load"); 'auth' is handled by the
+// auth layer and never reaches here. Styled with the Score-Adda brand palette (navy / lime / red).
+const ERROR_NAVY = '#0A1730';
+const ERROR_LIME = '#9BE24A';
+const ERROR_RED = '#D8323A';
+
+const ERROR_COPY: Record<AppError, { icon: string; title: string; subtitle: string }> = {
+  offline: { icon: '📡', title: "You're offline", subtitle: 'Check your internet connection and try again.' },
+  unreachable: { icon: '🔌', title: 'Could not load', subtitle: "We can't reach the server right now. Please try again." },
+  server: { icon: '🛠️', title: 'Could not load', subtitle: 'Something went wrong on our end. Please try again shortly.' },
+  notFound: { icon: '🔍', title: 'Not found', subtitle: "This isn't available anymore." },
+  auth: { icon: '🔒', title: 'Sign in required', subtitle: 'Please sign in to continue.' },
+  unknown: { icon: '⚠️', title: 'Could not load', subtitle: 'Something went wrong. Please try again.' },
+};
+
+export function ErrorState({
+  kind, onRetry, title, subtitle,
+}: {
+  kind: AppError;
+  onRetry?: () => void;
+  /** Optional copy overrides. */
+  title?: string;
+  subtitle?: string;
+}) {
+  const copy = ERROR_COPY[kind] ?? ERROR_COPY.unknown;
+  return (
+    <View style={styles.errorState}>
+      <Text style={{ fontSize: 48, marginBottom: spacing.md }}>{copy.icon}</Text>
+      <Text style={styles.errorTitle}>{title ?? copy.title}</Text>
+      <Text style={styles.errorSub}>{subtitle ?? copy.subtitle}</Text>
+      {onRetry ? (
+        <TouchableOpacity style={styles.errorRetryBtn} onPress={onRetry} activeOpacity={0.85}>
+          <Text style={styles.errorRetryText}>Try Again</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
+
 /* ───────────────── Card ───────────────── */
 export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
   return <View style={[styles.card, style]}>{children}</View>;
@@ -580,6 +622,15 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80 },
   emptyTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
   emptySub: { fontSize: fontSize.sm, color: colors.textDim, marginTop: spacing.xs, textAlign: 'center' },
+  errorState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, paddingHorizontal: spacing.xl },
+  errorTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: ERROR_RED, textAlign: 'center' },
+  errorSub: { fontSize: fontSize.sm, color: colors.textMid, marginTop: spacing.xs, textAlign: 'center', maxWidth: 300 },
+  errorRetryBtn: {
+    marginTop: spacing.lg, backgroundColor: ERROR_LIME,
+    paddingHorizontal: spacing.xl, height: 44, borderRadius: radius.md,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  errorRetryText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: ERROR_NAVY },
   card: {
     backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg,
     borderWidth: 1, borderColor: colors.border,

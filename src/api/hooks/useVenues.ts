@@ -50,6 +50,9 @@ export type VenueDiscoveryParams = {
 export function useInfiniteVenues(params: VenueDiscoveryParams) {
   return useInfiniteQuery({
     queryKey: [...VENUES_KEY, 'infinite', params],
+    // The Home screen renders an inline <ErrorState> (via <QueryState>) for load failures, so
+    // opt out of the global error toast to avoid double-reporting the same failure.
+    meta: { suppressToast: true },
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const page = await venueService.list({ ...params, page: pageParam as number, size: VENUES_PAGE_SIZE });
