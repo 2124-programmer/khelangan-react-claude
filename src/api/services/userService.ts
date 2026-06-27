@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import { apiClient } from '../client';
-import type { UserDto, UpdateProfileRequest, ChangeRoleRequest, AuthResponse, Page, ImageUploadResponse } from '../types';
+import type { UserDto, UpdateProfileRequest, ChangeRoleRequest, AuthResponse, Page, ImageUploadResponse, DeleteAccountRequest, MessageResponse } from '../types';
 
 export const userService = {
   getMe: () =>
@@ -8,6 +8,10 @@ export const userService = {
 
   updateMe: (data: UpdateProfileRequest) =>
     apiClient.put<UserDto>('/api/v1/users/me', data).then((r) => r.data),
+
+  // Self-service account closure (soft-delete) — requires password re-authentication.
+  deleteMe: (data: DeleteAccountRequest) =>
+    apiClient.delete<MessageResponse>('/api/v1/users/me', { data }).then((r) => r.data),
 
   uploadAvatar: async (localUri: string) => {
     const formData = new FormData();

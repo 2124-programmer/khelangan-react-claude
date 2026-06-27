@@ -28,14 +28,21 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Score-Adda needs access to your photos to upload venue and profile images."
+          "photosPermission": "Score-Adda needs access to your photos to upload venue and profile images.",
+          "cameraPermission": "Score-Adda needs access to your camera to take venue and profile photos."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0FAE6E"
         }
       ],
       [
         "expo-build-properties",
         {
           "android": {
-            "usesCleartextTraffic": true
+            "usesCleartextTraffic": false
           }
         }
       ]
@@ -43,7 +50,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.scoreadda.app",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Score-Adda needs access to your camera to take venue and profile photos.",
+        "LSApplicationQueriesSchemes": ["whatsapp", "tel"]
+      }
     },
     "android": {
       "package": "com.scoreadda.app",
@@ -54,7 +65,8 @@
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "POST_NOTIFICATIONS"
       ]
     },
     "androidStatusBar": {

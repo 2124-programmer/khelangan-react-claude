@@ -17,6 +17,7 @@ import ChangePasswordScreen from '../screens/player/ChangePasswordScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import NotificationsScreen from '../screens/player/NotificationsScreen';
 import EmailChangeScreen from '../screens/player/EmailChangeScreen';
+import PhoneChangeScreen from '../screens/player/PhoneChangeScreen';
 import { SubscriptionManagementScreen, SubscriptionDetailScreen } from '../screens/admin/AdminSubscriptionScreens';
 import AdminVenuesScreen from '../screens/admin/AdminVenuesScreen';
 import AdminVenueDetailScreen from '../screens/admin/AdminVenueDetailScreen';
@@ -58,6 +59,7 @@ export default function AdminNavigator() {
       <Stack.Screen name="SubscriptionDetail" component={SubscriptionDetailScreen} />
       <Stack.Screen name="AdminSettings" component={AdminSettingsScreen} />
       <Stack.Screen name="EmailChange" component={EmailChangeScreen} />
+      <Stack.Screen name="PhoneChange" component={PhoneChangeScreen} />
       {/* Admin Profile hub + reused personal-account screens */}
       <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
       <Stack.Screen name="AdminEditProfile" component={EditProfileScreen} />

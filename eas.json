@@ -8,6 +8,9 @@
       "android": {
         "buildType": "apk"
       },
+      "ios": {
+        "simulator": true
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "http://192.168.1.50:8080"
       }
@@ -17,6 +20,9 @@
       "android": {
         "buildType": "apk"
       },
+      "ios": {
+        "buildConfiguration": "Release"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://khelangan-java-claude-uat.up.railway.app"
       }
@@ -24,6 +30,12 @@
     "production": {
       "android": {
         "buildType": "app-bundle"
+      },
+      "ios": {
+        "buildConfiguration": "Release"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://khelangan-java-claude-production.up.railway.app"
       }
     }
   },

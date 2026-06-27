@@ -11,10 +11,10 @@ import { AppHeader, AppButton, AppInput, AvatarImage, LoadingOverlay } from '../
 import { useCoupons } from '../../api/hooks/useCoupons';
 import { useAuth } from '../../store/AuthContext';
 import { useMe, useUpdateProfile, useUploadAvatar } from '../../api/hooks/useUser';
+import { usePlayerSettings, useUpdatePlayerSettings } from '../../api/hooks/usePlayerSettings';
 import { useCreateDispute } from '../../api/hooks/useDisputes';
 import { extractApiError } from '../../api/client';
 import { userService } from '../../api/services/userService';
-import { validatePhone } from '../../utils/validation';
 import type { UserRole } from '../../types';
 
 /* ───────────────── OffersScreen ───────────────── */
@@ -176,8 +176,23 @@ export function HelpSupportScreen({ navigation }: any) {
 
 /* ───────────────── SettingsScreen ───────────────── */
 export function SettingsScreen({ navigation }: any) {
-  const [push, setPush] = useState(true);
-  const [emailNotif, setEmailNotif] = useState(true);
+  const { data: settings, isLoading } = usePlayerSettings();
+  const updateSettings = useUpdatePlayerSettings();
+
+  // Default ON until the server value loads (matches backend default).
+  const push = settings?.pushNotificationsEnabled ?? true;
+  const emailNotif = settings?.emailNotificationsEnabled ?? true;
+
+  const setPush = (value: boolean) => {
+    updateSettings.mutate({ pushNotificationsEnabled: value }, {
+      onError: (err) => toast.error(extractApiError(err) || 'Failed to update setting.'),
+    });
+  };
+  const setEmailNotif = (value: boolean) => {
+    updateSettings.mutate({ emailNotificationsEnabled: value }, {
+      onError: (err) => toast.error(extractApiError(err) || 'Failed to update setting.'),
+    });
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -186,11 +201,21 @@ export function SettingsScreen({ navigation }: any) {
         <Text style={styles.sectionTitle}>Notifications</Text>
         <View style={styles.toggleRow}>
           <Text style={styles.toggleLabel}>Push Notifications</Text>
-          <Switch value={push} onValueChange={setPush} trackColor={{ true: colors.primary }} />
+          <Switch
+            value={push}
+            onValueChange={setPush}
+            disabled={isLoading}
+            trackColor={{ true: colors.primary }}
+          />
         </View>
         <View style={styles.toggleRow}>
           <Text style={styles.toggleLabel}>Email Notifications</Text>
-          <Switch value={emailNotif} onValueChange={setEmailNotif} trackColor={{ true: colors.primary }} />
+          <Switch
+            value={emailNotif}
+            onValueChange={setEmailNotif}
+            disabled={isLoading}
+            trackColor={{ true: colors.primary }}
+          />
         </View>
 
         <Text style={styles.sectionTitle}>Account</Text>
@@ -198,7 +223,88 @@ export function SettingsScreen({ navigation }: any) {
           <Text style={styles.toggleLabel}>Security</Text>
           <Text style={styles.menuArrow}>›</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate('DeleteAccount')}>
+          <Text style={[styles.toggleLabel, { color: colors.danger }]}>Delete Account</Text>
+          <Text style={styles.menuArrow}>›</Text>
+        </TouchableOpacity>
       </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+/* ───────────────── DeleteAccountScreen ───────────────── */
+export function DeleteAccountScreen({ navigation }: any) {
+  const { logout } = useAuth();
+  const [password, setPassword] = useState('');
+  const [reason, setReason] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleDelete = async () => {
+    if (!password.trim()) {
+      toast.error('Enter your password to confirm.');
+      return;
+    }
+    Alert.alert(
+      'Delete account?',
+      'This closes your account and cancels your upcoming bookings. Your email and phone are freed for reuse. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await userService.deleteMe({ password: password.trim(), reason: reason.trim() || undefined });
+              toast.success('Your account has been closed.');
+              await logout();
+            } catch (err) {
+              toast.error(extractApiError(err) || 'Failed to close account.');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <AppHeader title="Delete Account" onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+        <View style={[styles.roleInfoBox, { borderColor: colors.danger }]}>
+          <Text style={styles.roleInfoIcon}>⚠️</Text>
+          <Text style={styles.roleInfoTitle}>This is permanent</Text>
+          <Text style={styles.roleInfoBody}>
+            Closing your account cancels your upcoming bookings and signs you out everywhere. Your
+            email and phone become available to register again. Payments are settled directly with
+            venues and are unaffected.
+          </Text>
+        </View>
+        <AppInput
+          label="Confirm your password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          placeholder="Enter current password"
+        />
+        <AppInput
+          label="Reason (optional)"
+          value={reason}
+          onChangeText={setReason}
+          placeholder="Tell us why you're leaving"
+          multiline
+        />
+        <AppButton
+          label={loading ? 'Closing…' : 'Delete My Account'}
+          loading={loading}
+          disabled={!password.trim() || loading}
+          onPress={handleDelete}
+          style={{ marginTop: spacing.lg }}
+        />
+      </ScrollView>
+      <LoadingOverlay visible={loading} />
     </SafeAreaView>
   );
 }
@@ -210,31 +316,25 @@ export function EditProfileScreen({ navigation }: any) {
   const uploadAvatar = useUploadAvatar();
 
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
   const [localAvatarUri, setLocalAvatarUri] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
-  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Seed form once me data arrives
+  // Seed form once me data arrives. Phone/email are changed via their own OTP-verified flows.
   useEffect(() => {
     if (me) {
       setName(me.name ?? '');
-      setPhone(me.phone ?? '');
     }
   }, [me]);
 
   const isDirty =
     name.trim() !== (me?.name ?? '') ||
-    phone.trim() !== (me?.phone ?? '') ||
     localAvatarUri !== null;
 
   const validateForm = () => {
     const nErr = name.trim() ? null : 'Name is required';
-    const pErr = phone.trim() ? validatePhone(phone.trim()) : null; // null phone = optional
     setNameError(nErr);
-    setPhoneError(pErr);
-    return !nErr && !pErr;
+    return !nErr;
   };
 
   const pickImage = async () => {
@@ -265,7 +365,6 @@ export function EditProfileScreen({ navigation }: any) {
       }
       await updateProfile.mutateAsync({
         name: name.trim(),
-        phone: phone.trim() || undefined,
         avatarUrl,
       });
       toast.success('Profile updated.');
@@ -333,12 +432,15 @@ export function EditProfileScreen({ navigation }: any) {
         </TouchableOpacity>
         <AppInput
           label="Phone"
-          value={phone}
-          onChangeText={(v) => { setPhone(v); if (phoneError) setPhoneError(null); }}
+          value={me?.phone ?? ''}
+          onChangeText={() => {}}
           keyboardType="phone-pad"
-          placeholder="10-digit mobile number"
-          error={phoneError ?? undefined}
+          placeholder="No phone on file"
+          editable={false}
         />
+        <TouchableOpacity onPress={() => navigation.navigate('PhoneChange')} style={styles.emailChangeLink}>
+          <Text style={styles.emailChangeLinkText}>Request phone change →</Text>
+        </TouchableOpacity>
 
         <AppButton
           label={saving ? 'Saving…' : 'Save Changes'}

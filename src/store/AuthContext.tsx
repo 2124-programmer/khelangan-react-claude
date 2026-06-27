@@ -8,6 +8,7 @@ import { adaptUser } from '../api/adapters';
 import { setSessionExpiredCallback } from '../api/client';
 import { queryClient } from '../api/queryClient';
 import { toast } from '../toast';
+import { unregisterPushNotifications } from '../push/registerPush';
 import type { RegisterRequest, UserDto } from '../api/types';
 
 interface AuthState {
@@ -161,6 +162,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     // NOTE: no server-side token revocation endpoint exists; logout is client-side only.
     // The JWT remains technically valid until its expiry (app.jwt.expiration-ms).
+    // Drop this device's push token first (it needs the still-valid JWT); best-effort.
+    await unregisterPushNotifications();
     await clearTokens();
     queryClient.clear();
     setUser(null);

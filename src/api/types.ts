@@ -99,6 +99,51 @@ export interface EmailChangeRejectRequest {
   reason?: string;
 }
 
+// ─── Phone change (self-service OTP) ───────────────────────────────────────────
+
+export interface PhoneChangeCreateRequest {
+  newPhone: string;
+}
+
+export interface PhoneChangeVerifyRequest {
+  otp: string;
+}
+
+export interface PhoneChangeRequestDto {
+  id?: number;
+  userId?: number;
+  currentPhone?: string;
+  newPhone?: string;
+  status?: 'PENDING_VERIFICATION' | 'APPROVED' | 'REJECTED';
+  createdAt?: string;
+  decidedAt?: string;
+  reason?: string;
+}
+
+// ─── Player settings ───────────────────────────────────────────────────────────
+
+export interface PlayerSettingsDto {
+  pushNotificationsEnabled?: boolean;
+  emailNotificationsEnabled?: boolean;
+}
+
+export interface UpdatePlayerSettingsRequest {
+  pushNotificationsEnabled?: boolean;
+  emailNotificationsEnabled?: boolean;
+}
+
+// ─── Account deletion + push tokens ────────────────────────────────────────────
+
+export interface DeleteAccountRequest {
+  password: string;
+  reason?: string;
+}
+
+export interface RegisterPushTokenRequest {
+  token: string;
+  platform?: string;
+}
+
 export interface AuthResponse {
   token?: string;
   refreshToken?: string;

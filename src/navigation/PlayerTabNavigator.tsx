@@ -19,10 +19,12 @@ import PlayerProfileScreen from '../screens/player/PlayerProfileScreen';
 import {
   OffersScreen, WalletScreen, HelpSupportScreen, SettingsScreen,
   EditProfileScreen, RescheduleScreen, DisputeScreen, RoleChangeScreen,
+  DeleteAccountScreen,
 } from '../screens/player/MiscScreens';
 import SecurityScreen from '../screens/player/SecurityScreen';
 import ChangePasswordScreen from '../screens/player/ChangePasswordScreen';
 import EmailChangeScreen from '../screens/player/EmailChangeScreen';
+import PhoneChangeScreen from '../screens/player/PhoneChangeScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
 // Screens reachable from anywhere in the player app. Registered in every tab's
@@ -48,6 +50,8 @@ const SHARED = [
   { name: 'Security', component: SecurityScreen },
   { name: 'ChangePassword', component: ChangePasswordScreen },
   { name: 'EmailChange', component: EmailChangeScreen },
+  { name: 'PhoneChange', component: PhoneChangeScreen },
+  { name: 'DeleteAccount', component: DeleteAccountScreen },
   { name: 'ForgotPassword', component: ForgotPasswordScreen },
 ];
 

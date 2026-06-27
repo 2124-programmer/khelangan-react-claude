@@ -40,8 +40,10 @@ apiClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) =>
   config.headers['X-Correlation-Id'] = cid;
   (config as InternalAxiosRequestConfig & { _startMs?: number })._startMs = Date.now();
 
-  // Never log Authorization header or request body
-  console.log('[API REQUEST]', config.method?.toUpperCase(), config.url, '| cid:', cid);
+  // Never log Authorization header or request body. Dev-only — stripped from release builds.
+  if (__DEV__) {
+    console.log('[API REQUEST]', config.method?.toUpperCase(), config.url, '| cid:', cid);
+  }
 
   return config;
 });
@@ -66,19 +68,24 @@ apiClient.interceptors.response.use(
     const cfg = response.config as InternalAxiosRequestConfig & { _startMs?: number };
     const durationMs = cfg._startMs ? Date.now() - cfg._startMs : '-';
     const cid = cfg.headers?.['X-Correlation-Id'];
-    console.log('[API RESPONSE]', response.status, cfg.method?.toUpperCase(), cfg.url,
-      `| ${durationMs}ms | cid:`, cid);
+    if (__DEV__) {
+      console.log('[API RESPONSE]', response.status, cfg.method?.toUpperCase(), cfg.url,
+        `| ${durationMs}ms | cid:`, cid);
+    }
     return response;
   },
   async (error: AxiosError) => {
     const cfg = error.config as (InternalAxiosRequestConfig & { _startMs?: number; _retry?: boolean }) | undefined;
     const durationMs = cfg?._startMs ? Date.now() - cfg._startMs : '-';
     const cid = cfg?.headers?.['X-Correlation-Id'];
-    // Log error status + message; never log request body (may contain passwords/PII)
-    console.error('[API ERROR]', error.response?.status ?? error.code,
-      cfg?.method?.toUpperCase(), cfg?.url,
-      '|', error.response?.data ?? error.message,
-      `| ${durationMs}ms | cid:`, cid);
+    // Log error status + message; never log request body (may contain passwords/PII).
+    // Dev-only — stripped from release builds.
+    if (__DEV__) {
+      console.error('[API ERROR]', error.response?.status ?? error.code,
+        cfg?.method?.toUpperCase(), cfg?.url,
+        '|', error.response?.data ?? error.message,
+        `| ${durationMs}ms | cid:`, cid);
+    }
 
     const original = cfg;
     // Auth endpoints (login, register, otp, password-reset, change-password, refresh) own their
@@ -106,12 +113,12 @@ apiClient.interceptors.response.use(
         await saveRefreshToken(newRefresh);
         processQueue(null, newToken);
         original.headers.Authorization = `Bearer ${newToken}`;
-        console.log('[SESSION] Token refreshed successfully');
+        if (__DEV__) console.log('[SESSION] Token refreshed successfully');
         return apiClient(original);
       } catch (e) {
         processQueue(e, null);
         await clearTokens();
-        console.warn('[SESSION] Session expired — tokens cleared');
+        if (__DEV__) console.warn('[SESSION] Session expired — tokens cleared');
         onSessionExpiredCb?.();
         return Promise.reject(e);
       } finally {
