@@ -27,6 +27,8 @@ export interface User {
   email: string;
   phone: string;
   role: UserRole;
+  /** Admin sub-role (RBAC). Only present for admins; legacy admins resolve to 'SUPER_ADMIN'. */
+  adminRole?: 'SUPER_ADMIN' | 'SUPPORT' | 'READ_ONLY';
   avatar?: string;
   preferredSports?: string[];
   totalBookings?: number;

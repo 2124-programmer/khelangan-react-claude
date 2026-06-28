@@ -70,6 +70,7 @@ export function adaptUser(dto: UserDto): User {
     email: dto.email ?? '',
     phone: dto.phone ?? '',
     role: (dto.role?.toLowerCase() as UserRole) ?? 'player',
+    adminRole: dto.adminRole ?? undefined,
     avatar: dto.avatarUrl,
     preferredSports: dto.preferredSports ?? [],
     totalBookings: dto.totalBookings ?? 0,

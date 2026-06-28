@@ -43,6 +43,20 @@ export default function AdminProfileScreen({ navigation }: any) {
             onPress={() => navigation.navigate('AdminChangePassword')} />
         </View>
 
+        {/* Security — admin-role management is super-admin only */}
+        {user?.adminRole === 'SUPER_ADMIN' && (
+          <>
+            <Text style={styles.sectionLabel}>Security</Text>
+            <View style={[styles.group, shadow.card]}>
+              <Row icon="shield" label="Admin Roles" hint="Set Support / Read-only access"
+                onPress={() => navigation.navigate('AdminRoles')} />
+              <Divider />
+              <Row icon="server" label="App Configuration" hint="Base URL, database & runtime info"
+                onPress={() => navigation.navigate('AppConfig')} />
+            </View>
+          </>
+        )}
+
         {/* Platform */}
         <Text style={styles.sectionLabel}>Platform</Text>
         <View style={[styles.group, shadow.card]}>

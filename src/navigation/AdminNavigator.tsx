@@ -12,6 +12,8 @@ import OwnerDetailScreen from '../screens/admin/OwnerDetailScreen';
 import DisputesScreen from '../screens/admin/DisputesScreen';
 import DisputeDetailScreen from '../screens/admin/DisputeDetailScreen';
 import AdminProfileScreen from '../screens/admin/AdminProfileScreen';
+import AdminRolesScreen from '../screens/admin/AdminRolesScreen';
+import AppConfigScreen from '../screens/admin/AppConfigScreen';
 import { EditProfileScreen } from '../screens/player/MiscScreens';
 import ChangePasswordScreen from '../screens/player/ChangePasswordScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
@@ -62,6 +64,10 @@ export default function AdminNavigator() {
       <Stack.Screen name="PhoneChange" component={PhoneChangeScreen} />
       {/* Admin Profile hub + reused personal-account screens */}
       <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
+      {/* Super-admin-only admin-role management (entry gated in AdminProfile). */}
+      <Stack.Screen name="AdminRoles" component={AdminRolesScreen} />
+      {/* Super-admin-only app configuration diagnostics (entry gated in AdminProfile). */}
+      <Stack.Screen name="AppConfig" component={AppConfigScreen} />
       <Stack.Screen name="AdminEditProfile" component={EditProfileScreen} />
       <Stack.Screen name="AdminChangePassword" component={ChangePasswordScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />

@@ -162,12 +162,51 @@ export interface UserDto {
   email?: string;
   phone?: string;
   role?: string;           // "PLAYER" | "OWNER" | "ADMIN"
+  /** Effective admin sub-role; null for non-admins. Legacy admins resolve to SUPER_ADMIN. */
+  adminRole?: AdminRoleValue | null;
   avatarUrl?: string;
   preferredSports?: string[];
   totalBookings?: number;
   isPremium?: boolean;
   isBlocked?: boolean;
   createdAt?: string;
+}
+
+/** Admin sub-roles (RBAC). See AdminPermissionService on the backend. */
+export type AdminRoleValue = 'SUPER_ADMIN' | 'SUPPORT' | 'READ_ONLY';
+
+/** One admin in the super-admin "Admin Roles" management list (GET /api/v1/admin/admins). */
+export interface AdminSummary {
+  id: number;
+  name: string;
+  email: string;
+  avatarUrl?: string | null;
+  adminRole: AdminRoleValue;
+  self: boolean;
+}
+
+export interface SetAdminRoleRequest {
+  adminRole: AdminRoleValue;
+}
+
+/** Non-sensitive runtime/config snapshot for the super-admin App Configuration screen. */
+export interface SystemInfo {
+  appName?: string;
+  environment?: string;
+  baseUrl?: string;
+  serverPort?: string;
+  apiBasePath?: string;
+  databaseName?: string;
+  databaseHost?: string;
+  databaseProduct?: string;
+  mailHost?: string;
+  mailFrom?: string;
+  uploadDir?: string;
+  jwtExpiration?: string;
+  javaVersion?: string;
+  serverTimeZone?: string;
+  serverTime?: string;
+  uptime?: string;
 }
 
 export interface UpdateProfileRequest {
