@@ -13,9 +13,18 @@ import { toast } from '../../toast';
  * (edit profile / change email / change password) reuse the existing /api/v1/users + /auth
  * endpoints and screens; Platform Settings links to the existing fees/commission screen.
  */
+/** Human label for the effective admin sub-role; legacy NULL ⇒ Super Admin (mirrors the backend). */
+const ADMIN_ROLE_LABEL: Record<string, string> = {
+  SUPER_ADMIN: 'Super Admin',
+  SUPPORT: 'Support',
+  READ_ONLY: 'Read Only',
+};
+
 export default function AdminProfileScreen({ navigation }: any) {
   const { user, logout } = useAuth();
   const [showLogout, setShowLogout] = useState(false);
+
+  const roleLabel = ADMIN_ROLE_LABEL[user?.adminRole ?? 'SUPER_ADMIN'] ?? 'Administrator';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -27,7 +36,7 @@ export default function AdminProfileScreen({ navigation }: any) {
           <AvatarImage name={user?.name ?? 'Admin'} uri={user?.avatar ?? undefined} size={64} />
           <Text style={styles.name} numberOfLines={1}>{user?.name ?? 'Admin'}</Text>
           {user?.email ? <Text style={styles.email} numberOfLines={1}>{user.email}</Text> : null}
-          <View style={styles.roleChip}><Text style={styles.roleChipText}>Administrator</Text></View>
+          <View style={styles.roleChip}><Text style={styles.roleChipText}>{roleLabel}</Text></View>
         </View>
 
         {/* Account */}
@@ -57,12 +66,16 @@ export default function AdminProfileScreen({ navigation }: any) {
           </>
         )}
 
-        {/* Platform */}
-        <Text style={styles.sectionLabel}>Platform</Text>
-        <View style={[styles.group, shadow.card]}>
-          <Row icon="settings" label="Platform Settings" hint="Commission, fees & toggles"
-            onPress={() => navigation.navigate('AdminSettings')} />
-        </View>
+        {/* Platform — fees/commission/toggles are super-admin only */}
+        {user?.adminRole === 'SUPER_ADMIN' && (
+          <>
+            <Text style={styles.sectionLabel}>Platform</Text>
+            <View style={[styles.group, shadow.card]}>
+              <Row icon="settings" label="Platform Settings" hint="Commission, fees & toggles"
+                onPress={() => navigation.navigate('AdminSettings')} />
+            </View>
+          </>
+        )}
 
         {/* Logout */}
         <TouchableOpacity style={[styles.logoutBtn, shadow.card]} onPress={() => setShowLogout(true)}
