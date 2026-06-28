@@ -24,6 +24,7 @@ import { useBroadcastNotification } from '../../api/hooks/useNotifications';
 import { usePlatformSettings, useUpdateSettings } from '../../api/hooks/useAdmin';
 import { useSports, useCreateSport, useUpdateSport, useDeleteSport } from '../../api/hooks/useSports';
 import { extractApiError } from '../../api/client';
+import { toast } from '../../toast';
 
 function Screen({ title, navigation, children, scroll = true, refreshControl }: any) {
   const Body: any = scroll ? ScrollView : View;
@@ -524,6 +525,7 @@ export function CategoryManagementScreen({ navigation }: any) {
   const [editTarget, setEditTarget] = useState<{ id: string; name: string; icon: string } | null>(null);
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('');
+  const [errors, setErrors] = useState<{ name?: string; icon?: string }>({});
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = async () => { setRefreshing(true); try { await refetch(); } finally { setRefreshing(false); } };
@@ -535,6 +537,7 @@ export function CategoryManagementScreen({ navigation }: any) {
     setEditTarget(null);
     setName('');
     setIcon('');
+    setErrors({});
     setShowForm(true);
   };
 
@@ -542,6 +545,7 @@ export function CategoryManagementScreen({ navigation }: any) {
     setEditTarget(s);
     setName(s.name);
     setIcon(s.icon);
+    setErrors({});
     setShowForm(true);
   };
 
@@ -550,22 +554,33 @@ export function CategoryManagementScreen({ navigation }: any) {
     setEditTarget(null);
     setName('');
     setIcon('');
+    setErrors({});
+  };
+
+  const validate = () => {
+    const next: { name?: string; icon?: string } = {};
+    const trimmedName = name.trim();
+    const trimmedIcon = icon.trim();
+    if (!trimmedName) next.name = 'Sport name is required.';
+    else if (trimmedName.length < 2) next.name = 'Name must be at least 2 characters.';
+    if (!trimmedIcon) next.icon = 'An icon emoji is required.';
+    setErrors(next);
+    return Object.keys(next).length === 0;
   };
 
   const handleSubmit = async () => {
-    if (!name.trim() || !icon.trim()) {
-      Alert.alert('Required', 'Please enter both a name and an icon emoji.');
-      return;
-    }
+    if (!validate()) return;
     try {
       if (isEdit) {
         await updateSport.mutateAsync({ id: Number(editTarget.id), data: { name: name.trim(), icon: icon.trim() } });
+        toast.success('Sport updated.');
       } else {
         await createSport.mutateAsync({ name: name.trim(), icon: icon.trim() });
+        toast.success('Sport created.');
       }
       closeForm();
-    } catch (err) {
-      Alert.alert('Error', extractApiError(err));
+    } catch {
+      // Failure is already surfaced via the global mutation toast handler (queryClient).
     }
   };
 
@@ -590,8 +605,23 @@ export function CategoryManagementScreen({ navigation }: any) {
 
       {showForm && (
         <Card style={{ marginBottom: spacing.lg }}>
-          <AppInput label="Sport Name" value={name} onChangeText={setName} placeholder="e.g. Football" />
-          <AppInput label="Icon (emoji)" value={icon} onChangeText={setIcon} placeholder="e.g. ⚽" />
+          <AppInput
+            label="Sport Name"
+            value={name}
+            onChangeText={(t) => { setName(t); if (errors.name) setErrors((e) => ({ ...e, name: undefined })); }}
+            placeholder="e.g. Football"
+            error={errors.name}
+            autoCapitalize="words"
+            maxLength={40}
+          />
+          <AppInput
+            label="Icon (emoji)"
+            value={icon}
+            onChangeText={(t) => { setIcon(t); if (errors.icon) setErrors((e) => ({ ...e, icon: undefined })); }}
+            placeholder="e.g. ⚽"
+            error={errors.icon}
+            maxLength={8}
+          />
           <View style={styles.rowGap}>
             {isEdit && (
               <AppButton label="Cancel" variant="secondary" onPress={closeForm} style={{ flex: 1 }} />

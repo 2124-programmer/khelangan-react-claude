@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { toast } from '../../toast';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, AppInput, AvatarImage, LoadingOverlay } from '../../components/common';
 import { useCoupons } from '../../api/hooks/useCoupons';
@@ -352,14 +353,25 @@ export function EditProfileScreen({ navigation }: any) {
       Alert.alert('Permission needed', 'Allow photo library access to pick a profile photo.');
       return;
     }
+    // allowsEditing + aspect [1,1] gives the user a square crop selector.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.7,
+      quality: 1,
     });
-    if (!result.canceled && result.assets.length > 0) {
-      setLocalAvatarUri(result.assets[0].uri);
+    if (result.canceled || result.assets.length === 0) return;
+    try {
+      // Downscale to 512px + recompress to JPEG so the upload stays far below the 5 MB server cap,
+      // regardless of the original photo's resolution. A profile avatar never needs more than this.
+      const processed = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 512 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+      );
+      setLocalAvatarUri(processed.uri);
+    } catch {
+      Alert.alert('Processing failed', 'Could not process the image. Please try another photo.');
     }
   };
 
