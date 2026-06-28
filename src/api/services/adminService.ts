@@ -3,6 +3,7 @@ import type {
   AdminStatsDto, OwnerStatsDto, PlatformSettingsDto, UpdateSettingsRequest,
   DashboardSummaryDto, DashboardPeriodDto,
   AdminSummary, AdminRoleValue, MessageResponse, SystemInfo,
+  CreateAdminRequest, PromoteAdminRequest, RemoveAdminMode,
 } from '../types';
 
 export const adminService = {
@@ -30,6 +31,17 @@ export const adminService = {
   setAdminRole: (id: number, adminRole: AdminRoleValue) =>
     apiClient
       .patch<MessageResponse>(`/api/v1/admin/users/${id}/admin-role`, { adminRole })
+      .then((r) => r.data),
+
+  createAdmin: (data: CreateAdminRequest) =>
+    apiClient.post<AdminSummary>('/api/v1/admin/admins', data).then((r) => r.data),
+
+  promoteToAdmin: (data: PromoteAdminRequest) =>
+    apiClient.post<AdminSummary>('/api/v1/admin/admins/promote', data).then((r) => r.data),
+
+  removeAdmin: (id: number, mode: RemoveAdminMode) =>
+    apiClient
+      .delete<MessageResponse>(`/api/v1/admin/admins/${id}`, { params: { mode } })
       .then((r) => r.data),
 
   // ── App configuration / system info (super-admin only; enforced server-side) ──

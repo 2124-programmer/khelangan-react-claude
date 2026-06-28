@@ -189,6 +189,23 @@ export interface SetAdminRoleRequest {
   adminRole: AdminRoleValue;
 }
 
+/** Create a brand-new admin account (POST /api/v1/admin/admins). */
+export interface CreateAdminRequest {
+  name: string;
+  email: string;
+  password: string;
+  adminRole: AdminRoleValue;
+}
+
+/** Promote an existing user to admin by email (POST /api/v1/admin/admins/promote). */
+export interface PromoteAdminRequest {
+  email: string;
+  adminRole: AdminRoleValue;
+}
+
+/** How a super-admin removes an admin: revoke (demote to player) or deactivate (soft-delete). */
+export type RemoveAdminMode = 'demote' | 'deactivate';
+
 /** Non-sensitive runtime/config snapshot for the super-admin App Configuration screen. */
 export interface SystemInfo {
   appName?: string;
