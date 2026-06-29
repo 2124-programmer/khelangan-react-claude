@@ -53,9 +53,28 @@ apiClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) =>
 let isRefreshing = false;
 let failedQueue: { resolve: (v: string) => void; reject: (e: unknown) => void }[] = [];
 let onSessionExpiredCb: (() => void) | null = null;
+let onPasswordChangeRequiredCb: (() => void) | null = null;
 
 export function setSessionExpiredCallback(cb: () => void) {
   onSessionExpiredCb = cb;
+}
+
+/**
+ * Wire a handler for the server's forced-password-change gate. When ANY authorized call returns
+ * 403 PASSWORD_CHANGE_REQUIRED, AuthContext flips the app into forced-change mode (rather than
+ * logging out or crashing). See JwtAuthenticationFilter on the backend.
+ */
+export function setPasswordChangeRequiredCallback(cb: () => void) {
+  onPasswordChangeRequiredCb = cb;
+}
+
+/** True when an error is the backend's 403 PASSWORD_CHANGE_REQUIRED gate. */
+export function isPasswordChangeRequired(error: unknown): boolean {
+  if (axios.isAxiosError(error)) {
+    return error.response?.status === 403
+      && (error.response?.data as { error?: string } | undefined)?.error === 'PASSWORD_CHANGE_REQUIRED';
+  }
+  return false;
 }
 
 function processQueue(error: unknown, token: string | null) {
@@ -125,6 +144,14 @@ apiClient.interceptors.response.use(
         isRefreshing = false;
       }
     }
+
+    // Forced-password-change gate: the server blocks every endpoint (except change-password) with
+    // 403 PASSWORD_CHANGE_REQUIRED until the user changes their password. Flip the app into
+    // forced-change mode rather than letting callers treat it as a generic error / logout.
+    if (isPasswordChangeRequired(error)) {
+      onPasswordChangeRequiredCb?.();
+    }
+
     return Promise.reject(error);
   }
 );

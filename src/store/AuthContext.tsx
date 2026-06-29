@@ -5,7 +5,7 @@ import { authService } from '../api/services/authService';
 import { saveToken, saveRefreshToken, getToken, clearTokens } from '../api/tokenStorage';
 import { userService } from '../api/services/userService';
 import { adaptUser } from '../api/adapters';
-import { setSessionExpiredCallback } from '../api/client';
+import { setSessionExpiredCallback, setPasswordChangeRequiredCallback, isPasswordChangeRequired } from '../api/client';
 import { queryClient } from '../api/queryClient';
 import { toast } from '../toast';
 import { unregisterPushNotifications } from '../push/registerPush';
@@ -20,6 +20,14 @@ interface AuthState {
   isDemoMode: boolean;
   isLoading: boolean;
   authError: string | null;
+  /**
+   * The authenticated user must change their password before using the app (e.g. a bootstrap-seeded
+   * super-admin on first login). While true the app shows ForcedChangePasswordScreen and the server
+   * blocks every other endpoint. Cleared by completeForcedPasswordChange after a successful change.
+   */
+  mustChangePassword: boolean;
+  /** Apply the new session returned by a forced password change and clear the gate. */
+  completeForcedPasswordChange: (newToken: string, userDto: UserDto) => Promise<void>;
   /**
    * Set when the cold-start session restore failed for a NON-auth reason (offline / unreachable /
    * server). The user is NOT logged out — App shows a full-screen retry overlay. `null` otherwise.
@@ -54,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [bootstrapError, setBootstrapError] = useState<AppError | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
 
   // Cold-start session restore. CRITICAL: a network failure must NOT log the user out — only a
   // genuine 'auth' error (the server actually returned 401/403) clears the session and routes to
@@ -75,6 +84,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(adaptUser(dto));
       setIsDemoMode(false);
     } catch (e) {
+      // Forced password change: the token is valid but getMe is blocked until the password is
+      // changed. Keep the session and route to the forced-change screen (don't sign out).
+      if (isPasswordChangeRequired(e)) {
+        setMustChangePassword(true);
+        return;
+      }
       const kind = classifyError(e);
       if (kind === 'auth') {
         // Token genuinely rejected → real sign-out.
@@ -108,6 +123,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Safety net: any authorized call that hits the server's forced-password-change gate
+  // (403 PASSWORD_CHANGE_REQUIRED) flips the app into forced-change mode.
+  useEffect(() => {
+    setPasswordChangeRequiredCallback(() => setMustChangePassword(true));
+  }, []);
+
   // ── Demo mode (SplashScreen role picker) ────────────────────────────────
   const login = useCallback((role: UserRole) => {
     setUser(CURRENT_USERS[role] as User);
@@ -126,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await saveRefreshToken(res.refreshToken ?? res.token);
       setToken(res.token);
       setUser(adaptUser(res.user));
+      setMustChangePassword(res.mustChangePassword === true);
       setIsDemoMode(false);
     } catch (e: any) {
       const msg =
@@ -202,6 +224,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setIsDemoMode(false);
     setAuthError(null);
+    setMustChangePassword(false);
+  }, []);
+
+  // After a successful forced change-password: the server returned a fresh token pair + user and
+  // cleared the flag server-side. Apply the new session and drop the gate so the app proceeds.
+  const completeForcedPasswordChange = useCallback(async (newToken: string, userDto: UserDto) => {
+    await saveToken(newToken);
+    await saveRefreshToken(newToken);
+    setToken(newToken);
+    setUser(adaptUser(userDto));
+    setMustChangePassword(false);
+    setIsDemoMode(false);
   }, []);
 
   const updateSession = useCallback(async (newToken: string, userDto: UserDto) => {
@@ -234,6 +268,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     authError,
     bootstrapError,
+    mustChangePassword,
+    completeForcedPasswordChange,
     retryBootstrap,
     login,
     loginWithCredentials,

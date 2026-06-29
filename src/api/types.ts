@@ -148,6 +148,12 @@ export interface AuthResponse {
   token?: string;
   refreshToken?: string;
   user?: UserDto;
+  /**
+   * When true, the user must change their password before accessing any other endpoint.
+   * The server also blocks all other authorized endpoints (403 PASSWORD_CHANGE_REQUIRED)
+   * until the change completes. See ForcedChangePasswordScreen.
+   */
+  mustChangePassword?: boolean;
 }
 
 export interface MessageResponse {
