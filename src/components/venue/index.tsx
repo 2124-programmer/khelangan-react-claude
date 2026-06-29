@@ -514,9 +514,23 @@ function Legend({ color, label }: { color: string; label: string }) {
 }
 
 /* ───────────────── Cancellation label helper ───────────────── */
-function getCancelLabel(status: Booking['status'], reason?: CancellationReason): string | undefined {
-  if (status === 'rejected' || reason === 'owner') return 'Rejected by Owner';
-  if (status === 'cancelled' && reason === 'player') return 'Cancelled by You';
+// Perspective-aware: the same booking reads differently to each side. A player-initiated
+// cancel is "Cancelled by You" to the player but "Cancelled by {name}" to the owner; an
+// owner rejection is "Rejected by You" to the owner but "Rejected by Owner" to the player.
+function getCancelLabel(
+  status: Booking['status'],
+  reason: CancellationReason | undefined,
+  viewAs: 'player' | 'owner',
+  playerName?: string,
+): string | undefined {
+  if (status === 'rejected' || reason === 'owner') {
+    return viewAs === 'owner' ? 'Rejected by You' : 'Rejected by Owner';
+  }
+  if (status === 'cancelled' && reason === 'player') {
+    return viewAs === 'owner'
+      ? `Cancelled by ${playerName?.trim() || 'Player'}`
+      : 'Cancelled by You';
+  }
   if (status === 'cancelled' && reason === 'time_over') return 'Time Expired';
   if (status === 'expired') return 'Time Expired';
   return undefined;
@@ -563,7 +577,7 @@ export function BookingCard({ booking, onPress, onCancel, onReview, onRebook, on
     ? waOwnerBookingMsg(booking, tabCtx)
     : waBookingMsg(booking, tabCtx);
   const hasActions = onCancel || onReview || onRebook || onCheckIn;
-  const cancelLabel = getCancelLabel(booking.status, booking.cancellationReason);
+  const cancelLabel = getCancelLabel(booking.status, booking.cancellationReason, viewAs, booking.playerName);
   const tsInfo = getBookingTimestampInfo(booking.status, booking.createdAt, booking.updatedAt);
 
   return (
@@ -667,7 +681,7 @@ export function GroupedBookingCard({
   const waMsg = viewAs === 'owner'
     ? waGroupMsg(group, slotTimes, tabCtx)
     : waPlayerGroupMsg(group, slotTimes, tabCtx);
-  const cancelLabel = getCancelLabel(group.status, group.cancellationReason);
+  const cancelLabel = getCancelLabel(group.status, group.cancellationReason, viewAs, group.playerName);
   const tsInfo = getBookingTimestampInfo(group.status, group.createdAt, group.updatedAt);
 
   return (

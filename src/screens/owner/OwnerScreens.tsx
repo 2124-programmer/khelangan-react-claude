@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, ActivityIndicator, Alert, RefreshControl,
+  NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { PlanBadge } from '../../components/PlanBadge';
 import { PlanComparison } from '../../components/PlanComparison';
@@ -132,6 +134,16 @@ export function BookingManagementScreen({ navigation, route }: any) {
     }
   };
 
+  // Scroll-to-top: surfaces a floating button once the owner scrolls past the fold (mirrors PlayerHomeScreen).
+  const listRef = useRef<ScrollView>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setShowScrollTop(e.nativeEvent.contentOffset.y > 400);
+  }, []);
+  const scrollToTop = useCallback(() => {
+    listRef.current?.scrollTo({ y: 0, animated: true });
+  }, []);
+
   const acceptGroup = useAcceptBookingGroup();
   const rejectGroup = useRejectBookingGroup();
   const checkIn = useCheckInBooking();
@@ -189,37 +201,41 @@ export function BookingManagementScreen({ navigation, route }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Bookings" onBack={() => navigation.goBack()} />
-      <SectionTabBar
-        tabs={[
-          { label: 'Requests', value: 'requests' },
-          { label: 'Today', value: 'today' },
-          { label: 'Upcoming', value: 'upcoming' },
-          { label: 'Completed', value: 'completed' },
-          { label: 'Cancelled', value: 'cancelled' },
-        ]}
-        activeTab={tab}
-        onChange={(t) => setTab(t as TabKey)}
-      />
-      {/* Fixed refresh bar — stays visible while scrolling */}
-      <View style={styles.bmsRefreshBar}>
-        <Text style={styles.bmsRefreshLabel}>
-          {isLoading || refreshing ? 'Loading…' : `${items.length} result${items.length !== 1 ? 's' : ''}`}
-        </Text>
-        <TouchableOpacity
-          onPress={handleRefresh}
-          disabled={refreshing || cooldownSecs > 0}
-          style={[styles.bmsRefreshBtn, (refreshing || cooldownSecs > 0) && { opacity: 0.4 }]}
-        >
-          <Text style={styles.bmsRefreshIcon}>↻</Text>
-          <Text style={styles.bmsRefreshText}>
-            {refreshing ? 'Loading…' : cooldownSecs > 0 ? `${cooldownSecs}s` : 'Refresh'}
-          </Text>
-        </TouchableOpacity>
-      </View>
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg }}
+        ref={listRef}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: spacing.lg }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
+        {/* Tab bar + refresh bar now scroll with the list (were previously pinned) */}
+        <SectionTabBar
+          tabs={[
+            { label: 'Requests', value: 'requests' },
+            { label: 'Today', value: 'today' },
+            { label: 'Upcoming', value: 'upcoming' },
+            { label: 'Completed', value: 'completed' },
+            { label: 'Cancelled', value: 'cancelled' },
+          ]}
+          activeTab={tab}
+          onChange={(t) => setTab(t as TabKey)}
+        />
+        <View style={styles.bmsRefreshBar}>
+          <Text style={styles.bmsRefreshLabel}>
+            {isLoading || refreshing ? 'Loading…' : `${items.length} result${items.length !== 1 ? 's' : ''}`}
+          </Text>
+          <TouchableOpacity
+            onPress={handleRefresh}
+            disabled={refreshing || cooldownSecs > 0}
+            style={[styles.bmsRefreshBtn, (refreshing || cooldownSecs > 0) && { opacity: 0.4 }]}
+          >
+            <Text style={styles.bmsRefreshIcon}>↻</Text>
+            <Text style={styles.bmsRefreshText}>
+              {refreshing ? 'Loading…' : cooldownSecs > 0 ? `${cooldownSecs}s` : 'Refresh'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View style={{ padding: spacing.lg }}>
         {isLoading ? (
           <LoadingOverlay visible={isLoading} />
         ) : items.length === 0 ? (
@@ -263,7 +279,18 @@ export function BookingManagementScreen({ navigation, route }: any) {
             );
           })
         )}
+        </View>
       </ScrollView>
+
+      {showScrollTop && (
+        <TouchableOpacity
+          style={[styles.bmsScrollTopBtn, shadow.modal]}
+          onPress={scrollToTop}
+          activeOpacity={0.85}
+        >
+          <Feather name="arrow-up" size={22} color={colors.white} />
+        </TouchableOpacity>
+      )}
 
       {/* Check-in confirmation modal */}
       {pendingCheckIn && (
@@ -280,6 +307,7 @@ export function BookingManagementScreen({ navigation, route }: any) {
           }
           slotsCount={pendingCheckIn.kind === 'group' ? pendingCheckIn.group.bookings.length : undefined}
           total={pendingCheckIn.kind === 'single' ? pendingCheckIn.booking.amount : pendingCheckIn.group.totalAmount}
+          loading={checkIn.isPending || checkInGroup.isPending}
           onConfirm={handleCheckInConfirm}
           onDismiss={() => setPendingCheckIn(null)}
         />
@@ -1492,6 +1520,12 @@ const styles = StyleSheet.create({
   bmsRefreshBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.md, paddingVertical: 5, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.primary },
   bmsRefreshIcon: { fontSize: 14, color: colors.primary },
   bmsRefreshText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.primary },
+  bmsScrollTopBtn: {
+    position: 'absolute', right: spacing.lg, bottom: spacing.xl,
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
   notifRow: { flexDirection: 'row', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   notifUnread: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
   notifTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },

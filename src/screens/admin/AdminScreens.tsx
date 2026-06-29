@@ -4,6 +4,7 @@ import {
   Switch, Alert, ActivityIndicator, RefreshControl, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import {
   AppHeader, AppButton, AppInput, StatusBadge,
   StatCard, Card, EmptyState, AvatarImage, LoadingOverlay
@@ -645,25 +646,29 @@ export function CategoryManagementScreen({ navigation }: any) {
         sports.map((s) => (
           <Card key={s.id} style={{ marginBottom: spacing.sm }}>
             <View style={styles.rowBetween}>
-              <View style={styles.rowGapSm}>
+              <View style={[styles.rowGapSm, { flex: 1, minWidth: 0 }]}>
                 <Text style={{ fontSize: 26 }}>{s.icon}</Text>
-                <Text style={styles.cardTitle}>{s.name}</Text>
+                <Text style={styles.cardTitle} numberOfLines={1}>{s.name}</Text>
               </View>
-              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                <AppButton
-                  label="Edit"
-                  variant="secondary"
-                  fullWidth={false}
+              <View style={{ flexDirection: 'row', gap: spacing.sm, flexShrink: 0 }}>
+                <TouchableOpacity
+                  style={styles.iconBtn}
                   onPress={() => openEdit(s)}
-                  style={{ height: 36, paddingHorizontal: spacing.md }}
-                />
-                <AppButton
-                  label="Delete"
-                  variant="danger"
-                  fullWidth={false}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Edit ${s.name}`}
+                >
+                  <Feather name="edit-2" size={18} color={colors.admin} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.iconBtn}
                   onPress={() => setDeleteId(s.id)}
-                  style={{ height: 36, paddingHorizontal: spacing.md }}
-                />
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete ${s.name}`}
+                >
+                  <Feather name="trash-2" size={18} color={colors.danger} />
+                </TouchableOpacity>
               </View>
             </View>
           </Card>
@@ -712,6 +717,7 @@ const styles = StyleSheet.create({
   thumbPlaceholderText: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.textDim },
   rowGap: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   rowGapSm: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
+  iconBtn: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid, marginTop: spacing.md, marginBottom: spacing.sm },
   typeBtn: { flex: 1, paddingVertical: spacing.sm, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },

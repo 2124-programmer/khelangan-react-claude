@@ -155,6 +155,7 @@ export default function MyBookingsScreen({ navigation }: any) {
         visible={!!cancelTarget}
         venueName={cancelTarget?.venueName ?? ''}
         refundAmount={cancelTarget ? Math.round(cancelTarget.amount * 0.5) : 0}
+        loading={cancelBooking.isPending}
         onConfirm={handleCancel}
         onDismiss={() => setCancelTarget(null)}
       />

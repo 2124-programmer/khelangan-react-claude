@@ -45,10 +45,11 @@ interface CancelProps {
   visible: boolean;
   venueName: string;
   refundAmount: number;
+  loading?: boolean;
   onConfirm: () => void;
   onDismiss: () => void;
 }
-export function CancelBookingModal({ visible, venueName, refundAmount, onConfirm, onDismiss }: CancelProps) {
+export function CancelBookingModal({ visible, venueName, refundAmount, loading, onConfirm, onDismiss }: CancelProps) {
   return (
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onDismiss}>
       <View style={styles.sheetOverlay}>
@@ -64,8 +65,8 @@ export function CancelBookingModal({ visible, venueName, refundAmount, onConfirm
             ℹ️ Full refund for cancellations 24+ hrs before slot. 50% within 12–24 hrs. No refund under 12 hrs.
           </Text>
           <View style={{ gap: spacing.sm, marginTop: spacing.lg }}>
-            <AppButton label="Confirm Cancellation" variant="danger" onPress={onConfirm} />
-            <AppButton label="Keep Booking" variant="secondary" onPress={onDismiss} />
+            <AppButton label="Confirm Cancellation" variant="danger" onPress={onConfirm} loading={loading} disabled={loading} />
+            <AppButton label="Keep Booking" variant="secondary" onPress={onDismiss} disabled={loading} />
           </View>
         </View>
       </View>
@@ -403,11 +404,12 @@ interface CheckInConfirmProps {
   timeRange: string;
   slotsCount?: number;
   total: number;
+  loading?: boolean;
   onConfirm: () => void;
   onDismiss: () => void;
 }
 export function CheckInConfirmModal({
-  visible, playerName, venueName, courtName, date, timeRange, slotsCount, total, onConfirm, onDismiss,
+  visible, playerName, venueName, courtName, date, timeRange, slotsCount, total, loading, onConfirm, onDismiss,
 }: CheckInConfirmProps) {
   return (
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onDismiss}>
@@ -446,8 +448,8 @@ export function CheckInConfirmModal({
 
           {/* Actions */}
           <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xl }}>
-            <AppButton label="Cancel" variant="secondary" onPress={onDismiss} style={{ flex: 1 }} />
-            <AppButton label="✓ Check In" onPress={onConfirm} style={{ flex: 1 }} />
+            <AppButton label="Cancel" variant="secondary" onPress={onDismiss} disabled={loading} style={{ flex: 1 }} />
+            <AppButton label="✓ Check In" onPress={onConfirm} loading={loading} disabled={loading} style={{ flex: 1 }} />
           </View>
         </View>
       </View>

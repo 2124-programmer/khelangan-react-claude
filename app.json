@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Score-Adda",
-    "slug": "score-adda",
+    "slug": "turfbook",
     "scheme": "scoreadda",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -87,6 +87,6 @@
         "projectId": "d0109049-7875-444d-a5ce-eadddd586e79"
       }
     },
-    "owner": "2124-chavhan"
+    "owner": "2124.programmer"
   }
 }
