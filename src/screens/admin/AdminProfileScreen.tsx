@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader, AvatarImage } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
+import { AppearanceSelector } from '../../components/AppearanceSelector';
 import { useAuth } from '../../store/AuthContext';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { toast } from '../../toast';
@@ -76,6 +77,9 @@ export default function AdminProfileScreen({ navigation }: any) {
             </View>
           </>
         )}
+
+        {/* Appearance — light / dark / system */}
+        <AppearanceSelector />
 
         {/* Logout */}
         <TouchableOpacity style={[styles.logoutBtn, shadow.card]} onPress={() => setShowLogout(true)}

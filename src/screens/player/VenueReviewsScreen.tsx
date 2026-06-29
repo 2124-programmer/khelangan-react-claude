@@ -82,7 +82,7 @@ export default function VenueReviewsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7F8FA' },
-  summary: { padding: spacing.lg, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  summary: { padding: spacing.lg, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   venueName: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: '#111827', marginBottom: 4 },
   list: { padding: spacing.lg },
   errorText: { textAlign: 'center', marginTop: 40, color: colors.danger },

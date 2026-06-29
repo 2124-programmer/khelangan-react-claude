@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, AppInput, AvatarImage, LoadingOverlay } from '../../components/common';
+import { AppearanceSelector } from '../../components/AppearanceSelector';
 import { useCoupons } from '../../api/hooks/useCoupons';
 import { useAuth } from '../../store/AuthContext';
 import { useMe, useUpdateProfile, useUploadAvatar } from '../../api/hooks/useUser';
@@ -225,6 +226,10 @@ export function SettingsScreen({ navigation }: any) {
             disabled={isLoading}
             trackColor={{ true: colors.primary }}
           />
+        </View>
+
+        <View style={{ marginTop: spacing.lg }}>
+          <AppearanceSelector />
         </View>
 
         <Text style={styles.sectionTitle}>Account</Text>

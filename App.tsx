@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { StatusBar, AppState, Linking } from 'react-native';
+import { useFonts } from 'expo-font';
 import { focusManager } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
@@ -10,6 +11,11 @@ import { queryClient } from './src/api/queryClient';
 import RootNavigator from './src/navigation/RootNavigator';
 import { ToastHost } from './src/toast';
 import { BootstrapGate } from './src/components/BootstrapGate';
+import { colors, isDark } from './src/theme';
+import { applyInterFont } from './src/theme/applyFonts';
+
+// Patch Text/TextInput once so every label across the app renders in Inter at the right weight.
+applyInterFont();
 
 function AppStateBridge() {
   useEffect(() => {
@@ -25,6 +31,14 @@ export default function App() {
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
   // Holds a venueId from a cold-start deep link until the navigator is ready
   const pendingVenueId = useRef<string | null>(null);
+
+  // Load Inter's weight files directly (the family keys match the names used by applyInterFont).
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular: require('@expo-google-fonts/inter/Inter_400Regular.ttf'),
+    Inter_500Medium: require('@expo-google-fonts/inter/Inter_500Medium.ttf'),
+    Inter_600SemiBold: require('@expo-google-fonts/inter/Inter_600SemiBold.ttf'),
+    Inter_700Bold: require('@expo-google-fonts/inter/Inter_700Bold.ttf'),
+  });
 
   const navigateToVenue = (venueId: string) => {
     (navigationRef.current as any)?.navigate('VenueDetail', { venueId });
@@ -58,6 +72,9 @@ export default function App() {
     }
   };
 
+  // Hold the (native splash) until Inter is ready so the first paint isn't a system-font flash.
+  if (!fontsLoaded) return null;
+
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
@@ -65,7 +82,11 @@ export default function App() {
           <LocationProvider>
             <AppStateBridge />
             <NavigationContainer ref={navigationRef} onReady={onNavigationReady}>
-              <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
+              <StatusBar
+                barStyle={isDark ? 'light-content' : 'dark-content'}
+                backgroundColor={colors.surface}
+                translucent={false}
+              />
               <RootNavigator />
             </NavigationContainer>
             {/* Full-screen retry overlay when cold-start session restore fails for a non-auth reason. */}

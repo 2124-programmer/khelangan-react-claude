@@ -5,7 +5,7 @@
     "scheme": "scoreadda",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "icon": "./assets/logo/icon.png",
     "description": "Score-Adda — a multi-sport turf and court booking platform.",
     "primaryColor": "#0FAE6E",
@@ -45,7 +45,8 @@
             "usesCleartextTraffic": false
           }
         }
-      ]
+      ],
+      "expo-font"
     ],
     "ios": {
       "supportsTablet": true,

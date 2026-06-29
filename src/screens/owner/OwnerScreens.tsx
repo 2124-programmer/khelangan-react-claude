@@ -14,6 +14,7 @@ import {
 import { BookingCard, GroupedBookingCard, VenueImagePicker, PickedImage } from '../../components/venue';
 import { ReviewCard, ReviewsEmptyState } from '../../components/reviews';
 import { ConfirmActionModal, CheckInConfirmModal } from '../../modals';
+import { AppearanceSelector } from '../../components/AppearanceSelector';
 import { useAuth } from '../../store/AuthContext';
 import { useBookings, useBookingDetail, useAcceptBooking, useRejectBooking, useAcceptBookingGroup, useRejectBookingGroup, useCheckInBooking, useCheckInBookingGroup } from '../../api/hooks/useBookings';
 import { useOwnerSettings, useUpdateOwnerSettings } from '../../api/hooks/useSettings';
@@ -1172,6 +1173,9 @@ export function OwnerSettingsScreen({ navigation }: any) {
               trackColor={{ true: colors.primary }}
               disabled={updateSettings.isPending}
             />
+          </View>
+          <View style={{ marginTop: spacing.lg }}>
+            <AppearanceSelector />
           </View>
         </ScrollView>
       )}
