@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  Image, TouchableOpacity, RefreshControl, Modal,
+  View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, RefreshControl, Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { PlanBadge } from '../../components/PlanBadge';
@@ -56,7 +56,7 @@ export default function MyVenuesScreen({ navigation }: any) {
   const plans = plansQ.data ?? [];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="My Venues" />
       <View style={styles.addBar}>
         <TouchableOpacity onPress={() => navigation.navigate('AddVenue')} style={styles.addBtn}>

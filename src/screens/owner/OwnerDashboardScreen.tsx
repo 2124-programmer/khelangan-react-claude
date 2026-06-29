@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, RefreshControl, ActivityIndicator, Pressable,
-  Modal, Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Pressable, Modal, Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { NotificationBell, MetricCard } from '../../components/common';
 import { SubscriptionBadge } from '../../components/SubscriptionBadge';
@@ -108,7 +107,7 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
   const stats = data?.stats;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg }}
         refreshControl={

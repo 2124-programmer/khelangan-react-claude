@@ -1,8 +1,9 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, TextInput,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, AppButton, AppInput, LoadingOverlay } from '../../components/common';
 import { toast } from '../../toast';
@@ -10,6 +11,7 @@ import { extractApiError, getHttpStatus } from '../../api/client';
 import {
   useRequestPasswordReset, useVerifyPasswordResetOtp, useConfirmPasswordReset,
 } from '../../api/hooks/usePasswordReset';
+import { useAndroidBack } from '../../hooks/useAndroidBack';
 
 type Step = 'email' | 'otp' | 'newPassword';
 
@@ -154,17 +156,24 @@ export default function ForgotPasswordScreen({ navigation, route }: any) {
 
   const busy = requestReset.isPending || verifyOtp.isPending || confirmReset.isPending;
 
+  // Step back within the flow before leaving the screen. Returns true when consumed
+  // (used for both the header back button and the Android hardware-back press).
+  const handleBack = useCallback((): boolean => {
+    if (step === 'otp') { setStep('email'); return true; }
+    if (step === 'newPassword') { setStep('otp'); return true; }
+    return false; // on step 'email', let the default back leave the screen
+  }, [step]);
+
+  useAndroidBack(handleBack);
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader
         title="Reset Password"
-        onBack={() => {
-          if (step === 'otp') { setStep('email'); return; }
-          if (step === 'newPassword') { setStep('otp'); return; }
-          navigation.goBack();
-        }}
+        onBack={() => { if (!handleBack()) navigation.goBack(); }}
       />
 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ padding: spacing.xl }}>
 
         {/* Progress indicator */}
@@ -298,6 +307,7 @@ export default function ForgotPasswordScreen({ navigation, route }: any) {
         )}
 
       </ScrollView>
+      </KeyboardAvoidingView>
       <LoadingOverlay visible={busy} />
     </SafeAreaView>
   );

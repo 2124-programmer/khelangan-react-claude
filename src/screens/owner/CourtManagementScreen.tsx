@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, ActivityIndicator, Switch, Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, AppInput, EmptyState, HourPickerDropdown, LoadingOverlay } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
@@ -193,7 +193,7 @@ export default function CourtManagementScreen({ navigation, route }: any) {
   // ─── Render ───────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader
         title="Manage Courts"
         onBack={() => navigation.goBack()}

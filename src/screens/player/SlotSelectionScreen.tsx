@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, ActivityIndicator, FlatList, Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, EmptyState, LoadingOverlay } from '../../components/common';
 import { SlotGrid } from '../../components/venue';
@@ -175,9 +176,20 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
 
   const effectiveCourtId = selectedCourtId ?? sportCourts[0]?.id ?? null;
 
-  const { data: rawSlots = [], isLoading: slotsLoading } = useSlots(
+  const { data: rawSlots = [], isLoading: slotsLoading, refetch: refetchSlots } = useSlots(
     effectiveCourtId ? Number(effectiveCourtId) : undefined,
     activeDate,
+  );
+
+  // Slot availability is volatile, so re-fetch whenever the screen regains focus
+  // (e.g. returning from Booking Confirm) — but skip the initial mount, which the
+  // query already covers, to avoid a duplicate request.
+  const didMountRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (didMountRef.current) refetchSlots();
+      else didMountRef.current = true;
+    }, [refetchSlots]),
   );
 
   const slots = useMemo(
@@ -290,7 +302,7 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
 
   if (venueLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <AppHeader title="Select Slot" onBack={() => navigation.goBack()} />
         <LoadingOverlay visible={venueLoading} />
       </SafeAreaView>
@@ -299,7 +311,7 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
 
   if (!venue) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <AppHeader title="Select Slot" onBack={() => navigation.goBack()} />
         <EmptyState icon="⚠️" title="Venue not found" subtitle="" />
       </SafeAreaView>
@@ -309,7 +321,7 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
   const loadingSlots = courtsLoading || slotsLoading;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Select Slot" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}>
         <Text style={styles.venueName}>{venue.name}</Text>

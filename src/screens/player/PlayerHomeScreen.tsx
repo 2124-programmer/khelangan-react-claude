@@ -1,9 +1,8 @@
 import React, { useCallback, useState, useMemo, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView, FlatList, ActivityIndicator,
-  TouchableOpacity, TextInput, RefreshControl, Linking, Platform,
-  NativeSyntheticEvent, NativeScrollEvent,
+  View, Text, StyleSheet, ScrollView, FlatList, ActivityIndicator, TouchableOpacity, TextInput, RefreshControl, Linking, Platform, NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
@@ -211,7 +210,7 @@ export default function PlayerHomeScreen({ navigation }: any) {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader userName={user ? `Hi, ${user.name.split(' ')[0]} !!` : ''} />
 
       <FlatList

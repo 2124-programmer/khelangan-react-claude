@@ -30,6 +30,9 @@ export function useVenues(params?: { city?: string; sport?: string; search?: str
         totalElements: page.totalElements,
       };
     },
+    // Venue listings don't change second-to-second; keep results fresh for 60s so quick
+    // remounts (tab switches, guest→player transition) reuse the cache instead of refetching.
+    staleTime: 60_000,
   });
 }
 
@@ -64,6 +67,9 @@ export function useInfiniteVenues(params: VenueDiscoveryParams) {
       };
     },
     getNextPageParam: (last) => (last.number < last.totalPages - 1 ? last.number + 1 : undefined),
+    // Discovery feed is the most-mounted query (Home + guest Home). Reuse pages across quick
+    // remounts for 60s rather than re-fetching the whole feed on every navigation back.
+    staleTime: 60_000,
   });
 }
 

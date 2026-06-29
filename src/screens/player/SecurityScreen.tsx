@@ -1,5 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader } from '../../components/common';
 import { useEmailChangeStatus } from '../../api/hooks/useEmailChange';
@@ -24,7 +27,7 @@ export default function SecurityScreen({ navigation }: any) {
     ['PENDING_VERIFICATION', 'PENDING'].includes(emailChangeStatus.status ?? '');
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Security" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
 

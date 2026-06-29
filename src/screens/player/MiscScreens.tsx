@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Switch, Alert, ActivityIndicator, RefreshControl, Linking, LayoutAnimation,
-  Platform, UIManager,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator, RefreshControl, Linking, LayoutAnimation, Platform, UIManager,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { toast } from '../../toast';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -29,7 +28,7 @@ export function OffersScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader
         title="Offers & Coupons"
         onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
@@ -73,7 +72,7 @@ export function OffersScreen({ navigation }: any) {
 /* ───────────────── WalletScreen ───────────────── */
 export function WalletScreen({ navigation }: any) {
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Wallet & Payments" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         <View style={styles.walletCard}>
@@ -169,7 +168,7 @@ export function HelpSupportScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Help & Support" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         <Text style={styles.sectionTitle}>FAQs</Text>
@@ -205,7 +204,7 @@ export function SettingsScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Settings" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         <Text style={styles.sectionTitle}>Notifications</Text>
@@ -280,7 +279,7 @@ export function DeleteAccountScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Delete Account" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         <View style={[styles.roleInfoBox, { borderColor: colors.danger }]}>
@@ -399,7 +398,7 @@ export function EditProfileScreen({ navigation }: any) {
 
   if (meLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <AppHeader title="Edit Profile" onBack={() => navigation.goBack()} />
         <LoadingOverlay visible={meLoading} />
       </SafeAreaView>
@@ -408,7 +407,7 @@ export function EditProfileScreen({ navigation }: any) {
 
   if (isError) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <AppHeader title="Edit Profile" onBack={() => navigation.goBack()} />
         <View style={{ padding: spacing.lg, alignItems: 'center' }}>
           <Text style={{ color: colors.textMid, marginBottom: spacing.md }}>Failed to load profile.</Text>
@@ -422,7 +421,7 @@ export function EditProfileScreen({ navigation }: any) {
   const displayName = (name || me?.name) ?? '';
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Edit Profile" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
 
@@ -479,7 +478,7 @@ export function EditProfileScreen({ navigation }: any) {
 /* ───────────────── RescheduleScreen ───────────────── */
 export function RescheduleScreen({ navigation }: any) {
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Reschedule Booking" onBack={() => navigation.goBack()} />
       <View style={{ padding: spacing.lg }}>
         <Text style={styles.sectionTitle}>Pick a new slot</Text>
@@ -512,7 +511,7 @@ export function DisputeScreen({ navigation, route }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Raise a Dispute" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         <AppInput
@@ -558,7 +557,7 @@ export function RoleChangeScreen({ navigation, route }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title={`Switch to ${label}`} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         <View style={styles.roleInfoBox}>

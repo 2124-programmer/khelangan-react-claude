@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  ActivityIndicator, Alert, RefreshControl,
+  View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, StatusBadge, EmptyState, LoadingOverlay } from '../../components/common';
 import { CancelBookingModal, ConfirmActionModal } from '../../modals';
@@ -35,7 +35,7 @@ export default function BookingDetailScreen({ navigation, route }: any) {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <AppHeader title="Booking Details" onBack={() => navigation.goBack()} />
         <LoadingOverlay visible={isLoading} />
       </SafeAreaView>
@@ -44,7 +44,7 @@ export default function BookingDetailScreen({ navigation, route }: any) {
 
   if (isError || !booking) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <AppHeader title="Booking Details" onBack={() => navigation.goBack()} />
         <EmptyState icon="⚠️" title="Booking not found" subtitle="" />
       </SafeAreaView>
@@ -52,7 +52,7 @@ export default function BookingDetailScreen({ navigation, route }: any) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Booking Details" onBack={() => navigation.goBack()} />
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg }}

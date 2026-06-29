@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, ActivityIndicator, RefreshControl,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, EmptyState, LoadingOverlay } from '../../components/common';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../../api/hooks/useNotifications';
@@ -37,7 +37,7 @@ export default function NotificationsScreen({ navigation }: any) {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader
         title={unreadCount > 0 ? `Notifications (${unreadCount})` : 'Notifications'}
         onBack={() => navigation.goBack()}

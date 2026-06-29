@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Alert, TextInput } from 'react-native';
+import {
+  View, Text, StyleSheet, ScrollView, Alert, TextInput,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, AppButton, EmptyState, LoadingOverlay } from '../../components/common';
 import { RatingInput } from '../../components/reviews';
@@ -39,7 +42,7 @@ export default function RateReviewScreen({ navigation, route }: any) {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <AppHeader title="Rate & Review" onBack={() => navigation.goBack()} />
         <LoadingOverlay visible={isLoading} />
       </SafeAreaView>
@@ -48,7 +51,7 @@ export default function RateReviewScreen({ navigation, route }: any) {
 
   if (!venue) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <AppHeader title="Rate & Review" onBack={() => navigation.goBack()} />
         <EmptyState icon="⚠️" title="Venue not found" subtitle="" />
       </SafeAreaView>
@@ -56,7 +59,7 @@ export default function RateReviewScreen({ navigation, route }: any) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Rate & Review" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }} keyboardShouldPersistTaps="handled">
         <Text style={styles.venueName}>{venue.name}</Text>

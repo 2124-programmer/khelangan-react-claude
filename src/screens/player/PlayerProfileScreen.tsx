@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AvatarImage } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
@@ -42,7 +45,7 @@ export default function PlayerProfileScreen({ navigation }: any) {
     : '—';
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Profile" />
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg }}

@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, Alert } from 'react-native';
+import {
+  View, Text, StyleSheet, ActivityIndicator, Alert,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, AppButton } from '../../components/common';
 import { PaymentFailedModal } from '../../modals';
@@ -46,7 +49,7 @@ export default function PaymentScreen({ navigation, route }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Payment" onBack={() => navigation.goBack()} />
       <View style={styles.body}>
         <View style={styles.amountBox}>

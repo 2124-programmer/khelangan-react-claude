@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, ActivityIndicator, Alert, FlatList,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, FlatList,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, AppButton, EmptyState, LoadingOverlay } from '../../components/common';
 import { SlotGrid } from '../../components/venue';
@@ -167,7 +167,7 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
 
   if (venueLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <AppHeader title="Manage Calendar" onBack={() => navigation.goBack()} />
         <LoadingOverlay visible={venueLoading} />
       </SafeAreaView>
@@ -176,7 +176,7 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
 
   if (venueError || !venue) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <AppHeader title="Manage Calendar" onBack={() => navigation.goBack()} />
         <View style={styles.centeredState}>
           <EmptyState
@@ -192,7 +192,7 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
 
   if (courts.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <AppHeader title="Manage Calendar" onBack={() => navigation.goBack()} />
         <View style={styles.centeredState}>
           <EmptyState
@@ -207,7 +207,7 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader
         title="Manage Calendar"
         onBack={() => navigation.goBack()}

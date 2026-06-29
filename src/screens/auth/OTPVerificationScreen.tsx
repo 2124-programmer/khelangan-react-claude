@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, TextInput,
-  TouchableOpacity, Alert,
+  View, Text, StyleSheet, TextInput, TouchableOpacity, Alert,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppButton, AppHeader } from '../../components/common';
 import { authService } from '../../api/services/authService';
@@ -93,8 +94,9 @@ export default function OTPVerificationScreen({ navigation, route }: any) {
   const isComplete = otp.every((d) => d !== '');
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Verify OTP" onBack={() => navigation.goBack()} />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.body}>
         <Text style={styles.heading}>Enter verification code</Text>
         <Text style={styles.sub}>
@@ -140,6 +142,7 @@ export default function OTPVerificationScreen({ navigation, route }: any) {
           style={{ marginTop: spacing.xl }}
         />
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

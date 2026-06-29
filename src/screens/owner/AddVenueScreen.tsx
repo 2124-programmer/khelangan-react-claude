@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Switch, Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, AppButton, AppInput, SportChip, HourPickerDropdown } from '../../components/common';
 import { VenueImagePicker, PickedImage } from '../../components/venue';
@@ -189,7 +189,7 @@ export default function AddVenueScreen({ navigation }: any) {
   // ─── Render ───────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Add New Venue" onBack={back} />
 
       {/* Progress bar */}

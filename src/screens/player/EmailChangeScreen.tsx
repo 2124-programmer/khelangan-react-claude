@@ -1,8 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, TextInput,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, AppButton, AppInput, LoadingOverlay } from '../../components/common';
 import { toast } from '../../toast';
@@ -148,7 +148,7 @@ export default function EmailChangeScreen({ navigation }: any) {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <AppHeader title="Change Email" onBack={() => navigation.goBack()} />
         <LoadingOverlay visible />
       </SafeAreaView>
@@ -158,7 +158,7 @@ export default function EmailChangeScreen({ navigation }: any) {
   const statusInfo = existing?.status ? STATUS_COPY[existing.status] : null;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader
         title="Change Email"
         onBack={() => {

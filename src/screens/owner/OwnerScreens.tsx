@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Switch, ActivityIndicator, Alert, RefreshControl,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { PlanBadge } from '../../components/PlanBadge';
 import { PlanComparison } from '../../components/PlanComparison';
@@ -186,7 +186,7 @@ export function BookingManagementScreen({ navigation, route }: any) {
   const items = groupBookingList(filteredBookings);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Bookings" onBack={() => navigation.goBack()} />
       <SectionTabBar
         tabs={[
@@ -298,7 +298,7 @@ export function OwnerBookingDetailScreen({ navigation, route }: any) {
 
   if (isLoading || !booking) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <AppHeader title="Booking Details" onBack={() => navigation.goBack()} />
         <LoadingOverlay visible={isLoading} />
       </SafeAreaView>
@@ -319,7 +319,7 @@ export function OwnerBookingDetailScreen({ navigation, route }: any) {
   const actionInFlight = acceptBooking.isPending || rejectBooking.isPending;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Booking Details" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         <View style={[styles.card, shadow.card]}>
@@ -405,7 +405,7 @@ export function EarningsScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Earnings" onBack={() => navigation.goBack()} />
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg }}
@@ -458,7 +458,7 @@ export function ReviewsManagementScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Reviews" onBack={() => navigation.goBack()} />
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg }}
@@ -487,7 +487,7 @@ export function OwnerProfileScreen({ navigation }: any) {
   const displayAvatar = me?.avatar ?? user?.avatar;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Profile" />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         <TouchableOpacity
@@ -699,7 +699,7 @@ export function EditVenueScreen({ navigation, route }: any) {
   // ── Loading state ────────────────────────────────────────────────────────
   if (venueLoading || !prefilled) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <AppHeader title="Edit Venue" onBack={() => navigation.goBack()} />
         <LoadingOverlay visible={venueLoading} />
       </SafeAreaView>
@@ -708,7 +708,7 @@ export function EditVenueScreen({ navigation, route }: any) {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Edit Venue" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xl * 2 }} keyboardShouldPersistTaps="handled">
 
@@ -989,7 +989,7 @@ export function OwnerNotificationsScreen({ navigation }: any) {
   const hasViewLink = (n: AppNotification) => n.type === 'booking' && !!n.referenceId;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader
         title={unreadCount > 0 ? `Notifications (${unreadCount})` : 'Notifications'}
         onBack={() => navigation.goBack()}
@@ -1147,7 +1147,7 @@ export function OwnerSettingsScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Settings" onBack={() => navigation.goBack()} />
       {isLoading ? (
         <LoadingOverlay visible={isLoading} />
@@ -1253,7 +1253,7 @@ export function SubscriptionScreen({ navigation, route }: any) {
   const lapsed = current?.status === 'PAST_DUE' || current?.status === 'EXPIRED';
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Subscription / My Plan" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
         {/* Per-venue context: each venue has its own plan. Show the venue name always, and a

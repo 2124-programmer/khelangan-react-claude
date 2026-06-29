@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, fontSize, fontWeight } from '../../theme';
 import { AvatarImage, NotificationBell } from '../../components/common';
 import { useAuth } from '../../store/AuthContext';
@@ -41,7 +44,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
   const showFinancials = !!summary?.canViewFinancials;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}

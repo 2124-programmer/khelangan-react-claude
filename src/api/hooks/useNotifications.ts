@@ -6,7 +6,9 @@ import type { BroadcastRequest, UnreadCountResponse } from '../types';
 import type { AppNotification } from '../../types';
 
 export const NOTIFICATIONS_KEY = ['notifications'] as const;
-export const NOTIFICATION_POLL_MS = 30_000;
+// 60s poll cadence. Optimistic mark-read patches keep the badge live between polls, so a
+// slower interval (vs the old 30s) halves background data/battery cost without staleness.
+export const NOTIFICATION_POLL_MS = 60_000;
 
 /** Shape cached by useNotifications(). */
 type NotificationsPage = { notifications: AppNotification[]; totalPages: number; totalElements: number };
@@ -23,7 +25,9 @@ export function useNotifications(params?: { page?: number }) {
         totalElements: page.totalElements,
       };
     },
-    refetchInterval: 60_000, // poll every 60s for new notifications
+    refetchInterval: NOTIFICATION_POLL_MS, // poll every 60s for new notifications
+    refetchIntervalInBackground: false,    // don't poll the full list while app is backgrounded
+    staleTime: NOTIFICATION_POLL_MS,       // reuse cache across Notifications-screen remounts
   });
 }
 

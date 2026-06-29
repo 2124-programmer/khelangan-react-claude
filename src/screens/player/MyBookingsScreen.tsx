@@ -1,5 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import {
+  View, StyleSheet, ScrollView, ActivityIndicator, Alert, RefreshControl,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing } from '../../theme';
 import { AppHeader, SectionTabBar, EmptyState, LoadingOverlay} from '../../components/common';
 import { BookingCard, GroupedBookingCard } from '../../components/venue';
@@ -93,7 +96,7 @@ export default function MyBookingsScreen({ navigation }: any) {
   }, [cancelBookingGroup]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="My Bookings" onBack={() => navigation.goBack()} />
       <SectionTabBar
         tabs={[

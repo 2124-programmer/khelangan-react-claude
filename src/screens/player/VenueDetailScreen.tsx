@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Linking, Alert, RefreshControl, Share, Platform,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, RefreshControl, Share, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, AppInput, EmptyState, LoadingOverlay, StatusBadge } from '../../components/common';
@@ -150,7 +150,7 @@ export default function VenueDetailScreen({ navigation, route }: any) {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <LoadingOverlay visible={isLoading} />
       </SafeAreaView>
     );
@@ -158,7 +158,7 @@ export default function VenueDetailScreen({ navigation, route }: any) {
 
   if (isError || !venue) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['top']} style={styles.container}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Text style={{ fontSize: 24, color: colors.text }}>‹</Text>
         </TouchableOpacity>
@@ -283,7 +283,7 @@ export default function VenueDetailScreen({ navigation, route }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader
         title={venue.name}
         onBack={() => navigation.goBack()}

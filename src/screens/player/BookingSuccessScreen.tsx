@@ -1,5 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
+import {
+  View, Text, StyleSheet,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppButton } from '../../components/common';
 
@@ -8,7 +11,7 @@ export default function BookingSuccessScreen({ navigation, route }: any) {
   const bookingId = rawBookingId ? `TB${String(rawBookingId).padStart(6, '0')}` : 'TB' + Math.floor(100000 + Math.random() * 900000);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <View style={styles.body}>
         <View style={styles.checkCircle}>
           <Text style={{ fontSize: 48 }}>✅</Text>

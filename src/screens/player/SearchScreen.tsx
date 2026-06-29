@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TextInput, TouchableOpacity, ActivityIndicator, RefreshControl,
+  View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize } from '../../theme';
 import { AppHeader, SportChip, EmptyState, LoadingOverlay } from '../../components/common';
 import { VenueCard } from '../../components/venue';
@@ -31,7 +31,7 @@ export default function SearchScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Search" onBack={() => navigation.goBack()} />
       <View style={styles.searchRow}>
         <View style={styles.searchBar}>
