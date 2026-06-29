@@ -9,7 +9,7 @@ import { AppInput, AppButton, AppHeader, LoadingOverlay } from '../../components
 import { toast } from '../../toast';
 import { useAuth } from '../../store/AuthContext';
 import type { UserDto } from '../../api/types';
-import { extractApiError, extractFieldErrors, getHttpStatus, BASE_URL } from '../../api/client';
+import { extractApiError, extractFieldErrors, getHttpStatus } from '../../api/client';
 import { authService } from '../../api/services/authService';
 import { peekPendingNav } from '../../store/pendingNav';
 import {
@@ -116,8 +116,6 @@ export default function LoginScreen({ navigation, route }: any) {
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <Text style={styles.heading}>Welcome back</Text>
         <Text style={styles.sub}>Login to book your next game</Text>
-        {/* Debug-only API banner — never rendered in release builds */}
-        {__DEV__ ? <Text style={styles.debugBanner}>API: {BASE_URL}</Text> : null}
 
         <View style={{ marginTop: spacing.xl }}>
           <AppInput
@@ -199,5 +197,4 @@ const styles = StyleSheet.create({
   or: { marginHorizontal: spacing.md, color: colors.textDim, fontSize: fontSize.xs },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.xl },
   footerText: { color: colors.textMid, fontSize: fontSize.sm },
-  debugBanner: { marginTop: spacing.xs, fontSize: 10, color: '#888', fontFamily: 'monospace' },
 });

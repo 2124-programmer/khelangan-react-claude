@@ -48,6 +48,12 @@ build/Release
 .env.*
 !.env.example
 
+# Signing secrets — never commit keystores or credentials (see docs/RELEASE_SIGNING.md)
+*.keystore
+*.jks
+!android/app/debug.keystore
+gradle.properties
+
 # Cache
 .cache
 .parcel-cache
