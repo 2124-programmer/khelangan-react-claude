@@ -25,6 +25,14 @@ function platformDays(submittedAt?: string): number | null {
   return Math.max(0, Math.floor((Date.now() - t) / 86_400_000));
 }
 
+/** Human-friendly tenure line; reads "Joined today" instead of "for 0 days". */
+function platformLabel(submittedAt?: string): string | null {
+  const days = platformDays(submittedAt);
+  if (days === null) return null;
+  if (days === 0) return 'Joined Score-Adda today';
+  return `On Score-Adda for ${days} day${days === 1 ? '' : 's'}`;
+}
+
 export default function MyVenuesScreen({ navigation }: any) {
   const { data, isLoading, refetch } = useOwnerVenues();
   const submit = useSubmitVenue();
@@ -87,9 +95,9 @@ export default function MyVenuesScreen({ navigation }: any) {
                     </Text>
                     <Text style={styles.meta}>{v.courtCount} courts</Text>
                   </View>
-                  {platformDays(v.submittedAt) !== null && (
+                  {platformLabel(v.submittedAt) && (
                     <Text style={styles.platformMeta}>
-                      🗓  On Score-Adda for {platformDays(v.submittedAt)} day{platformDays(v.submittedAt) === 1 ? '' : 's'}
+                      🗓  {platformLabel(v.submittedAt)}
                     </Text>
                   )}
 
@@ -144,24 +152,28 @@ export default function MyVenuesScreen({ navigation }: any) {
                       onPress={() => navigation.navigate('CourtManagement', { venueId: v.id })}
                       style={{ flex: 1, height: 40 }}
                     />
-                    <AppButton
-                      label="Calendar"
-                      variant="secondary"
-                      fullWidth={false}
-                      onPress={() => navigation.navigate('VenueCalendar', { venueId: v.id })}
-                      style={{ flex: 1, height: 40 }}
-                    />
-                    <AppButton
-                      label="Edit"
-                      variant="ghost"
-                      fullWidth={false}
-                      onPress={() => navigation.navigate('EditVenue', { venueId: v.id })}
-                      style={{ flex: 1, height: 40 }}
-                    />
+                    {/* Icon-only buttons keep the row compact so labels never clip on narrow devices */}
                     <TouchableOpacity
-                      style={styles.viewBtn}
+                      style={styles.iconBtn}
+                      onPress={() => navigation.navigate('VenueCalendar', { venueId: v.id })}
+                      activeOpacity={0.7}
+                      accessibilityLabel="Calendar"
+                    >
+                      <Feather name="calendar" size={18} color={colors.textMid} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.iconBtn}
+                      onPress={() => navigation.navigate('EditVenue', { venueId: v.id })}
+                      activeOpacity={0.7}
+                      accessibilityLabel="Edit venue"
+                    >
+                      <Feather name="edit-2" size={18} color={colors.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.iconBtn}
                       onPress={() => navigation.navigate('VenueDetail', { venueId: v.id, mode: 'preview' })}
                       activeOpacity={0.7}
+                      accessibilityLabel="Preview venue"
                     >
                       <Feather name="eye" size={18} color={colors.textMid} />
                     </TouchableOpacity>
@@ -238,7 +250,7 @@ const styles = StyleSheet.create({
   changesText: { fontSize: fontSize.xs, color: '#B45309', lineHeight: 17, marginTop: 2 },
   changesLink: { fontSize: fontSize.xs, color: colors.primary, fontWeight: fontWeight.bold, marginTop: spacing.sm },
   actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
-  viewBtn: {
+  iconBtn: {
     width: 40, height: 40, borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.border,
     backgroundColor: colors.surface,

@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, AppInput, EmptyState, HourPickerDropdown, LoadingOverlay } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
@@ -386,23 +387,26 @@ export default function CourtManagementScreen({ navigation, route }: any) {
                     {court.peakPrice > 0 && (
                       <Text style={styles.peakLabel}>Peak ₹{court.peakPrice}</Text>
                     )}
+                    {/* Compact icon actions — keeps the card short, no clipping on narrow devices */}
+                    <View style={styles.cardActions}>
+                      <TouchableOpacity
+                        style={styles.iconBtn}
+                        onPress={() => openEdit(court)}
+                        activeOpacity={0.7}
+                        accessibilityLabel="Edit court"
+                      >
+                        <Feather name="edit-2" size={16} color={colors.primary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.iconBtn, styles.iconBtnDanger]}
+                        onPress={() => setDeleteTarget(court)}
+                        activeOpacity={0.7}
+                        accessibilityLabel="Delete court"
+                      >
+                        <Feather name="trash-2" size={16} color={colors.danger} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
-                <View style={styles.cardActions}>
-                  <AppButton
-                    label="Edit"
-                    variant="secondary"
-                    fullWidth={false}
-                    onPress={() => openEdit(court)}
-                    style={{ flex: 1, height: 38 }}
-                  />
-                  <AppButton
-                    label="Delete"
-                    variant="danger"
-                    fullWidth={false}
-                    onPress={() => setDeleteTarget(court)}
-                    style={{ flex: 1, height: 38 }}
-                  />
                 </View>
               </View>
             ))
@@ -505,7 +509,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.lg,
+    padding: spacing.md,
     marginBottom: spacing.md,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start' },
@@ -513,11 +517,18 @@ const styles = StyleSheet.create({
   courtName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
   courtMeta: { fontSize: fontSize.sm, color: colors.textMid, marginTop: 2 },
   courtHours: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 2 },
-  priceCol: { alignItems: 'flex-end' },
+  priceCol: { alignItems: 'flex-end', marginLeft: spacing.sm },
   priceLabel: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
   inheritLabel: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 1 },
   peakLabel:  { fontSize: fontSize.xs, color: colors.textDim, marginTop: 2 },
-  cardActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  cardActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  iconBtn: {
+    width: 34, height: 34, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  iconBtnDanger: { borderColor: colors.danger },
   inactiveBadge: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.sm,
