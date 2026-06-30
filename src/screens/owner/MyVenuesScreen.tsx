@@ -1,22 +1,17 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, RefreshControl, Modal,
+  View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { PlanBadge } from '../../components/PlanBadge';
-import { resolvePlanCode } from '../../theme/planMeta';
 import { AppHeader, AppButton, StatusBadge, EmptyState, LoadingOverlay } from '../../components/common';
 import { VenueSubscriptionStrip } from '../../components/subscription/OwnerSubscriptionPurchase';
 import { useOwnerVenues, useSubmitVenue } from '../../api/hooks/useVenues';
-import { useOwnerPlans } from '../../api/hooks/useSubscription';
 import { toast } from '../../toast';
 import { extractApiError } from '../../api/client';
 import type { Venue } from '../../types';
 import { ResponsiveGrid, centeredContent } from '../../responsive';
-
-const FREE_COURT_THRESHOLD = 2;
 
 /** Whole days since the venue was first created/registered on the platform. */
 function platformDays(submittedAt?: string): number | null {
@@ -37,32 +32,23 @@ function platformLabel(submittedAt?: string): string | null {
 export default function MyVenuesScreen({ navigation }: any) {
   const { data, isLoading, refetch } = useOwnerVenues();
   const submit = useSubmitVenue();
-  const plansQ = useOwnerPlans();
   const venues = data?.venues ?? [];
   const [refreshing, setRefreshing] = useState(false);
-  const [tierVenue, setTierVenue] = useState<Venue | null>(null);
   const handleRefresh = async () => {
     setRefreshing(true);
     try { await refetch(); } finally { setRefreshing(false); }
   };
 
-  const doSubmit = async (venue: Venue, planId?: number) => {
+  // Submitting only sends the venue for approval (backend requires ≥1 court). Plan/trial selection
+  // happens after approval on the venue page — no plan is chosen here.
+  const doSubmit = async (venue: Venue) => {
     try {
-      await submit.mutateAsync({ venueId: Number(venue.id), planId });
+      await submit.mutateAsync({ venueId: Number(venue.id) });
       toast.success('Submitted for approval.');
-      setTierVenue(null);
     } catch (err) {
       toast.error(extractApiError(err));
     }
   };
-
-  // ≤2 courts submit free; above the threshold the owner picks a qualifying tier first.
-  const onSubmitPress = (venue: Venue) => {
-    if (venue.courtCount > FREE_COURT_THRESHOLD) setTierVenue(venue);
-    else doSubmit(venue);
-  };
-
-  const plans = plansQ.data ?? [];
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -141,7 +127,7 @@ export default function MyVenuesScreen({ navigation }: any) {
                       label={submit.isPending ? 'Submitting…'
                         : v.status === 'changes_requested' ? 'Resubmit for approval' : 'Submit for approval'}
                       loading={submit.isPending}
-                      onPress={() => onSubmitPress(v)}
+                      onPress={() => doSubmit(v)}
                       style={{ marginTop: spacing.md, height: 42 }}
                     />
                   )}
@@ -188,46 +174,6 @@ export default function MyVenuesScreen({ navigation }: any) {
         )}
       </ScrollView>
 
-      {/* Tier selection for venues over the free court threshold */}
-      <Modal transparent visible={!!tierVenue} animationType="fade" onRequestClose={() => setTierVenue(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, shadow.modal]}>
-            <Text style={styles.modalTitle}>Choose a plan</Text>
-            <Text style={styles.modalMsg}>
-              {tierVenue?.name} has {tierVenue?.courtCount} courts. Select a plan that supports them to submit.
-              After approval, start a free trial (or this plan) and pick which courts to make bookable.
-            </Text>
-            <ScrollView style={{ maxHeight: 320, marginTop: spacing.md }}>
-              {plans.map((p) => {
-                const fits = p.maxCourts >= (tierVenue?.courtCount ?? 0);
-                return (
-                  <TouchableOpacity
-                    key={p.id}
-                    disabled={!fits || submit.isPending}
-                    onPress={() => tierVenue && doSubmit(tierVenue, Number(p.id))}
-                    activeOpacity={0.8}
-                    style={[styles.planRow, !fits && styles.planRowDisabled]}
-                  >
-                    <View style={{ flex: 1, gap: 4 }}>
-                      {resolvePlanCode(p.code) ? (
-                        <PlanBadge plan={resolvePlanCode(p.code)!} />
-                      ) : (
-                        <Text style={styles.planName}>{p.name}</Text>
-                      )}
-                      <Text style={styles.planMeta}>Up to {p.maxCourts} courts · ₹{p.priceMonthly}/mo</Text>
-                    </View>
-                    {fits
-                      ? <Text style={styles.planPick}>Select ›</Text>
-                      : <Text style={styles.planTooSmall}>Too small</Text>}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-            <AppButton label="Cancel" variant="secondary" onPress={() => setTierVenue(null)} style={{ marginTop: spacing.md }} />
-          </View>
-        </View>
-      </Modal>
-
       <LoadingOverlay visible={isLoading} />
     </SafeAreaView>
   );
@@ -259,14 +205,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: 'center', justifyContent: 'center',
   },
-  modalOverlay: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
-  modalCard: { width: '100%', maxWidth: 400, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.xl },
-  modalTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  modalMsg: { fontSize: fontSize.sm, color: colors.textMid, marginTop: spacing.sm, lineHeight: 20 },
-  planRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
-  planRowDisabled: { opacity: 0.5 },
-  planName: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
-  planMeta: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 2 },
-  planPick: { fontSize: fontSize.sm, color: colors.primary, fontWeight: fontWeight.bold },
-  planTooSmall: { fontSize: fontSize.xs, color: colors.textDim },
 });

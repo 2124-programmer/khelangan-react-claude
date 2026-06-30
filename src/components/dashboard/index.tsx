@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import type {
   CountMetric, MoneyMetric, MrrMetric, NeedsAttentionItem, TrendDirection, ManagementCounts,
-  DashboardPeriod,
+  DashboardPeriod, VenueStatusCounts,
 } from '../../types';
 
 // ─── Formatting + deep-link helpers ──────────────────────────────────────────
@@ -225,7 +225,8 @@ export function QuietState({ label }: { label: string }) {
 
 // ─── Management grid (static tiles + bound counts) ────────────────────────────
 
-type CountKey = keyof ManagementCounts;
+// Numeric tile counts only (excludes the venuesByStatus object, which renders as its own card).
+type CountKey = 'venues' | 'players' | 'owners' | 'bookings' | 'openDisputes' | 'activeCoupons';
 
 interface TileDef {
   label: string;
@@ -236,7 +237,7 @@ interface TileDef {
 }
 
 const TILES: TileDef[] = [
-  { label: 'Venues', icon: '🏟', route: 'Venues', countKey: 'venues' },
+  // 'Venues' is rendered separately as a status-breakdown card (see VenueStatusBreakdown).
   { label: 'Players', icon: '👤', route: 'Players', countKey: 'players' },
   { label: 'Owners', icon: '🧑‍💼', route: 'OwnerManagement', countKey: 'owners' },
   { label: 'Bookings', icon: '📋', route: 'AdminBookings', countKey: 'bookings' },
@@ -248,6 +249,91 @@ const TILES: TileDef[] = [
   { label: 'Sports', icon: '⚽', route: 'CategoryManagement' },
   { label: 'CMS', icon: '📄', route: 'CMS' },
 ];
+
+// ─── Venues by status (clarity card for the Venues management entry) ──────────
+
+/**
+ * Status breakdown for the dashboard "Venues" card. Lifecycle chips (Live/Pending/Changes/Rejected)
+ * always show; Suspended/Draft/Archived show only when non-zero. Tapping a chip deep-links into the
+ * Venues list on the matching tab (Draft/Archived aren't listed there, so those are info-only).
+ */
+const VENUE_STATUS_CHIPS: { key: keyof VenueStatusCounts; label: string; color: string; tab?: string; always?: boolean }[] = [
+  { key: 'live', label: 'Live', color: colors.success, tab: 'APPROVED', always: true },
+  { key: 'pending', label: 'Pending', color: colors.warning, tab: 'PENDING', always: true },
+  { key: 'changesRequested', label: 'Changes', color: colors.info, tab: 'CHANGES_REQUESTED', always: true },
+  { key: 'rejected', label: 'Rejected', color: colors.danger, tab: 'REJECTED', always: true },
+  { key: 'suspended', label: 'Suspended', color: colors.textMid, tab: 'APPROVED' },
+  { key: 'draft', label: 'Draft', color: colors.textDim },
+  { key: 'archived', label: 'Archived', color: colors.textDim },
+];
+
+type VenueChipDef = { key: keyof VenueStatusCounts; label: string; color: string; tab?: string; always?: boolean };
+
+export function VenueStatusBreakdown({
+  counts,
+  total,
+  onOpen,
+}: {
+  counts: VenueStatusCounts;
+  total: number;
+  onOpen: (tab?: string) => void;
+}) {
+  // 'Live' is promoted into the header (the headline status); the rest sit in the row below,
+  // ordered non-zero first so meaningful counts (e.g. Draft) lead and the zeros trail.
+  const live = VENUE_STATUS_CHIPS[0];
+  const rest = VENUE_STATUS_CHIPS.slice(1)
+    .filter((c) => c.always || counts[c.key] > 0)
+    .sort((a, b) => (counts[b.key] > 0 ? 1 : 0) - (counts[a.key] > 0 ? 1 : 0));
+
+  const renderChip = (c: VenueChipDef, large = false) => {
+    const value = counts[c.key];
+    // Dim zero-count chips so the meaningful (non-zero) statuses stand out at a glance.
+    const zero = value === 0;
+    const chip = (
+      <View style={[styles.vbChip, large && styles.vbChipLg, { borderColor: zero ? colors.border : c.color + '55' }]}>
+        <View style={[styles.vbDot, { backgroundColor: zero ? colors.border : c.color }]} />
+        <Text style={[styles.vbChipLabel, zero && styles.vbChipLabelZero]}>{c.label}</Text>
+        <Text style={[styles.vbChipCount, zero && styles.vbChipCountZero]}>{formatCount(value)}</Text>
+      </View>
+    );
+    return c.tab ? (
+      <TouchableOpacity key={c.key} activeOpacity={0.7} onPress={() => onOpen(c.tab)}
+        accessibilityRole="button" accessibilityLabel={`${c.label}: ${formatCount(value)}`}>
+        {chip}
+      </TouchableOpacity>
+    ) : (
+      <View key={c.key}>{chip}</View>
+    );
+  };
+
+  return (
+    <View style={[styles.vbCard, shadow.card]}>
+      <View style={styles.vbHeader}>
+        <TouchableOpacity
+          style={styles.vbHeaderLeft}
+          onPress={() => onOpen()}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Venues: ${formatCount(total)} listed`}
+        >
+          <View style={styles.tileIconBox}><Text style={styles.tileIconText}>🏟</Text></View>
+          <View>
+            <Text style={styles.vbTitle}>Venues</Text>
+            <Text style={styles.vbSub}>{formatCount(total)} listed</Text>
+          </View>
+        </TouchableOpacity>
+        {/* Live chip sits right beside the title (not flung to the far edge on wide screens). */}
+        {renderChip(live, true)}
+        <View style={styles.vbHeaderSpacer} />
+        <Text style={styles.tileChevron}>›</Text>
+      </View>
+
+      <View style={styles.vbChips}>
+        {rest.map((c) => renderChip(c))}
+      </View>
+    </View>
+  );
+}
 
 export function ManagementGrid({
   counts,
@@ -387,4 +473,35 @@ const styles = StyleSheet.create({
   tileCount: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
   tileCountDanger: { color: colors.danger },
   tileChevron: { fontSize: fontSize.md, color: colors.textDim },
+
+  // venues-by-status card
+  vbCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+  },
+  vbHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  vbHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  vbHeaderSpacer: { flex: 1 },
+  vbTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
+  vbSub: { fontSize: fontSize.xs, color: colors.textMid, marginTop: 1 },
+  vbChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  vbChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    backgroundColor: colors.surfaceAlt,
+  },
+  vbChipLg: { paddingVertical: 8, paddingHorizontal: spacing.md, gap: spacing.xs },
+  vbDot: { width: 8, height: 8, borderRadius: 4 },
+  vbChipLabel: { fontSize: fontSize.xs, color: colors.textMid },
+  vbChipLabelZero: { color: colors.textDim },
+  vbChipCount: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text },
+  vbChipCountZero: { color: colors.textDim, fontWeight: fontWeight.medium },
 });

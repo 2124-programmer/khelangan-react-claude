@@ -504,6 +504,7 @@ function adaptNeedsAttentionItem(dto: NeedsAttentionItemDto): NeedsAttentionItem
 }
 
 export function adaptDashboardSummary(dto: DashboardSummaryDto): DashboardSummary {
+  const vbs = dto.counts?.venuesByStatus;
   const counts: ManagementCounts = {
     venues: dto.counts?.venues ?? 0,
     players: dto.counts?.players ?? 0,
@@ -511,6 +512,15 @@ export function adaptDashboardSummary(dto: DashboardSummaryDto): DashboardSummar
     bookings: dto.counts?.bookings ?? 0,
     openDisputes: dto.counts?.openDisputes ?? 0,
     activeCoupons: dto.counts?.activeCoupons ?? 0,
+    venuesByStatus: {
+      live: vbs?.live ?? 0,
+      pending: vbs?.pending ?? 0,
+      changesRequested: vbs?.changesRequested ?? 0,
+      rejected: vbs?.rejected ?? 0,
+      suspended: vbs?.suspended ?? 0,
+      draft: vbs?.draft ?? 0,
+      archived: vbs?.archived ?? 0,
+    },
   };
   return {
     asOf: dto.asOf,

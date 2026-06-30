@@ -880,6 +880,16 @@ export interface NeedsAttentionItemDto {
   deepLinkParams?: Record<string, string> | null;
 }
 
+export interface VenueStatusCountsDto {
+  live?: number;
+  pending?: number;
+  changesRequested?: number;
+  rejected?: number;
+  suspended?: number;
+  draft?: number;
+  archived?: number;
+}
+
 export interface ManagementCountsDto {
   venues?: number;
   players?: number;
@@ -887,6 +897,7 @@ export interface ManagementCountsDto {
   bookings?: number;
   openDisputes?: number;
   activeCoupons?: number;
+  venuesByStatus?: VenueStatusCountsDto;
 }
 
 export interface DashboardSummaryDto {

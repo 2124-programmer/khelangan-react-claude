@@ -816,6 +816,16 @@ export interface NeedsAttentionItem {
   deepLinkParams: Record<string, string> | null;
 }
 
+export interface VenueStatusCounts {
+  live: number;
+  pending: number;
+  changesRequested: number;
+  rejected: number;
+  suspended: number;
+  draft: number;
+  archived: number;
+}
+
 export interface ManagementCounts {
   venues: number;
   players: number;
@@ -823,6 +833,7 @@ export interface ManagementCounts {
   bookings: number;
   openDisputes: number;
   activeCoupons: number;
+  venuesByStatus: VenueStatusCounts;
 }
 
 export interface DashboardSummary {

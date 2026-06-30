@@ -61,7 +61,12 @@ export default function AdminVenueDetailScreen({ navigation, route }: any) {
     updateStatus.mutate(
       { id: Number(venueId), data: { status: meta.status as any, rejectionReason: withReason } },
       {
-        onSuccess: () => toast.success(`${meta.label} done.`),
+        onSuccess: () => {
+          toast.success(`${meta.label} done.`);
+          // Decision made → return to the venues list (the mutation already invalidated it, so the
+          // queue refreshes). The toast renders above navigation, so it's still visible after the pop.
+          if (navigation.canGoBack()) navigation.goBack();
+        },
         onError: (e) => toast.error(extractApiError(e) || `Could not ${meta.label.toLowerCase()}`),
       },
     );

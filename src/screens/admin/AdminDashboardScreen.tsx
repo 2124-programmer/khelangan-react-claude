@@ -10,7 +10,7 @@ import { useAuth } from '../../store/AuthContext';
 import { useDashboardSummary } from '../../api/hooks/useAdmin';
 import {
   PeriodToggle, MetricCard, HeroMetricCard, NeedsAttentionRow, QuietState, ManagementGrid,
-  formatINR, formatCount, dashboardGreeting, resolveDeepLink,
+  VenueStatusBreakdown, formatINR, formatCount, dashboardGreeting, resolveDeepLink,
 } from '../../components/dashboard';
 import type { DashboardPeriod, NeedsAttentionItem } from '../../types';
 
@@ -127,6 +127,11 @@ export default function AdminDashboardScreen({ navigation }: any) {
 
             {/* Management */}
             <Text style={styles.sectionTitle}>Management</Text>
+            <VenueStatusBreakdown
+              counts={summary.counts.venuesByStatus}
+              total={summary.counts.venues}
+              onOpen={(tab) => go('Venues', tab ? { tab } : undefined)}
+            />
             <ManagementGrid counts={summary.counts} onPressTile={(route) => go(route)} />
           </>
         ) : (
