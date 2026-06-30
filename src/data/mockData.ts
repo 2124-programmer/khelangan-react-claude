@@ -27,6 +27,7 @@ const mockCourt = (
   closeTime: null,
   slotDurationMins: 60,
   isActive: true,
+  isLive: true,
   effectivePricePerHour: pricePerHour,
   effectiveOpenTime: '05:00',
   effectiveCloseTime: '23:00',

@@ -576,6 +576,8 @@ export interface CourtDto {
   effectivePricePerHour?: number;
   effectiveOpenTime?: string;
   effectiveCloseTime?: string;
+  /** true = LIVE (player-bookable); false = LOCKED (owner-only). Read-only, server-computed. */
+  isLive?: boolean;
 }
 
 export interface CreateCourtRequest {
@@ -1186,6 +1188,30 @@ export interface PendingRequestRefDto {
   coveredCourtIds?: string[];
   coveredCourtNames?: string[];
   requestedAt?: string | null;
+}
+
+export type CourtChangeRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+export interface CourtChangeRequestDto {
+  id?: number;
+  venueId?: number;
+  venueName?: string | null;
+  ownerName?: string | null;
+  liveCourtId?: number;
+  liveCourtName?: string | null;
+  draftCourtId?: number | null;
+  draftCourtName?: string | null;
+  reason?: string | null;
+  status?: CourtChangeRequestStatus;
+  decisionNote?: string | null;
+  createdAt?: string;
+  decidedAt?: string | null;
+}
+
+export interface CreateCourtChangeRequestBody {
+  liveCourtId: number;
+  draftCourtId?: number | null;
+  reason?: string | null;
 }
 
 export interface VenueSubscriptionStateDto {

@@ -74,6 +74,9 @@ export default function AdminProfileScreen({ navigation }: any) {
             <View style={[styles.group, shadow.card]}>
               <Row icon="settings" label="Platform Settings" hint="Commission, fees & toggles"
                 onPress={() => navigation.navigate('AdminSettings')} />
+              <Divider />
+              <Row icon="repeat" label="Court Change Requests" hint="Approve owner live-court changes"
+                onPress={() => navigation.navigate('CourtChangeRequests')} />
             </View>
           </>
         )}

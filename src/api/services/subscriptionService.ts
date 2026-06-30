@@ -7,6 +7,7 @@ import type {
   PlanOptionDto, SelectableCourtDto, VenueSubscriptionStateDto,
   CourtSelectionBody, PaidRequestBody, SubscriptionRequestViewDto,
   ActivateChangeRequestBody,
+  CourtChangeRequestDto, CreateCourtChangeRequestBody,
 } from '../types';
 
 export const subscriptionService = {
@@ -90,4 +91,29 @@ export const subscriptionService = {
   ownerCancelSubscriptionRequest: (venueId: number) =>
     apiClient.post<VenueSubscriptionStateDto>(
       `/api/v1/owner/venues/${venueId}/subscription-requests/cancel`).then((r) => r.data),
+
+  // ─── Court-change requests (owner files; super-admin approves) ──────────────
+  ownerListCourtChangeRequests: (venueId: number) =>
+    apiClient.get<CourtChangeRequestDto[]>(
+      `/api/v1/owner/venues/${venueId}/court-change-requests`).then((r) => r.data),
+
+  ownerCreateCourtChangeRequest: (venueId: number, body: CreateCourtChangeRequestBody) =>
+    apiClient.post<CourtChangeRequestDto>(
+      `/api/v1/owner/venues/${venueId}/court-change-requests`, body).then((r) => r.data),
+
+  ownerCancelCourtChangeRequest: (venueId: number, requestId: number) =>
+    apiClient.post<CourtChangeRequestDto>(
+      `/api/v1/owner/venues/${venueId}/court-change-requests/${requestId}/cancel`).then((r) => r.data),
+
+  adminListCourtChangeRequests: (status = 'PENDING') =>
+    apiClient.get<CourtChangeRequestDto[]>(
+      `/api/v1/admin/court-change-requests`, { params: { status } }).then((r) => r.data),
+
+  adminApproveCourtChangeRequest: (id: number) =>
+    apiClient.post<CourtChangeRequestDto>(
+      `/api/v1/admin/court-change-requests/${id}/approve`).then((r) => r.data),
+
+  adminRejectCourtChangeRequest: (id: number, reason: string) =>
+    apiClient.post<CourtChangeRequestDto>(
+      `/api/v1/admin/court-change-requests/${id}/reject`, { reason }).then((r) => r.data),
 };

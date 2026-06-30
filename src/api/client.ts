@@ -192,6 +192,20 @@ export function extractCourtLimit(
   return null;
 }
 
+/**
+ * Returns the stable machine code from a typed 409 (e.g. SubscriptionEligibilityException:
+ * COURT_LIVE_LIMIT, COURT_INACTIVE, NO_ACTIVE_SUBSCRIPTION, TOO_MANY_COURTS…), or null. Lets a
+ * screen branch on the reason while still showing the server's human message via extractApiError.
+ */
+export function extractEligibilityCode(error: unknown): string | null {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data;
+    const code = data?.details?.code ?? data?.error;
+    if (typeof code === 'string') return code;
+  }
+  return null;
+}
+
 export function extractFieldErrors(error: unknown): Record<string, string> {
   if (axios.isAxiosError(error)) {
     const fieldErrors: { field: string; message: string }[] | undefined =

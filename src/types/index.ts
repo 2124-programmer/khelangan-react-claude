@@ -56,6 +56,8 @@ export interface Court {
   closeTime: string | null;
   slotDurationMins: number;
   isActive: boolean;
+  /** true = LIVE (player-bookable); false = LOCKED (exists, owner-only). Server-computed. */
+  isLive: boolean;
   /** Server-resolved effective values */
   effectivePricePerHour: number;
   effectiveOpenTime: string;
@@ -779,6 +781,7 @@ export type TrendDirection = 'UP' | 'DOWN' | 'FLAT';
 export type NeedsAttentionKey =
   | 'PENDING_APPROVALS'
   | 'SUBSCRIPTION_REQUESTS'
+  | 'COURT_CHANGE_REQUESTS'
   | 'OPEN_DISPUTES'
   | 'EXPIRING_SUBSCRIPTIONS'
   | 'TRIALS_ENDING';

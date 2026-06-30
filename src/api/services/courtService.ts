@@ -1,5 +1,5 @@
 import { apiClient } from '../client';
-import type { CourtDto, CreateCourtRequest, UpdateCourtRequest } from '../types';
+import type { CourtDto, CreateCourtRequest, UpdateCourtRequest, VenueSubscriptionStateDto } from '../types';
 
 export const courtService = {
   list: (venueId: number) =>
@@ -20,5 +20,11 @@ export const courtService = {
   delete: (venueId: number, courtId: number) =>
     apiClient
       .delete<void>(`/api/v1/venues/${venueId}/courts/${courtId}`)
+      .then((r) => r.data),
+
+  // Toggle a court LIVE (player-bookable) or LOCKED. Server enforces the plan's live-court limit.
+  setLive: (venueId: number, courtId: number, live: boolean) =>
+    apiClient
+      .put<VenueSubscriptionStateDto>(`/api/v1/owner/venues/${venueId}/courts/${courtId}/live`, { live })
       .then((r) => r.data),
 };

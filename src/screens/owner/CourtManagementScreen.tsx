@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Alert,
 } from 'react-native';
@@ -7,10 +7,11 @@ import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, AppInput, EmptyState, HourPickerDropdown, LoadingOverlay } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
-import { useCourts, useCreateCourt, useUpdateCourt, useDeleteCourt } from '../../api/hooks/useCourts';
+import { useCourts, useCreateCourt, useUpdateCourt, useDeleteCourt, useSetCourtLive } from '../../api/hooks/useCourts';
+import { useCreateCourtChangeRequest, useOwnerCourtChangeRequests } from '../../api/hooks/useSubscription';
 import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useSports } from '../../api/hooks/useSports';
-import { extractApiError, extractCourtLimit } from '../../api/client';
+import { extractApiError, extractEligibilityCode } from '../../api/client';
 import { toast } from '../../toast';
 import type { Court } from '../../types';
 
@@ -35,6 +36,21 @@ export default function CourtManagementScreen({ navigation, route }: any) {
   const createCourt = useCreateCourt(venueId);
   const updateCourt = useUpdateCourt(venueId);
   const deleteCourt = useDeleteCourt(venueId);
+  const setCourtLive = useSetCourtLive(venueId);
+  const createChangeRequest = useCreateCourtChangeRequest(venueId);
+  const { data: changeRequests = [] } = useOwnerCourtChangeRequests(venueId);
+
+  // A LIVE court with a PENDING change request shows "Change pending" instead of "Request change".
+  const pendingByLiveCourtId = useMemo(() => {
+    const m = new Set<number>();
+    changeRequests.forEach((r) => { if (r.status === 'PENDING' && r.liveCourtId != null) m.add(Number(r.liveCourtId)); });
+    return m;
+  }, [changeRequests]);
+
+  // Court-change request modal state (free a LIVE court, optional swap-in DRAFT, reason).
+  const [requestTarget, setRequestTarget] = useState<Court | null>(null);
+  const [swapDraftId, setSwapDraftId] = useState<string | null>(null);
+  const [requestReason, setRequestReason] = useState('');
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Court | null>(null);
@@ -156,18 +172,65 @@ export default function CourtManagementScreen({ navigation, route }: any) {
       setShowForm(false);
       setEditing(null);
     } catch (err) {
-      // A plan court-limit block offers a direct upgrade path instead of a dead-end error.
-      const limit = extractCourtLimit(err);
-      if (limit) {
-        toast.error(
-          `Your ${limit.planName ?? 'current'} plan allows ${limit.allowed} courts (you have ${limit.current}).`,
-          { title: 'Court limit reached', action: { label: 'Upgrade', onPress: () => navigation.navigate('Subscription', { venueId }) } },
-        );
-      } else {
-        Alert.alert('Error', extractApiError(err));
-      }
+      // Creation/edit no longer fails on the plan court limit (courts are created LOCKED and made
+      // live separately), so a save error is a genuine failure — surface it as a single toast.
+      toast.error(extractApiError(err));
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ─── Live / lock toggle ───────────────────────────────────────────────
+
+  // Per-court in-flight flag so only the tapped court's control shows a busy state.
+  const liveTogglePending = (court: Court) =>
+    setCourtLive.isPending && Number(setCourtLive.variables?.courtId) === Number(court.id);
+
+  async function handleToggleLive(court: Court) {
+    const makeLive = !court.isLive;
+    try {
+      await setCourtLive.mutateAsync({ courtId: Number(court.id), live: makeLive });
+    } catch (err) {
+      // Single, typed message. The over-limit case offers a direct Upgrade path (no dead-end).
+      const code = extractEligibilityCode(err);
+      toast.error(
+        extractApiError(err),
+        code === 'COURT_LIVE_LIMIT'
+          ? { title: 'Live limit reached', action: { label: 'Upgrade', onPress: () => navigation.navigate('Subscription', { venueId }) } }
+          : undefined,
+      );
+    }
+  }
+
+  // ─── Court-change request (free/swap a LIVE court — needs super-admin) ─────
+
+  function openChangeRequest(court: Court) {
+    setRequestTarget(court);
+    setSwapDraftId(null);
+    setRequestReason('');
+  }
+  function closeChangeRequest() {
+    setRequestTarget(null);
+    setSwapDraftId(null);
+    setRequestReason('');
+  }
+  // DRAFT courts (active, not live) the owner can offer to swap into the freed slot.
+  const draftSwapOptions = useMemo(
+    () => courts.filter((c) => !c.isLive && c.isActive && c.id !== requestTarget?.id),
+    [courts, requestTarget],
+  );
+  async function submitChangeRequest() {
+    if (!requestTarget) return;
+    try {
+      await createChangeRequest.mutateAsync({
+        liveCourtId: Number(requestTarget.id),
+        draftCourtId: swapDraftId ? Number(swapDraftId) : null,
+        reason: requestReason.trim() || null,
+      });
+      toast.success('Request submitted — an admin will review it.');
+      closeChangeRequest();
+    } catch (err) {
+      toast.error(extractApiError(err));
     }
   }
 
@@ -364,6 +427,16 @@ export default function CourtManagementScreen({ navigation, route }: any) {
                   <View style={{ flex: 1 }}>
                     <View style={styles.cardTitleRow}>
                       <Text style={styles.courtName}>{court.name}</Text>
+                      {court.isLive ? (
+                        <View style={styles.liveBadge}>
+                          <Text style={styles.liveBadgeText}>● Live</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.lockedBadge}>
+                          <Feather name="lock" size={10} color={colors.textMid} />
+                          <Text style={styles.lockedBadgeText}>Locked</Text>
+                        </View>
+                      )}
                       {!court.isActive && (
                         <View style={styles.inactiveBadge}>
                           <Text style={styles.inactiveBadgeText}>Inactive</Text>
@@ -387,25 +460,61 @@ export default function CourtManagementScreen({ navigation, route }: any) {
                     {court.peakPrice > 0 && (
                       <Text style={styles.peakLabel}>Peak ₹{court.peakPrice}</Text>
                     )}
-                    {/* Compact icon actions — keeps the card short, no clipping on narrow devices */}
-                    <View style={styles.cardActions}>
+                  </View>
+                </View>
+
+                {/* Footer: live control on the left, edit/delete icons on the right.
+                    DRAFT → owner taps "Make live" (fills a free slot). LIVE → locked: owner can
+                    only "Request change" (super-admin frees/swaps it). */}
+                <View style={styles.cardFooter}>
+                  {court.isLive ? (
+                    pendingByLiveCourtId.has(Number(court.id)) ? (
+                      <View style={[styles.liveToggle, styles.liveToggleOn, { opacity: 0.7 }]}>
+                        <Feather name="clock" size={14} color={colors.primary} />
+                        <Text style={[styles.liveToggleText, { color: colors.primary }]}>Change pending</Text>
+                      </View>
+                    ) : (
                       <TouchableOpacity
-                        style={styles.iconBtn}
-                        onPress={() => openEdit(court)}
+                        style={[styles.liveToggle, styles.liveToggleOn]}
+                        onPress={() => openChangeRequest(court)}
                         activeOpacity={0.7}
-                        accessibilityLabel="Edit court"
+                        accessibilityLabel="Request to change this live court"
                       >
-                        <Feather name="edit-2" size={16} color={colors.primary} />
+                        <Feather name="eye" size={14} color={colors.primary} />
+                        <Text style={[styles.liveToggleText, { color: colors.primary }]}>Live · Request change</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.iconBtn, styles.iconBtnDanger]}
-                        onPress={() => setDeleteTarget(court)}
-                        activeOpacity={0.7}
-                        accessibilityLabel="Delete court"
-                      >
-                        <Feather name="trash-2" size={16} color={colors.danger} />
-                      </TouchableOpacity>
-                    </View>
+                    )
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.liveToggle, styles.liveToggleOff]}
+                      onPress={() => handleToggleLive(court)}
+                      disabled={liveTogglePending(court)}
+                      activeOpacity={0.7}
+                      accessibilityLabel="Make court live for players"
+                    >
+                      <Feather name="eye-off" size={14} color={colors.textMid} />
+                      <Text style={[styles.liveToggleText, { color: colors.textMid }]}>
+                        {liveTogglePending(court) ? 'Saving…' : 'Make live'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                    <TouchableOpacity
+                      style={styles.iconBtn}
+                      onPress={() => openEdit(court)}
+                      activeOpacity={0.7}
+                      accessibilityLabel="Edit court"
+                    >
+                      <Feather name="edit-2" size={16} color={colors.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.iconBtn, styles.iconBtnDanger]}
+                      onPress={() => setDeleteTarget(court)}
+                      activeOpacity={0.7}
+                      accessibilityLabel="Delete court"
+                    >
+                      <Feather name="trash-2" size={16} color={colors.danger} />
+                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
@@ -421,6 +530,54 @@ export default function CourtManagementScreen({ navigation, route }: any) {
         confirmLabel="Delete"
         onConfirm={handleDelete}
         onDismiss={() => setDeleteTarget(null)}
+      />
+
+      {/* Court-change request: free a LIVE court (and optionally swap a DRAFT court in) → super-admin */}
+      <ConfirmActionModal
+        visible={!!requestTarget}
+        title="Request court change"
+        message={`Ask an admin to take "${requestTarget?.name}" out of your live courts.${
+          draftSwapOptions.length ? ' Optionally pick a court to make live in its place.' : ''
+        }`}
+        confirmLabel={createChangeRequest.isPending ? 'Submitting…' : 'Submit request'}
+        confirmLoading={createChangeRequest.isPending}
+        onConfirm={submitChangeRequest}
+        onDismiss={closeChangeRequest}
+        extraContent={
+          <View style={{ marginTop: spacing.md }}>
+            {draftSwapOptions.length > 0 && (
+              <>
+                <Text style={styles.reqLabel}>Make live in its place (optional)</Text>
+                <View style={styles.reqChips}>
+                  <TouchableOpacity
+                    style={[styles.reqChip, swapDraftId === null && styles.reqChipOn]}
+                    onPress={() => setSwapDraftId(null)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.reqChipText, swapDraftId === null && styles.reqChipTextOn]}>Free only</Text>
+                  </TouchableOpacity>
+                  {draftSwapOptions.map((c) => (
+                    <TouchableOpacity
+                      key={c.id}
+                      style={[styles.reqChip, swapDraftId === c.id && styles.reqChipOn]}
+                      onPress={() => setSwapDraftId(c.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.reqChipText, swapDraftId === c.id && styles.reqChipTextOn]}>{c.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+            <Text style={styles.reqLabel}>Reason (optional)</Text>
+            <AppInput
+              value={requestReason}
+              onChangeText={setRequestReason}
+              placeholder="Why do you want this change?"
+              multiline
+            />
+          </View>
+        }
       />
     </SafeAreaView>
   );
@@ -521,7 +678,11 @@ const styles = StyleSheet.create({
   priceLabel: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
   inheritLabel: { fontSize: fontSize.xs, color: colors.textDim, marginTop: 1 },
   peakLabel:  { fontSize: fontSize.xs, color: colors.textDim, marginTop: 2 },
-  cardActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  cardFooter: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: spacing.sm, paddingTop: spacing.sm,
+    borderTopWidth: 1, borderTopColor: colors.border,
+  },
   iconBtn: {
     width: 34, height: 34, borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.border,
@@ -536,4 +697,34 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   inactiveBadgeText: { fontSize: fontSize.xs, color: colors.textDim },
+  // LIVE / LOCKED state badges (in the title row)
+  liveBadge: {
+    backgroundColor: colors.primaryLight, borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm, paddingVertical: 2,
+  },
+  liveBadgeText: { fontSize: fontSize.xs, color: colors.primary, fontWeight: fontWeight.semibold },
+  lockedBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: colors.surfaceAlt, borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm, paddingVertical: 2,
+  },
+  lockedBadgeText: { fontSize: fontSize.xs, color: colors.textMid, fontWeight: fontWeight.semibold },
+  // Make-live / lock toggle (footer)
+  liveToggle: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: spacing.md, height: 34, borderRadius: radius.md, borderWidth: 1,
+  },
+  liveToggleOn:  { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  liveToggleOff: { borderColor: colors.border, backgroundColor: colors.surface },
+  liveToggleText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
+  // Court-change request modal
+  reqLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.textMid, marginTop: spacing.sm, marginBottom: spacing.xs },
+  reqChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.xs },
+  reqChip: {
+    paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface,
+  },
+  reqChipOn: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  reqChipText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.textMid },
+  reqChipTextOn: { color: colors.primary },
 });

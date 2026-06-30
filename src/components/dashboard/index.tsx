@@ -174,6 +174,7 @@ export function HeroMetricCard({
 const ATTENTION_ICON: Record<string, string> = {
   PENDING_APPROVALS: '🕓',
   SUBSCRIPTION_REQUESTS: '🧾',
+  COURT_CHANGE_REQUESTS: '🔁',
   OPEN_DISPUTES: '⚖️',
   EXPIRING_SUBSCRIPTIONS: '⏳',
   TRIALS_ENDING: '🎟',

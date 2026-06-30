@@ -35,6 +35,13 @@ export default function AdminDashboardScreen({ navigation }: any) {
   const onAttention = (item: NeedsAttentionItem) =>
     resolveDeepLink(navigation, item.deepLinkScreen, item.deepLinkParams);
 
+  // Court-change requests are super-admin-only (the queue 403s for other roles), so hide that tile
+  // for non-super admins. The backend always includes it because the dashboard cache is role-agnostic.
+  const isSuperAdmin = user?.adminRole === 'SUPER_ADMIN' || !user?.adminRole;
+  const attentionItems = (summary?.needsAttention ?? []).filter(
+    (i) => i.key !== 'COURT_CHANGE_REQUESTS' || isSuperAdmin,
+  );
+
   // Period-bound metrics all zero → show a calm "quiet" line instead of a grid of zeros.
   const periodBoundZero = !!summary
     && summary.bookingsThisPeriod.value === 0
@@ -115,7 +122,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
 
             {/* Needs Attention */}
             <Text style={styles.sectionTitle}>Needs Attention</Text>
-            <NeedsAttentionRow items={summary.needsAttention} onPressItem={onAttention} />
+            <NeedsAttentionRow items={attentionItems} onPressItem={onAttention} />
 
             {/* Management */}
             <Text style={styles.sectionTitle}>Management</Text>

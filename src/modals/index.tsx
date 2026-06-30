@@ -11,12 +11,15 @@ interface ConfirmProps {
   message: string;
   confirmLabel?: string;
   danger?: boolean;
+  confirmLoading?: boolean;
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onDismiss: () => void;
   extraContent?: React.ReactNode;
 }
 export function ConfirmActionModal({
-  visible, title, message, confirmLabel = 'Confirm', danger, onConfirm, onDismiss, extraContent,
+  visible, title, message, confirmLabel = 'Confirm', danger, confirmLoading, confirmDisabled,
+  onConfirm, onDismiss, extraContent,
 }: ConfirmProps) {
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onDismiss}>
@@ -26,10 +29,12 @@ export function ConfirmActionModal({
           <Text style={styles.dialogMsg}>{message}</Text>
           {extraContent}
           <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }}>
-            <AppButton label="Cancel" variant="secondary" onPress={onDismiss} style={{ flex: 1 }} />
+            <AppButton label="Cancel" variant="secondary" onPress={onDismiss} disabled={confirmLoading} style={{ flex: 1 }} />
             <AppButton
               label={confirmLabel}
               variant={danger ? 'danger' : 'primary'}
+              loading={confirmLoading}
+              disabled={confirmLoading || confirmDisabled}
               onPress={onConfirm}
               style={{ flex: 1 }}
             />

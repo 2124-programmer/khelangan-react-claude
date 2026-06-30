@@ -21,6 +21,7 @@ import NotificationsScreen from '../screens/player/NotificationsScreen';
 import EmailChangeScreen from '../screens/player/EmailChangeScreen';
 import PhoneChangeScreen from '../screens/player/PhoneChangeScreen';
 import { SubscriptionManagementScreen, SubscriptionDetailScreen } from '../screens/admin/AdminSubscriptionScreens';
+import AdminCourtChangeRequestsScreen from '../screens/admin/AdminCourtChangeRequestsScreen';
 import AdminVenuesScreen from '../screens/admin/AdminVenuesScreen';
 import AdminVenueDetailScreen from '../screens/admin/AdminVenueDetailScreen';
 import AdminPlayersScreen from '../screens/admin/AdminPlayersScreen';
@@ -59,6 +60,7 @@ export default function AdminNavigator() {
       <Stack.Screen name="CMS" component={CMSScreen} />
       <Stack.Screen name="SubscriptionManagement" component={SubscriptionManagementScreen} />
       <Stack.Screen name="SubscriptionDetail" component={SubscriptionDetailScreen} />
+      <Stack.Screen name="CourtChangeRequests" component={AdminCourtChangeRequestsScreen} />
       <Stack.Screen name="AdminSettings" component={AdminSettingsScreen} />
       <Stack.Screen name="EmailChange" component={EmailChangeScreen} />
       <Stack.Screen name="PhoneChange" component={PhoneChangeScreen} />

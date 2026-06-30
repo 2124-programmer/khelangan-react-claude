@@ -9,6 +9,7 @@ import {
 import type {
   SubscriptionCreateRequest, SubscriptionEditRequest, UpdatePlanRequest,
   UpgradeRequestCreate, CourtSelectionBody, PaidRequestBody,
+  CreateCourtChangeRequestBody,
 } from '../types';
 import { VENUES_KEY, OWNER_VENUES_KEY } from './useVenues';
 import { useAuth } from '../../store/AuthContext';
@@ -170,6 +171,72 @@ export function useCancelVenueSubscriptionRequest(venueId: number) {
   return useMutation({
     mutationFn: () => subscriptionService.ownerCancelSubscriptionRequest(venueId).then(adaptVenueSubscriptionState),
     onSuccess: () => invalidateAfterCoverageChange(qc, venueId),
+  });
+}
+
+// ─── Court-change requests (owner files; super-admin approves) ───────────────
+export const OWNER_COURT_CHANGE_KEY = ['owner', 'court-change-requests'] as const;
+export const ADMIN_COURT_CHANGE_KEY = ['admin', 'court-change-requests'] as const;
+
+export function useOwnerCourtChangeRequests(venueId: string | number | undefined, enabled = true) {
+  const id = Number(venueId);
+  return useQuery({
+    queryKey: [...OWNER_COURT_CHANGE_KEY, id],
+    queryFn: () => subscriptionService.ownerListCourtChangeRequests(id),
+    enabled: enabled && !!venueId && !isNaN(id) && id > 0,
+  });
+}
+
+export function useCreateCourtChangeRequest(venueId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    // Screen surfaces a single inline toast on failure (typed 409s) — suppress the global one.
+    meta: { suppressToast: true },
+    mutationFn: (body: CreateCourtChangeRequestBody) =>
+      subscriptionService.ownerCreateCourtChangeRequest(venueId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...OWNER_COURT_CHANGE_KEY, venueId] });
+      qc.invalidateQueries({ queryKey: ADMIN_COURT_CHANGE_KEY });
+    },
+  });
+}
+
+export function useCancelCourtChangeRequest(venueId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId: number) => subscriptionService.ownerCancelCourtChangeRequest(venueId, requestId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...OWNER_COURT_CHANGE_KEY, venueId] });
+      qc.invalidateQueries({ queryKey: ADMIN_COURT_CHANGE_KEY });
+    },
+  });
+}
+
+export function useAdminCourtChangeRequests(status = 'PENDING') {
+  return useQuery({
+    queryKey: [...ADMIN_COURT_CHANGE_KEY, status],
+    queryFn: () => subscriptionService.adminListCourtChangeRequests(status),
+  });
+}
+
+export function useApproveCourtChangeRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => subscriptionService.adminApproveCourtChangeRequest(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ADMIN_COURT_CHANGE_KEY });
+      qc.invalidateQueries({ queryKey: OWNER_VENUES_KEY });
+      qc.invalidateQueries({ queryKey: VENUES_KEY });
+    },
+  });
+}
+
+export function useRejectCourtChangeRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      subscriptionService.adminRejectCourtChangeRequest(id, reason),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ADMIN_COURT_CHANGE_KEY }),
   });
 }
 

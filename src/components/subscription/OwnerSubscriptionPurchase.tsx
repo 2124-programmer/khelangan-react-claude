@@ -262,10 +262,9 @@ function PurchaseFlow({ visible, venueId, state, onClose }: FlowProps) {
 
   const limit = plan ? plan.courtLimit : 0;
   const activeCourts = useMemo(() => courts.filter((c) => c.isActive), [courts]);
-  // ≤ limit active courts → auto-cover all of them (confirm only, no manual pick).
-  const autoCover = step === 'courts' && !loadingCourts && activeCourts.length > 0 && activeCourts.length <= limit;
 
-  // Seed the selection when entering the court step.
+  // Seed the selection when entering the court step. Default = all active courts (up to the limit)
+  // pre-checked, but the owner can DESELECT to activate fewer (e.g. 1 of 2). No forced selection.
   useEffect(() => {
     if (step !== 'courts' || loadingCourts) return;
     if (activeCourts.length <= limit) {
@@ -399,24 +398,20 @@ function PurchaseFlow({ visible, venueId, state, onClose }: FlowProps) {
                     <PlanBadge plan={plan.code} size="sm" />
                   </View>
                   <Text style={styles.instruction}>
-                    {autoCover
-                      ? `Your ${activeCourts.length} court${activeCourts.length === 1 ? '' : 's'} will be activated${plan.kind === 'TRIAL' ? ' for your free trial' : ''}.`
-                      : plan.kind === 'TRIAL'
-                        ? `Choose up to ${plan.courtLimit} courts to activate for your free trial.`
-                        : `Choose up to ${plan.courtLimit} courts to cover.`}
+                    {plan.kind === 'TRIAL'
+                      ? `Choose up to ${plan.courtLimit} court${plan.courtLimit === 1 ? '' : 's'} to activate for your free trial. You can activate fewer and add the rest later.`
+                      : `Choose up to ${plan.courtLimit} court${plan.courtLimit === 1 ? '' : 's'} to cover.`}
                   </Text>
-                  {!autoCover && (
-                    <Text style={styles.counter}>{selected.size}/{limit} selected</Text>
-                  )}
+                  <Text style={styles.counter}>{selected.size}/{limit} selected</Text>
                   {courts.map((c) => {
                     const checked = selected.has(c.courtId);
-                    const disabled = !c.isActive || (!checked && selected.size >= limit && !autoCover);
+                    const disabled = !c.isActive || (!checked && selected.size >= limit);
                     return (
                       <TouchableOpacity
                         key={c.courtId}
                         style={[styles.courtRow, disabled && !checked && styles.courtRowDisabled]}
-                        activeOpacity={autoCover ? 1 : 0.7}
-                        onPress={autoCover ? undefined : () => toggleCourt(c.courtId, c.isActive)}
+                        activeOpacity={0.7}
+                        onPress={() => toggleCourt(c.courtId, c.isActive)}
                       >
                         <View style={[styles.checkbox, checked && styles.checkboxOn]}>
                           {checked && <Feather name="check" size={14} color={colors.white} />}
