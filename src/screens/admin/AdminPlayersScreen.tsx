@@ -6,6 +6,7 @@ import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader, EmptyState, AvatarImage } from '../../components/common';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { useResponsive, gridCellStyle, centeredContent } from '../../responsive';
 import { formatRelativeTime } from '../../utils/dateUtils';
 import { useDebounce } from '../../hooks/useDebounce';
 import { usePlayersInfinite, usePlayerStats } from '../../api/hooks/usePlayers';
@@ -35,6 +36,7 @@ const SORTS = [
 ];
 
 export default function AdminPlayersScreen({ navigation }: any) {
+  const { columns } = useResponsive();
   const [search, setSearch] = useState('');
   const [segment, setSegment] = useState('ALL');
   const [sort, setSort] = useState('RECENTLY_ACTIVE');
@@ -51,8 +53,10 @@ export default function AdminPlayersScreen({ navigation }: any) {
 
       <FlatList
         data={players}
+        key={`players-${columns}`}
+        numColumns={columns}
         keyExtractor={(p) => p.playerId}
-        contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm }}
+        contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm, ...centeredContent }}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View>
@@ -118,9 +122,10 @@ export default function AdminPlayersScreen({ navigation }: any) {
               ? <EmptyState icon="🔍" title="No players found" subtitle="No players match your search." />
               : <EmptyState icon="👥" title="No players" subtitle="Players will appear here." />
         }
-        renderItem={({ item }) => (
-          <PlayerRowCard row={item} onPress={() => navigation.navigate('PlayerDetail', { playerId: item.playerId })} />
-        )}
+        renderItem={({ item }) => {
+          const card = <PlayerRowCard row={item} onPress={() => navigation.navigate('PlayerDetail', { playerId: item.playerId })} />;
+          return columns > 1 ? <View style={gridCellStyle(columns)}>{card}</View> : card;
+        }}
         onEndReachedThreshold={0.4}
         onEndReached={() => { if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage(); }}
         ListFooterComponent={q.isFetchingNextPage

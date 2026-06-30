@@ -1,9 +1,11 @@
 // Venue and booking related reusable components.
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, Linking, Platform } from 'react-native';
 import { haversineKm } from '../../utils/locationUtils';
 import type { LatLng } from '../../store/LocationContext';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { useHover, webPointer } from '../../responsive';
+import { toast } from '../../toast';
 import { Venue, Slot, Booking, BookingGroup, CancellationReason } from '../../types';
 import { StatusBadge, AppButton } from '../common';
 import { formatRelativeTime } from '../../utils/dateUtils';
@@ -14,6 +16,11 @@ import { RatingSummary } from '../reviews';
 function callPhone(phone: string | undefined) {
   if (!phone) return;
   const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+  // Desktop web has no dialer — `tel:` silently no-ops, so surface the number to copy/dial manually.
+  if (Platform.OS === 'web') {
+    toast.info(`Call ${phone}`);
+    return;
+  }
   Linking.openURL(`tel:${cleaned}`).catch(() => {});
 }
 
@@ -198,9 +205,15 @@ export function VenueCard({ venue, onPress, userLocation, onToggleFavorite }: Ve
     [venue.openTime, venue.closeTime],
   );
   const topAmenities = (venue.amenities ?? []).slice(0, 4);
+  const { hovered, hoverProps } = useHover();
 
   return (
-    <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={[vc.card, shadow.card]}>
+    <TouchableOpacity
+      activeOpacity={0.92}
+      onPress={onPress}
+      {...hoverProps}
+      style={[vc.card, shadow.card, webPointer, hovered && { borderColor: colors.primary }]}
+    >
 
       {/* ── Image ── */}
       <View style={vc.imageWrap}>

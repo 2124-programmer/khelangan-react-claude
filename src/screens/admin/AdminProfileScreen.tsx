@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader, AvatarImage } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { ConfirmActionModal } from '../../modals';
 import { AppearanceSelector } from '../../components/AppearanceSelector';
 import { useAuth } from '../../store/AuthContext';
@@ -31,7 +32,7 @@ export default function AdminProfileScreen({ navigation }: any) {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <AppHeader title="Profile" onBack={() => navigation.goBack()} />
 
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
         {/* Identity */}
         <View style={[styles.identityCard, shadow.card]}>
           <AvatarImage name={user?.name ?? 'Admin'} uri={user?.avatar ?? undefined} size={64} />

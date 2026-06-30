@@ -9,6 +9,7 @@ import { AppHeader, AppButton, AppInput, EmptyState, HourPickerDropdown, Loading
 import { ConfirmActionModal } from '../../modals';
 import { useCourts, useCreateCourt, useUpdateCourt, useDeleteCourt, useSetCourtLive } from '../../api/hooks/useCourts';
 import { useCreateCourtChangeRequest, useOwnerCourtChangeRequests } from '../../api/hooks/useSubscription';
+import { ResponsiveGrid, centeredContent } from '../../responsive';
 import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useSports } from '../../api/hooks/useSports';
 import { extractApiError, extractEligibilityCode } from '../../api/client';
@@ -411,7 +412,7 @@ export default function CourtManagementScreen({ navigation, route }: any) {
           </View>
         </ScrollView>
       ) : (
-        <ScrollView contentContainerStyle={styles.listContent}>
+        <ScrollView contentContainerStyle={[styles.listContent, centeredContent]}>
           {isLoading ? (
             <LoadingOverlay visible={isLoading} />
           ) : courts.length === 0 ? (
@@ -421,7 +422,8 @@ export default function CourtManagementScreen({ navigation, route }: any) {
               subtitle="Add your first court to start managing slots"
             />
           ) : (
-            courts.map((court) => (
+            <ResponsiveGrid>
+            {courts.map((court) => (
               <View key={court.id} style={[styles.card, shadow.card]}>
                 <View style={styles.cardHeader}>
                   <View style={{ flex: 1 }}>
@@ -518,7 +520,8 @@ export default function CourtManagementScreen({ navigation, route }: any) {
                   </View>
                 </View>
               </View>
-            ))
+            ))}
+            </ResponsiveGrid>
           )}
         </ScrollView>
       )}

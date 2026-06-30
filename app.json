@@ -77,7 +77,14 @@
       "translucent": false
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "favicon": "./assets/logo/icon.png",
+      "name": "Score-Adda",
+      "shortName": "Score-Adda",
+      "description": "Score-Adda — book turfs & courts near you.",
+      "themeColor": "#0FAE6E",
+      "backgroundColor": "#FFFFFF",
+      "display": "standalone"
     },
     "runtimeVersion": {
       "policy": "appVersion"

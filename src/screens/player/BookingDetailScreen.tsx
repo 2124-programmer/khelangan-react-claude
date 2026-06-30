@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, StatusBadge, EmptyState, LoadingOverlay } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { CancelBookingModal, ConfirmActionModal } from '../../modals';
 import { useBookingDetail, useCancelBooking } from '../../api/hooks/useBookings';
 import { extractApiError } from '../../api/client';
@@ -55,7 +56,7 @@ export default function BookingDetailScreen({ navigation, route }: any) {
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Booking Details" onBack={() => navigation.goBack()} />
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg }}
+        contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         <View style={[styles.card, shadow.card]}>

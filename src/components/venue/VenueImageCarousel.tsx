@@ -5,6 +5,7 @@ import {
   NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
 import { colors, spacing, radius } from '../../theme';
+import { MAX_CONTENT_WIDTH } from '../../responsive';
 import type { VenueImage } from '../../types';
 
 const COVER_HEIGHT = 240;
@@ -18,7 +19,9 @@ interface Props {
 
 export function VenueImageCarousel({ images }: Props) {
   const { width: screenWidth } = useWindowDimensions();
-  const slideWidth = screenWidth - H_PADDING * 2;
+  // Cap the slide width on wide screens so the cover image doesn't stretch edge-to-edge on desktop
+  // web. On phone min() returns the screen width, so mobile is unchanged.
+  const slideWidth = Math.min(screenWidth, MAX_CONTENT_WIDTH) - H_PADDING * 2;
 
   const [activeIdx, setActiveIdx] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);

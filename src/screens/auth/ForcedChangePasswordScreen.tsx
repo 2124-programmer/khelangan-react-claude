@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppButton, AppInput, LoadingOverlay } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { ConfirmActionModal } from '../../modals';
 import { toast } from '../../toast';
 import { useAuth } from '../../store/AuthContext';
@@ -70,7 +71,7 @@ export default function ForcedChangePasswordScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={{ padding: spacing.lg }} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }} keyboardShouldPersistTaps="handled">
           <View style={styles.iconWrap}>
             <Feather name="shield" size={28} color={colors.primary} />
           </View>

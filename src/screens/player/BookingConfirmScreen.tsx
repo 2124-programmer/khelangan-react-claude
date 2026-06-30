@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { PriceSummary } from '../../components/venue';
 import { CouponApplyModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
@@ -51,7 +52,7 @@ export default function BookingConfirmScreen({ navigation, route }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Confirm Booking" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120, ...centeredContent }}>
         {/* Summary */}
         <View style={[styles.summary, shadow.card]}>
           <Text style={styles.venueName}>{venue?.name ?? '—'}</Text>

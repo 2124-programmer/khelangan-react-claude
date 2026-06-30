@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { NotificationBell, MetricCard } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { SubscriptionBadge } from '../../components/SubscriptionBadge';
 import { BookingCard, GroupedBookingCard } from '../../components/venue';
 import { CheckInConfirmModal } from '../../modals';
@@ -109,7 +110,7 @@ export default function OwnerDashboardScreen({ navigation }: { navigation: Dashb
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg }}
+        contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

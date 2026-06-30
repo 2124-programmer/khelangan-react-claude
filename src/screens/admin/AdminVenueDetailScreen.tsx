@@ -5,6 +5,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader, AppButton, EmptyState } from '../../components/common';
+import { centeredContent, useResponsive } from '../../responsive';
 import { ConfirmActionModal } from '../../modals';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { PlanBadge } from '../../components/PlanBadge';
@@ -37,6 +38,7 @@ const ACTION_META: Record<VenueActionCode, {
 };
 
 export default function AdminVenueDetailScreen({ navigation, route }: any) {
+  const { isWide } = useResponsive();
   const venueId: string = String(route?.params?.venueId ?? '');
   const detailQ = useAdminVenueDetail(venueId);
   const updateStatus = useUpdateVenueStatus();
@@ -83,7 +85,7 @@ export default function AdminVenueDetailScreen({ navigation, route }: any) {
         <EmptyState icon="⚠️" title="Could not load" subtitle="Try again in a moment." />
       ) : (
         <>
-          <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xl }}>
+          <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xl, ...centeredContent }}>
             {/* Hero */}
             {venue.coverPhoto ? (
               <Image source={{ uri: venue.coverPhoto }} style={styles.hero} />
@@ -262,22 +264,26 @@ export default function AdminVenueDetailScreen({ navigation, route }: any) {
             )}
           </ScrollView>
 
-          {/* Sticky action bar (from availableActions) */}
+          {/* Sticky action bar (from availableActions). On wide screens the buttons are compact and
+              right-aligned inside the content band; on phone they stay full-width (mobile unchanged). */}
           {detail.availableActions.length > 0 && (
             <View style={styles.actionBar}>
-              {detail.availableActions.map((a) => {
-                const meta = ACTION_META[a];
-                return (
-                  <AppButton
-                    key={a}
-                    label={meta.label}
-                    variant={meta.variant}
-                    style={{ flex: 1 }}
-                    disabled={updateStatus.isPending}
-                    onPress={() => onAction(a)}
-                  />
-                );
-              })}
+              <View style={[styles.actionBarInner, isWide && styles.actionBarInnerWide]}>
+                {detail.availableActions.map((a) => {
+                  const meta = ACTION_META[a];
+                  return (
+                    <AppButton
+                      key={a}
+                      label={meta.label}
+                      variant={meta.variant}
+                      fullWidth={!isWide}
+                      style={isWide ? { paddingHorizontal: spacing.xl } : { flex: 1 }}
+                      disabled={updateStatus.isPending}
+                      onPress={() => onAction(a)}
+                    />
+                  );
+                })}
+              </View>
             </View>
           )}
         </>
@@ -404,7 +410,9 @@ const styles = StyleSheet.create({
   contactRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   contactBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, maxWidth: '70%' },
   contactText: { fontSize: fontSize.sm, color: colors.admin, fontWeight: fontWeight.semibold },
-  actionBar: { flexDirection: 'row', gap: spacing.sm, padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
+  actionBar: { paddingVertical: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
+  actionBarInner: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, width: '100%', maxWidth: 1200, alignSelf: 'center' },
+  actionBarInnerWide: { justifyContent: 'flex-end' },
   sheetOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: spacing.lg },
   sheet: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg },
   sheetTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, marginBottom: spacing.md },

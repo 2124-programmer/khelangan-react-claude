@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, AppButton } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { PaymentFailedModal } from '../../modals';
 import { useCreateBooking } from '../../api/hooks/useBookings';
 import { extractApiError } from '../../api/client';
@@ -51,7 +52,7 @@ export default function PaymentScreen({ navigation, route }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Payment" onBack={() => navigation.goBack()} />
-      <View style={styles.body}>
+      <View style={[styles.body, centeredContent]}>
         <View style={styles.amountBox}>
           <Text style={styles.amountLabel}>Amount to pay</Text>
           <Text style={styles.amount}>₹{total}</Text>

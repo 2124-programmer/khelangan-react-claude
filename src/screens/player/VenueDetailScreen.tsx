@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, AppInput, EmptyState, LoadingOverlay, StatusBadge } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { toast } from '../../toast';
 import { VenueImageCarousel } from '../../components/venue';
 import { VenueMap } from '../../components/venue/VenueMap';
@@ -303,6 +304,7 @@ export default function VenueDetailScreen({ navigation, route }: any) {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={centeredContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {/* Hero Carousel */}

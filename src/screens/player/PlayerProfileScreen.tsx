@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AvatarImage } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
 import { useMe } from '../../api/hooks/useUser';
@@ -48,7 +49,7 @@ export default function PlayerProfileScreen({ navigation }: any) {
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Profile" />
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg }}
+        contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         <View style={[styles.profileCard, shadow.card]}>

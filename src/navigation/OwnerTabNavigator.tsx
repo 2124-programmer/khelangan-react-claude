@@ -24,6 +24,8 @@ import VenueDetailScreen from '../screens/player/VenueDetailScreen';
 import VenueReviewsScreen from '../screens/player/VenueReviewsScreen';
 import AboutScreen from '../screens/AboutScreen';
 import { TermsScreen, PrivacyPolicyScreen, HowItWorksScreen } from '../screens/InfoScreens';
+import ResponsiveTabBar, { TOPNAV_HEIGHT } from './ResponsiveTabBar';
+import { useResponsive } from '../responsive';
 
 const SHARED = [
   { name: 'VenueDetail', component: VenueDetailScreen },
@@ -80,8 +82,11 @@ function tabIcon(icon: string) {
 }
 
 export default function OwnerTabNavigator() {
+  const { isDesktop } = useResponsive();
   return (
     <Tab.Navigator
+      tabBar={(props) => <ResponsiveTabBar {...props} />}
+      sceneContainerStyle={isDesktop ? { paddingTop: TOPNAV_HEIGHT } : undefined}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.owner,

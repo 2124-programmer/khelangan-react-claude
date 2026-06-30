@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppButton, AppHeader } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { authService } from '../../api/services/authService';
 import { useAuth } from '../../store/AuthContext';
 import { extractApiError } from '../../api/client';
@@ -97,7 +98,7 @@ export default function OTPVerificationScreen({ navigation, route }: any) {
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Verify OTP" onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.body}>
+      <View style={[styles.body, centeredContent]}>
         <Text style={styles.heading}>Enter verification code</Text>
         <Text style={styles.sub}>
           We sent a 6-digit code to{' '}

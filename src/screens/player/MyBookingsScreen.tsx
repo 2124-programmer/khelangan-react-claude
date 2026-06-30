@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing } from '../../theme';
 import { AppHeader, SectionTabBar, EmptyState, LoadingOverlay} from '../../components/common';
 import { BookingCard, GroupedBookingCard } from '../../components/venue';
+import { ResponsiveGrid, centeredContent } from '../../responsive';
 import { CancelBookingModal, ContactSheet } from '../../modals';
 import { useBookings, useCancelBooking, useCancelBookingGroup } from '../../api/hooks/useBookings';
 import { Booking, BookingGroup } from '../../types';
@@ -109,7 +110,7 @@ export default function MyBookingsScreen({ navigation }: any) {
         onChange={setTab}
       />
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg }}
+        contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {isLoading ? (
@@ -117,7 +118,8 @@ export default function MyBookingsScreen({ navigation }: any) {
         ) : items.length === 0 ? (
           <EmptyState icon="📅" title="No bookings here" subtitle="Your bookings will appear in this tab" />
         ) : (
-          items.map((item) => {
+          <ResponsiveGrid>
+          {items.map((item) => {
             const showContact = tab === 'upcoming' || tab === 'completed';
             const tabCtx = (tab === 'upcoming' || tab === 'completed') ? tab as 'upcoming' | 'completed' : undefined;
             if (isGroup(item)) {
@@ -146,9 +148,10 @@ export default function MyBookingsScreen({ navigation }: any) {
                 onContact={() => setContactTarget({ phone: item.venuePhone, venueName: item.venueName })}
               />
             );
-          })
+          })}
+          </ResponsiveGrid>
         )}
-        
+
       </ScrollView>
 
       <CancelBookingModal

@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, AppButton, AppInput, LoadingOverlay } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { toast } from '../../toast';
 import { extractApiError, getHttpStatus } from '../../api/client';
 import {
@@ -174,7 +175,7 @@ export default function ForgotPasswordScreen({ navigation, route }: any) {
       />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.xl, ...centeredContent }}>
 
         {/* Progress indicator */}
         <View style={styles.steps}>

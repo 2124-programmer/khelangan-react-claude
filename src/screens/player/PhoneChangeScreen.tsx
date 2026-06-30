@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, AppButton, AppInput, LoadingOverlay } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { toast } from '../../toast';
 import { extractApiError, getHttpStatus } from '../../api/client';
 import {
@@ -142,7 +143,7 @@ export default function PhoneChangeScreen({ navigation }: any) {
           navigation.goBack();
         }}
       />
-      <ScrollView contentContainerStyle={{ padding: spacing.xl }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.xl, ...centeredContent }}>
 
         {/* ── Step 1 ── */}
         {step === 'newPhone' && (

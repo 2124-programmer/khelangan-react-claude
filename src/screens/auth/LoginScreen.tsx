@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppInput, AppButton, AppHeader, LoadingOverlay } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { toast } from '../../toast';
 import { useAuth } from '../../store/AuthContext';
 import type { UserDto } from '../../api/types';
@@ -113,7 +114,7 @@ export default function LoginScreen({ navigation, route }: any) {
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Login" onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.body, centeredContent]} keyboardShouldPersistTaps="handled">
         <Text style={styles.heading}>Welcome back</Text>
         <Text style={styles.sub}>Login to book your next game</Text>
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, FlatList, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { AppHeader } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { ReviewCard, ReviewsEmptyState, WriteReviewSheet, RatingSummary } from '../../components/reviews';
 import { useVenueReviews } from '../../api/hooks/useReviews';
 import { useVenueDetail } from '../../api/hooks/useVenues';
@@ -47,7 +48,7 @@ export default function VenueReviewsScreen() {
         <FlatList
           data={reviews}
           keyExtractor={(r) => r.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, centeredContent]}
           renderItem={({ item }) => <ReviewCard review={item} />}
           ListEmptyComponent={
             <ReviewsEmptyState

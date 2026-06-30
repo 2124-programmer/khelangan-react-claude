@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../theme';
+import { centeredContent } from '../responsive';
 
 /**
  * Static information / legal pages reachable from the About screen (guest + all roles).
@@ -21,13 +22,15 @@ function InfoHeader({ title, navigation }: { title: string; navigation: any }) {
   const canBack = navigation?.canGoBack?.() ?? false;
   return (
     <View style={styles.header}>
-      {canBack ? (
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn} accessibilityLabel="Back">
-          <Text style={styles.headerBack}>‹</Text>
-        </TouchableOpacity>
-      ) : <View style={styles.headerBtn} />}
-      <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
-      <View style={styles.headerBtn} />
+      <View style={styles.headerInner}>
+        {canBack ? (
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn} accessibilityLabel="Back">
+            <Text style={styles.headerBack}>‹</Text>
+          </TouchableOpacity>
+        ) : <View style={styles.headerBtn} />}
+        <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
+        <View style={styles.headerBtn} />
+      </View>
     </View>
   );
 }
@@ -53,7 +56,7 @@ export function TermsScreen({ navigation }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <InfoHeader title="Terms of Service" navigation={navigation} />
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView contentContainerStyle={[styles.body, centeredContent]}>
         <Text style={styles.updated}>Last updated: {LAST_UPDATED}</Text>
 
         <P>
@@ -132,7 +135,7 @@ export function PrivacyPolicyScreen({ navigation }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <InfoHeader title="Privacy Policy" navigation={navigation} />
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView contentContainerStyle={[styles.body, centeredContent]}>
         <Text style={styles.updated}>Last updated: {LAST_UPDATED}</Text>
 
         <P>
@@ -204,7 +207,7 @@ export function HowItWorksScreen({ navigation }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <InfoHeader title="How It Works" navigation={navigation} />
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView contentContainerStyle={[styles.body, centeredContent]}>
         <P>
           Score-Adda takes care of the whole journey — for players who want to book and play, and for
           venue owners who want to fill their courts. Here’s what we handle on each side.
@@ -259,9 +262,13 @@ export function HowItWorksScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.sm, paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface,
+  },
+  headerInner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.sm,
+    width: '100%', maxWidth: 1200, alignSelf: 'center',
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerBack: { fontSize: 30, color: colors.text, marginTop: -2 },

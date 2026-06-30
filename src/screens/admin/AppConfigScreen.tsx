@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { QueryState } from '../../components/QueryState';
 import { useSystemInfo } from '../../api/hooks/useAdminRoles';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
@@ -65,7 +66,7 @@ export default function AppConfigScreen({ navigation }: any) {
 
       <QueryState query={query} center>
         {(info) => (
-          <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+          <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
             <Text style={s.intro}>
               Read-only diagnostics for this backend. No secrets are shown.
             </Text>

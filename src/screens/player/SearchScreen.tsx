@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize } from '../../theme';
 import { AppHeader, SportChip, EmptyState, LoadingOverlay } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { VenueCard } from '../../components/venue';
 import { useSports } from '../../api/hooks/useSports';
 import { useVenues } from '../../api/hooks/useVenues';
@@ -67,7 +68,7 @@ export default function SearchScreen({ navigation }: any) {
       </ScrollView>
 
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg }}
+        contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {isLoading ? (

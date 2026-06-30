@@ -1,8 +1,9 @@
 // Reusable modal/popup overlays.
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Linking, Platform } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../theme';
 import { AppButton, StarRating } from '../components/common';
+import { toast } from '../toast';
 
 /* ───────────────── ConfirmActionModal ───────────────── */
 interface ConfirmProps {
@@ -152,7 +153,12 @@ export function ContactSheet({ visible, phone, venueName, onClose, onContact, wh
 
   const handleCall = () => {
     onContact?.('CALL');
-    if (cleaned) Linking.openURL(`tel:${cleaned}`).catch(() => {});
+    // Desktop web has no dialer — show the number to copy/dial instead of a silent no-op.
+    if (cleaned && Platform.OS === 'web') {
+      toast.info(`Call ${phone}`);
+    } else if (cleaned) {
+      Linking.openURL(`tel:${cleaned}`).catch(() => {});
+    }
     onClose();
   };
   const handleWhatsApp = () => {

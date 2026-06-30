@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, AppButton, AppInput, SportChip, HourPickerDropdown } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { VenueImagePicker, PickedImage } from '../../components/venue';
 import { ConfirmActionModal } from '../../modals';
 import { useSports } from '../../api/hooks/useSports';
@@ -205,7 +206,7 @@ export default function AddVenueScreen({ navigation }: any) {
       </View>
       <Text style={styles.stepTitle}>{STEPS[step]}</Text>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.content, centeredContent]} keyboardShouldPersistTaps="handled">
 
         {/* ── Step 0: Basic Info ─────────────────────────────────────── */}
         {step === 0 && (

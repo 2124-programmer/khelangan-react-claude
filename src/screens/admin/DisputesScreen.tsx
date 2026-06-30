@@ -6,6 +6,7 @@ import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader, EmptyState } from '../../components/common';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { useResponsive, gridCellStyle, centeredContent } from '../../responsive';
 import { formatRelativeTime } from '../../utils/dateUtils';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useAdminDisputesInfinite, useDisputeStats } from '../../api/hooks/useAdminDisputes';
@@ -59,6 +60,7 @@ const SORTS = [
 ];
 
 export default function DisputesScreen({ navigation }: any) {
+  const { columns } = useResponsive();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<AdminDisputeStatus[]>(['OPEN', 'UNDER_REVIEW', 'NEEDS_INFO']);
   const [category, setCategory] = useState<DisputeCategory[]>([]);
@@ -83,8 +85,10 @@ export default function DisputesScreen({ navigation }: any) {
 
       <FlatList
         data={disputes}
+        key={`disputes-${columns}`}
+        numColumns={columns}
         keyExtractor={(d) => d.disputeId}
-        contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm }}
+        contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm, ...centeredContent }}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View>
@@ -184,9 +188,10 @@ export default function DisputesScreen({ navigation }: any) {
               ? <EmptyState icon="🔍" title="No disputes found" subtitle="No disputes match your search." />
               : <EmptyState icon="⚖️" title="No disputes" subtitle="Disputes will appear here." />
         }
-        renderItem={({ item }) => (
-          <DisputeRowCard row={item} onPress={() => navigation.navigate('DisputeDetail', { disputeId: item.disputeId })} />
-        )}
+        renderItem={({ item }) => {
+          const card = <DisputeRowCard row={item} onPress={() => navigation.navigate('DisputeDetail', { disputeId: item.disputeId })} />;
+          return columns > 1 ? <View style={gridCellStyle(columns)}>{card}</View> : card;
+        }}
         onEndReachedThreshold={0.4}
         onEndReached={() => { if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage(); }}
         ListFooterComponent={q.isFetchingNextPage

@@ -17,12 +17,14 @@ import { useLocation } from '../../store/LocationContext';
 import { toast } from '../../toast';
 import { consumePendingNav } from '../../store/pendingNav';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useResponsive, gridCellStyle, centeredContent } from '../../responsive';
 import {
   FilterModal, VenueFilters, DEFAULT_FILTERS, activeFilterCount, filtersToServerParams,
 } from '../../components/venue/FilterModal';
 
 export default function PlayerHomeScreen({ navigation }: any) {
   const { user, isLoggedIn } = useAuth();
+  const { columns } = useResponsive();
   const [activeSport, setActiveSport] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 400);
@@ -216,12 +218,15 @@ export default function PlayerHomeScreen({ navigation }: any) {
       <FlatList
         ref={listRef}
         data={venues}
+        // numColumns can't change without a remount — key by column count so resize re-mounts clean.
+        key={`venues-${columns}`}
+        numColumns={columns}
         keyExtractor={(v) => v.id}
         ListHeaderComponent={listHeader}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         renderItem={({ item }) => (
-          <View style={styles.cardWrap}>
+          <View style={[styles.cardWrap, gridCellStyle(columns)]}>
             <VenueCard
               venue={item}
               userLocation={userLocation ?? undefined}
@@ -234,7 +239,7 @@ export default function PlayerHomeScreen({ navigation }: any) {
         onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: spacing.lg, flexGrow: 1 }}
+        contentContainerStyle={{ paddingBottom: spacing.lg, flexGrow: 1, ...centeredContent }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />
         }

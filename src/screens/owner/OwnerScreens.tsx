@@ -14,6 +14,7 @@ import {
   StatusBadge, EmptyState, SportChip, HourPickerDropdown, AvatarImage, LoadingOverlay
 } from '../../components/common';
 import { BookingCard, GroupedBookingCard, VenueImagePicker, PickedImage } from '../../components/venue';
+import { ResponsiveGrid, centeredContent } from '../../responsive';
 import { ReviewCard, ReviewsEmptyState } from '../../components/reviews';
 import { ConfirmActionModal, CheckInConfirmModal } from '../../modals';
 import { AppearanceSelector } from '../../components/AppearanceSelector';
@@ -205,7 +206,7 @@ export function BookingManagementScreen({ navigation, route }: any) {
         ref={listRef}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingBottom: spacing.lg }}
+        contentContainerStyle={{ paddingBottom: spacing.lg, ...centeredContent }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {/* Tab bar + refresh bar now scroll with the list (were previously pinned) */}
@@ -241,7 +242,8 @@ export function BookingManagementScreen({ navigation, route }: any) {
         ) : items.length === 0 ? (
           <EmptyState icon="📅" title="No bookings" subtitle="" />
         ) : (
-          items.map((item) => {
+          <ResponsiveGrid>
+          {items.map((item) => {
             const showContact = tab === 'today' || tab === 'upcoming' || tab === 'completed';
             const tabCtx = showContact ? tab as 'today' | 'upcoming' | 'completed' : undefined;
             if (isGroup(item)) {
@@ -277,7 +279,8 @@ export function BookingManagementScreen({ navigation, route }: any) {
                 onCheckIn={tab === 'today' ? () => setPendingCheckIn({ kind: 'single', booking: item }) : undefined}
               />
             );
-          })
+          })}
+          </ResponsiveGrid>
         )}
         </View>
       </ScrollView>
@@ -350,7 +353,7 @@ export function OwnerBookingDetailScreen({ navigation, route }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Booking Details" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
         <View style={[styles.card, shadow.card]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <Text style={styles.bId}>#{booking.id.toUpperCase()}</Text>
@@ -437,7 +440,7 @@ export function EarningsScreen({ navigation }: any) {
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Earnings" onBack={() => navigation.goBack()} />
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg }}
+        contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         <View style={styles.earnCard}>
@@ -490,7 +493,7 @@ export function ReviewsManagementScreen({ navigation }: any) {
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Reviews" onBack={() => navigation.goBack()} />
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg }}
+        contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {isLoading ? (
@@ -518,7 +521,7 @@ export function OwnerProfileScreen({ navigation }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Profile" />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
         <TouchableOpacity
           style={[styles.profileCard, shadow.card]}
           activeOpacity={0.85}
@@ -739,7 +742,7 @@ export function EditVenueScreen({ navigation, route }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Edit Venue" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xl * 2 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xl * 2, ...centeredContent }} keyboardShouldPersistTaps="handled">
 
         {/* ── Basic Info ── */}
         <Text style={styles.eSectionTitle}>Basic Info</Text>
@@ -1026,7 +1029,7 @@ export function OwnerNotificationsScreen({ navigation }: any) {
         onRightPress={unreadCount > 0 ? () => markAllRead.mutate() : undefined}
       />
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg }}
+        contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {isLoading ? (
@@ -1181,7 +1184,7 @@ export function OwnerSettingsScreen({ navigation }: any) {
       {isLoading ? (
         <LoadingOverlay visible={isLoading} />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+        <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
           <Text style={styles.sectionTitle}>Bookings</Text>
           <View style={styles.toggleRow}>
             <Text style={styles.toggleLabel}>Auto-accept bookings</Text>
@@ -1293,7 +1296,7 @@ export function SubscriptionScreen({ navigation, route }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Subscription / My Plan" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
         {/* Per-venue context: each venue has its own plan. Show the venue name always, and a
             switcher when the owner has more than one. */}
         {venues.length > 1 && (

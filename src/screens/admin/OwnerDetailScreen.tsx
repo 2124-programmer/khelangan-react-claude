@@ -5,6 +5,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader, AppButton, EmptyState, AvatarImage } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { ConfirmActionModal } from '../../modals';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { PlanBadge } from '../../components/PlanBadge';
@@ -123,7 +124,7 @@ export default function OwnerDetailScreen({ navigation, route }: any) {
         <EmptyState icon="⚠️" title="Could not load" subtitle="Try again in a moment." />
       ) : (
         <>
-          <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xl }}>
+          <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xl, ...centeredContent }}>
             {d.status === 'DELETED' && (
               <View style={styles.deletedBanner}>
                 <Text style={styles.deletedText}>

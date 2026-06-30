@@ -7,6 +7,7 @@ import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, EmptyState, LoadingOverlay } from '../../components/common';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '../../api/hooks/useNotifications';
 import { formatRelativeTime, useNow } from '../../utils/dateUtils';
+import { centeredContent } from '../../responsive';
 
 function getNotifIcon(type: string, title: string): string {
   if (type === 'booking') {
@@ -45,7 +46,7 @@ export default function NotificationsScreen({ navigation }: any) {
         onRightPress={unreadCount > 0 ? () => markAllRead.mutate() : undefined}
       />
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg }}
+        contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {isLoading ? (

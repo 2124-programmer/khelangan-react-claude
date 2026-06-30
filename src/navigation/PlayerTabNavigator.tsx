@@ -28,6 +28,8 @@ import PhoneChangeScreen from '../screens/player/PhoneChangeScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import AboutScreen from '../screens/AboutScreen';
 import { TermsScreen, PrivacyPolicyScreen, HowItWorksScreen } from '../screens/InfoScreens';
+import ResponsiveTabBar, { TOPNAV_HEIGHT } from './ResponsiveTabBar';
+import { useResponsive } from '../responsive';
 
 // Screens reachable from anywhere in the player app. Registered in every tab's
 // stack so any `navigation.navigate('X')` resolves regardless of the active tab.
@@ -90,8 +92,12 @@ function tabIcon(icon: string) {
 }
 
 export default function PlayerTabNavigator() {
+  // Desktop swaps the bottom bar for a top nav; pad the scene so content clears the floating bar.
+  const { isDesktop } = useResponsive();
   return (
     <Tab.Navigator
+      tabBar={(props) => <ResponsiveTabBar {...props} />}
+      sceneContainerStyle={isDesktop ? { paddingTop: TOPNAV_HEIGHT } : undefined}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,

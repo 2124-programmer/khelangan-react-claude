@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, AppButton, EmptyState, LoadingOverlay } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { RatingInput } from '../../components/reviews';
 import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useCreateReview } from '../../api/hooks/useReviews';
@@ -61,7 +62,7 @@ export default function RateReviewScreen({ navigation, route }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Rate & Review" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }} keyboardShouldPersistTaps="handled">
         <Text style={styles.venueName}>{venue.name}</Text>
         <Text style={styles.sub}>{venue.city}</Text>
 

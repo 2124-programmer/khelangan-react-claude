@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppButton } from '../../components/common';
+import { centeredContent } from '../../responsive';
 
 export default function BookingSuccessScreen({ navigation, route }: any) {
   const { bookingId: rawBookingId, sport, date, startTime, endTime, total, venueName } = route.params;
@@ -12,7 +13,7 @@ export default function BookingSuccessScreen({ navigation, route }: any) {
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
-      <View style={styles.body}>
+      <View style={[styles.body, centeredContent]}>
         <View style={styles.checkCircle}>
           <Text style={{ fontSize: 48 }}>✅</Text>
         </View>
@@ -32,7 +33,7 @@ export default function BookingSuccessScreen({ navigation, route }: any) {
         </View>
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, centeredContent]}>
         <AppButton label="View My Bookings" onPress={() => navigation.navigate('Bookings')} />
         <View style={{ height: spacing.md }} />
         <AppButton label="Back to Home" variant="secondary" onPress={() => navigation.navigate('HomeTab')} />

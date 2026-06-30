@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, EmptyState, LoadingOverlay } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { SlotGrid } from '../../components/venue';
 import { SlotLockExpiredModal, BookingRequestModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
@@ -323,7 +324,7 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Select Slot" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120, ...centeredContent }}>
         <Text style={styles.venueName}>{venue.name}</Text>
 
         {/* Sport selector */}

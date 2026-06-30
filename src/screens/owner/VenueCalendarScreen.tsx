@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppHeader, AppButton, EmptyState, LoadingOverlay } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { SlotGrid } from '../../components/venue';
 import { ConfirmActionModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
@@ -214,7 +215,7 @@ export default function VenueCalendarScreen({ navigation, route }: any) {
         rightLabel="Bulk Block"
         onRightPress={() => setShowBulk(true)}
       />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
         <Text style={styles.venueName}>{venue?.name}</Text>
 
         {/* Court tabs */}

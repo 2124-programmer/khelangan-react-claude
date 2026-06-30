@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { useEmailChangeStatus } from '../../api/hooks/useEmailChange';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -29,7 +30,7 @@ export default function SecurityScreen({ navigation }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Security" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
 
         <Text style={styles.sectionTitle}>Password</Text>
         <View style={styles.card}>

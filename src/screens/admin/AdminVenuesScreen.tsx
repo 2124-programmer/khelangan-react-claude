@@ -6,6 +6,7 @@ import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader, EmptyState } from '../../components/common';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { useResponsive, gridCellStyle, centeredContent } from '../../responsive';
 import { formatVenueAddress, venueStatusBadge } from '../../utils/venueUtils';
 import { formatRelativeTime } from '../../utils/dateUtils';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -35,6 +36,7 @@ const EMPTY_COPY: Record<string, { icon: string; title: string; subtitle: string
 };
 
 export default function AdminVenuesScreen({ navigation, route }: any) {
+  const { columns } = useResponsive();
   const [tab, setTab] = useState<string>(route?.params?.tab ?? 'ALL');
   const [search, setSearch] = useState('');
   const debounced = useDebounce(search, 300);
@@ -47,6 +49,8 @@ export default function AdminVenuesScreen({ navigation, route }: any) {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <AppHeader title="Venues" onBack={() => navigation.goBack()} />
 
+      {/* Tabs + search are wrapped in the centered content band so they align with the card grid on web. */}
+      <View style={centeredContent}>
       {/* Tabs (horizontally scrollable, count badges) */}
       <ScrollView
         horizontal
@@ -96,23 +100,27 @@ export default function AdminVenuesScreen({ navigation, route }: any) {
           )}
         </View>
       </View>
+      </View>
 
       {q.isLoading ? (
         <ActivityIndicator color={colors.admin} style={{ marginTop: spacing.xl }} />
       ) : (
         <FlatList
           data={venues}
+          key={`venues-${columns}`}
+          numColumns={columns}
           keyExtractor={(v) => v.id}
-          contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm }}
+          contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm, ...centeredContent }}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             debounced.trim()
               ? <EmptyState icon="🔍" title="No venues found" subtitle="No venues match your search." />
               : <EmptyState {...(EMPTY_COPY[tab] ?? EMPTY_COPY.ALL)} />
           }
-          renderItem={({ item }) => (
-            <VenueCard venue={item} onPress={() => navigation.navigate('VenueDetail', { venueId: item.id })} />
-          )}
+          renderItem={({ item }) => {
+            const card = <VenueCard venue={item} onPress={() => navigation.navigate('VenueDetail', { venueId: item.id })} />;
+            return columns > 1 ? <View style={gridCellStyle(columns)}>{card}</View> : card;
+          }}
           onEndReachedThreshold={0.4}
           onEndReached={() => { if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage(); }}
           ListFooterComponent={q.isFetchingNextPage

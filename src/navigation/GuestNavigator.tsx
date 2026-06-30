@@ -12,6 +12,8 @@ import OTPVerificationScreen from '../screens/auth/OTPVerificationScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import AboutScreen from '../screens/AboutScreen';
 import { TermsScreen, PrivacyPolicyScreen, HowItWorksScreen } from '../screens/InfoScreens';
+import ResponsiveTabBar, { TOPNAV_HEIGHT } from './ResponsiveTabBar';
+import { useResponsive } from '../responsive';
 
 // Info/legal screens reachable from the About tab.
 const INFO_SCREENS = [
@@ -65,8 +67,11 @@ function tabIcon(icon: string) {
 }
 
 export default function GuestNavigator() {
+  const { isDesktop } = useResponsive();
   return (
     <Tab.Navigator
+      tabBar={(props) => <ResponsiveTabBar {...props} />}
+      sceneContainerStyle={isDesktop ? { paddingTop: TOPNAV_HEIGHT } : undefined}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,

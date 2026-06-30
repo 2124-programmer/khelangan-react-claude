@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { ResponsiveGrid, centeredContent } from '../../responsive';
 import { AppHeader, AppButton, AppInput, EmptyState, LoadingOverlay } from '../../components/common';
 import { ConfirmActionModal } from '../../modals';
 import {
@@ -56,7 +57,7 @@ export default function AdminCourtChangeRequestsScreen({ navigation }: any) {
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Court Change Requests" onBack={() => navigation.goBack()} />
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg }}
+        contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} colors={[colors.admin]} tintColor={colors.admin} />}
       >
         {isLoading ? (
@@ -64,7 +65,8 @@ export default function AdminCourtChangeRequestsScreen({ navigation }: any) {
         ) : requests.length === 0 ? (
           <EmptyState icon="✅" title="No pending requests" subtitle="Owner court-change requests will appear here." />
         ) : (
-          requests.map((req) => {
+          <ResponsiveGrid>
+          {requests.map((req) => {
             const busy = (approve.isPending && approve.variables === Number(req.id))
               || (reject.isPending && reject.variables?.id === Number(req.id));
             return (
@@ -113,7 +115,8 @@ export default function AdminCourtChangeRequestsScreen({ navigation }: any) {
                 </View>
               </View>
             );
-          })
+          })}
+          </ResponsiveGrid>
         )}
       </ScrollView>
 

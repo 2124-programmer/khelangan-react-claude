@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
 import { AppInput, AppButton, AppHeader } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { toast } from '../../toast';
 import { UserRole } from '../../types';
 import type { UserDto } from '../../api/types';
@@ -125,7 +126,7 @@ export default function RegisterScreen({ navigation, route }: any) {
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Create Account" onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.body, centeredContent]} keyboardShouldPersistTaps="handled">
         <Text style={styles.sectionLabel}>I am a</Text>
         <View style={styles.roleRow}>
           {(['player', 'owner'] as UserRole[]).map((r) => (

@@ -7,6 +7,7 @@ import { Feather, FontAwesome } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader, EmptyState, AvatarImage } from '../../components/common';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { useResponsive, gridCellStyle, centeredContent } from '../../responsive';
 import { formatRelativeTime } from '../../utils/dateUtils';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useOwnersInfinite, useOwnerStats } from '../../api/hooks/useOwners';
@@ -46,6 +47,7 @@ const SORTS = [
 ];
 
 export default function AdminOwnersScreen({ navigation }: any) {
+  const { columns } = useResponsive();
   const [search, setSearch] = useState('');
   const [segment, setSegment] = useState('ALL');
   const [sort, setSort] = useState('RECENTLY_ACTIVE');
@@ -70,8 +72,10 @@ export default function AdminOwnersScreen({ navigation }: any) {
 
       <FlatList
         data={owners}
+        key={`owners-${columns}`}
+        numColumns={columns}
         keyExtractor={(o) => o.ownerId}
-        contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm }}
+        contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm, ...centeredContent }}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View>
@@ -138,13 +142,16 @@ export default function AdminOwnersScreen({ navigation }: any) {
               ? <EmptyState icon="🔍" title="No owners found" subtitle="No owners match your search." />
               : <EmptyState icon="🧑‍💼" title="No owners" subtitle="Venue owners will appear here." />
         }
-        renderItem={({ item }) => (
-          <OwnerRowCard
-            row={item}
-            onPress={() => navigation.navigate('OwnerDetail', { ownerId: item.ownerId })}
-            onContact={() => setContactFor(item)}
-          />
-        )}
+        renderItem={({ item }) => {
+          const card = (
+            <OwnerRowCard
+              row={item}
+              onPress={() => navigation.navigate('OwnerDetail', { ownerId: item.ownerId })}
+              onContact={() => setContactFor(item)}
+            />
+          );
+          return columns > 1 ? <View style={gridCellStyle(columns)}>{card}</View> : card;
+        }}
         onEndReachedThreshold={0.4}
         onEndReached={() => { if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage(); }}
         ListFooterComponent={q.isFetchingNextPage

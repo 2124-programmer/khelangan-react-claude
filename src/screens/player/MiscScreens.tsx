@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, AppInput, AvatarImage, LoadingOverlay } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { AppearanceSelector } from '../../components/AppearanceSelector';
 import { useCoupons } from '../../api/hooks/useCoupons';
 import { useAuth } from '../../store/AuthContext';
@@ -35,7 +36,7 @@ export function OffersScreen({ navigation }: any) {
         onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
       />
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg }}
+        contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {isLoading ? (
@@ -75,7 +76,7 @@ export function WalletScreen({ navigation }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Wallet & Payments" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
         <View style={styles.walletCard}>
           <Text style={styles.walletLabel}>Wallet Balance</Text>
           <Text style={styles.walletAmount}>₹0</Text>
@@ -171,7 +172,7 @@ export function HelpSupportScreen({ navigation }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Help & Support" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
         <Text style={styles.sectionTitle}>FAQs</Text>
         {FAQS.map((f, i) => (
           <FaqAccordion key={f.q} item={f} expanded={openIndex === i} onToggle={() => toggle(i)} />
@@ -207,7 +208,7 @@ export function SettingsScreen({ navigation }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Settings" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
         <Text style={styles.sectionTitle}>Notifications</Text>
         <View style={styles.toggleRow}>
           <Text style={styles.toggleLabel}>Push Notifications</Text>
@@ -292,7 +293,7 @@ export function DeleteAccountScreen({ navigation }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Delete Account" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
         <View style={[styles.roleInfoBox, { borderColor: colors.danger }]}>
           <Text style={styles.roleInfoIcon}>⚠️</Text>
           <Text style={styles.roleInfoTitle}>This is permanent</Text>
@@ -434,7 +435,7 @@ export function EditProfileScreen({ navigation }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Edit Profile" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
 
         {/* Avatar picker */}
         <TouchableOpacity style={styles.avatarWrapper} onPress={pickImage} activeOpacity={0.8}>
@@ -491,7 +492,7 @@ export function RescheduleScreen({ navigation }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Reschedule Booking" onBack={() => navigation.goBack()} />
-      <View style={{ padding: spacing.lg }}>
+      <View style={{ padding: spacing.lg, ...centeredContent }}>
         <Text style={styles.sectionTitle}>Pick a new slot</Text>
         <Text style={styles.toggleLabel}>Select a new date and time for your booking.</Text>
         <AppButton label="Confirm Reschedule" onPress={() => navigation.goBack()} style={{ marginTop: spacing.xl }} />
@@ -524,7 +525,7 @@ export function DisputeScreen({ navigation, route }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title="Raise a Dispute" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
         <AppInput
           label="Describe your issue"
           value={issue}
@@ -570,7 +571,7 @@ export function RoleChangeScreen({ navigation, route }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <AppHeader title={`Switch to ${label}`} onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
         <View style={styles.roleInfoBox}>
           <Text style={styles.roleInfoIcon}>{targetRole === 'OWNER' ? '🏟' : '👤'}</Text>
           <Text style={styles.roleInfoTitle}>Switch to {label}</Text>

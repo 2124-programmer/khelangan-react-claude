@@ -6,6 +6,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader, AvatarImage, AppButton, AppInput } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { QueryState } from '../../components/QueryState';
 import { ConfirmActionModal } from '../../modals';
 import {
@@ -192,7 +193,7 @@ export default function AdminRolesScreen({ navigation }: any) {
           <FlatList
             data={admins}
             keyExtractor={(a) => String(a.id)}
-            contentContainerStyle={{ padding: spacing.lg }}
+            contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}
             ListHeaderComponent={
               <View>
                 <Text style={s.intro}>

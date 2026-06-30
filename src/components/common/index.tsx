@@ -9,6 +9,7 @@ import BallOrbitLoader from '../BallOrbitLoader';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { useHover, webPointer, useResponsive, MAX_CONTENT_WIDTH, centeredContent } from '../../responsive';
 import { BookingStatus, VenueStatus, PaymentStatus } from '../../types';
 import { useAuth } from '../../store/AuthContext';
 import { useUnreadNotifications } from '../../api/hooks/useNotifications';
@@ -37,16 +38,20 @@ export function AppButton({
     variant === 'secondary' ? colors.text
     : variant === 'ghost' ? colors.primary
     : colors.white;
+  const { hovered, hoverProps } = useHover();
   return (
     <TouchableOpacity
       activeOpacity={0.85}
       disabled={disabled || loading}
       onPress={onPress}
+      {...hoverProps}
       style={[
         styles.btn,
         { backgroundColor: bg, opacity: disabled ? 0.5 : 1 },
         variant === 'ghost' && { borderWidth: 1.5, borderColor: colors.primary },
         fullWidth && { alignSelf: 'stretch' },
+        webPointer,
+        hovered && !disabled && !loading && { opacity: 0.9 },
         style,
       ]}
     >
@@ -179,7 +184,22 @@ interface AppHeaderProps {
   userName?: string;
 }
 export function AppHeader({ title, onBack, rightLabel, onRightPress, userName }: AppHeaderProps) {
+  const { isDesktop } = useResponsive();
   if (userName !== undefined) {
+    // On desktop web the brand logo already lives in the top nav bar (ResponsiveTabBar),
+    // so the in-screen logo band would be a duplicate. Collapse it: guests get nothing,
+    // logged-in users keep just a compact right-aligned name + bell row.
+    if (isDesktop) {
+      if (!userName) return null;
+      return (
+        <View style={styles.homeHeaderDesktop}>
+          <View style={styles.homeRight}>
+            <Text style={styles.homeUserName} numberOfLines={1}>{userName}</Text>
+            <NotificationBell />
+          </View>
+        </View>
+      );
+    }
     return (
       <View style={styles.homeHeader}>
         {/* Left: logo */}
@@ -199,22 +219,26 @@ export function AppHeader({ title, onBack, rightLabel, onRightPress, userName }:
     );
   }
   return (
-    <View style={styles.header}>
-      {onBack ? (
-        <TouchableOpacity onPress={onBack} style={styles.headerBtn}>
-          <Text style={styles.headerBackIcon}>‹</Text>
-        </TouchableOpacity>
-      ) : <View style={styles.headerBtn} />}
-      <Text style={styles.headerTitle} numberOfLines={1}>{title ?? ''}</Text>
-      {rightLabel ? (
-        <TouchableOpacity onPress={onRightPress} style={styles.headerBtn}>
-          <Text style={styles.headerRight}>{rightLabel}</Text>
-        </TouchableOpacity>
-      ) : (
-        <View style={styles.headerBtn}>
-          <NotificationBell />
-        </View>
-      )}
+    // Full-width bar (bg + bottom border) with the row capped to the content band, so on web the
+    // back button / title align with the centered page content. On phone the cap never bites → unchanged.
+    <View style={styles.headerBar}>
+      <View style={styles.headerInner}>
+        {onBack ? (
+          <TouchableOpacity onPress={onBack} style={styles.headerBtn}>
+            <Text style={styles.headerBackIcon}>‹</Text>
+          </TouchableOpacity>
+        ) : <View style={styles.headerBtn} />}
+        <Text style={styles.headerTitle} numberOfLines={1}>{title ?? ''}</Text>
+        {rightLabel ? (
+          <TouchableOpacity onPress={onRightPress} style={styles.headerBtn}>
+            <Text style={styles.headerRight}>{rightLabel}</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.headerBtn}>
+            <NotificationBell />
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -323,7 +347,7 @@ export function SectionTabBar({ tabs, activeTab, onChange }: SectionTabBarProps)
       ref={scrollRef}
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={styles.tabBar}
+      style={[styles.tabBar, centeredContent]}
       contentContainerStyle={styles.tabBarContent}
       onLayout={(e) => { visibleWidth.current = e.nativeEvent.layout.width; }}
     >
@@ -575,6 +599,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm, backgroundColor: colors.surface,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
+  headerBar: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
+  headerInner: {
+    flexDirection: 'row', alignItems: 'center', height: 56,
+    paddingHorizontal: spacing.sm,
+    width: '100%', maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center',
+  },
   homeHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
@@ -586,6 +619,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#111',
   },
   homeLogo: { width: '100%', height: '100%' },
+  homeHeaderDesktop: {
+    flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center',
+    width: '100%', maxWidth: 1200, alignSelf: 'center',
+    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xs,
+  },
   homeRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   bellBtn: {
     width: 38, height: 38, borderRadius: radius.md,

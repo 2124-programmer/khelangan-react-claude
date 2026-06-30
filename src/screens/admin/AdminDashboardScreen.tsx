@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, fontSize, fontWeight } from '../../theme';
 import { AvatarImage, NotificationBell } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { useAuth } from '../../store/AuthContext';
 import { useDashboardSummary } from '../../api/hooks/useAdmin';
 import {
@@ -53,7 +54,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg }}
+        contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {/* Header */}

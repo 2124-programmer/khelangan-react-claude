@@ -15,6 +15,7 @@ import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../the
 import { extractApiError } from '../../api/client';
 import { toast } from '../../toast';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useResponsive, gridCellStyle, centeredContent } from '../../responsive';
 import {
   useAdminPlans, useUpdatePlan, useAdminVenueSubscription, useCreateSubscription,
   useEditSubscription, useVoidSubscription, useRenewSubscription,
@@ -126,6 +127,7 @@ function ListControls({ query, onQuery, filters, active, onFilter, placeholder }
 
 /* ── Activate tab → searchable, paginated venue-subscription table ─────────── */
 function ActivateTab({ navigation }: { navigation: any }) {
+  const { columns } = useResponsive();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('ALL');
   const debounced = useDebounce(search, 300);
@@ -144,12 +146,17 @@ function ActivateTab({ navigation }: { navigation: any }) {
       ) : (
         <FlatList
           data={rows}
+          key={`subs-${columns}`}
+          numColumns={columns}
           keyExtractor={(r) => r.venueId}
-          contentContainerStyle={{ padding: spacing.lg, paddingTop: 0 }}
+          contentContainerStyle={{ padding: spacing.lg, paddingTop: 0, ...centeredContent }}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={<EmptyState icon="🔍" title="No venues found" subtitle="No venues match your search." />}
-          renderItem={({ item }) => <VenueRowCard row={item}
-            onView={() => navigation.navigate('SubscriptionDetail', { venueId: item.venueId })} />}
+          renderItem={({ item }) => {
+            const card = <VenueRowCard row={item}
+              onView={() => navigation.navigate('SubscriptionDetail', { venueId: item.venueId })} />;
+            return columns > 1 ? <View style={gridCellStyle(columns)}>{card}</View> : card;
+          }}
           onEndReachedThreshold={0.4}
           onEndReached={() => { if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage(); }}
           ListFooterComponent={q.isFetchingNextPage
@@ -246,7 +253,7 @@ export function SubscriptionDetailScreen({ navigation, route }: any) {
       ) : !view ? (
         <EmptyState icon="⚠️" title="Could not load" subtitle="Try again in a moment." />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+        <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
           {/* Venue & owner */}
           <View style={[styles.card, shadow.card]}>
             <Text style={styles.cardTitle}>{venue?.name}</Text>
@@ -618,7 +625,7 @@ function RequestsTab({ navigation }: { navigation: any }) {
         <FlatList
           data={requests}
           keyExtractor={(r) => r.id}
-          contentContainerStyle={{ padding: spacing.lg, paddingTop: 0 }}
+          contentContainerStyle={{ padding: spacing.lg, paddingTop: 0, ...centeredContent }}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={<EmptyState icon="📭" title="No requests" subtitle="Owner upgrade requests appear here." />}
           renderItem={({ item: r }) => (
@@ -689,7 +696,7 @@ function RequestsTab({ navigation }: { navigation: any }) {
 function PlansTab() {
   const plansQ = useAdminPlans();
   return (
-    <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+    <ScrollView contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}>
       {plansQ.isLoading ? <ActivityIndicator color={colors.admin} />
         : (plansQ.data ?? []).map((p) => <PlanEditorCard key={p.id} plan={p} />)}
     </ScrollView>
@@ -765,7 +772,7 @@ const styles = StyleSheet.create({
   hint: { fontSize: fontSize.sm, color: colors.textDim, marginTop: 2 },
   noteText: { fontSize: fontSize.xs, color: colors.textDim, marginTop: spacing.sm, fontStyle: 'italic' },
   link: { color: colors.admin, fontWeight: fontWeight.semibold },
-  controls: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  controls: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, ...centeredContent },
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,

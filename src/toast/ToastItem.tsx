@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, PanResponder, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, PanResponder, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
 } from 'react-native-reanimated';
@@ -40,6 +40,11 @@ const ICON_NAME: Record<ToastType, React.ComponentProps<typeof Feather>['name']>
 const ITEM_HEIGHT = 64;
 export const ITEM_STACK_STEP = ITEM_HEIGHT + 10;
 
+// On tablet/desktop the toast becomes a compact card pinned to the top-right corner instead of a
+// full-width banner. Phone keeps the full-width banner (mobile unchanged).
+const WIDE_BREAKPOINT = 768;
+const TOAST_WIDTH = 400;
+
 const SWIPE_DISMISS_PX = 70;
 const EXIT_MS = 220;
 
@@ -51,6 +56,8 @@ interface Props {
 
 export function ToastItem({ entry, index, onDismiss }: Props) {
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  const isWide = screenWidth >= WIDE_BREAKPOINT;
 
   const translateY = useSharedValue(-(ITEM_HEIGHT + 80));
   const translateX = useSharedValue(0);
@@ -119,10 +126,14 @@ export function ToastItem({ entry, index, onDismiss }: Props) {
   const accent   = ACCENT[entry.type];
   const accentBg = ACCENT_BG[entry.type];
   const topOffset = insets.top + spacing.md + index * ITEM_STACK_STEP;
+  // Phone: full-width banner (left+right margins). Wide: fixed-width card pinned to the top-right.
+  const positionStyle = isWide
+    ? { right: spacing.lg, width: TOAST_WIDTH }
+    : { left: spacing.lg, right: spacing.lg };
 
   return (
     <Animated.View
-      style={[styles.container, animStyle, { top: topOffset, borderColor: accent, borderWidth: 1.5 }]}
+      style={[styles.container, animStyle, positionStyle, { top: topOffset, borderColor: accent, borderWidth: 1.5 }]}
       {...panResponder.panHandlers}
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
@@ -174,8 +185,6 @@ const containerShadow = Platform.select({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    left: spacing.lg,
-    right: spacing.lg,
     zIndex: 99999,
     flexDirection: 'row',
     alignItems: 'center',

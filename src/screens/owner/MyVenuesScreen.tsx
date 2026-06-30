@@ -14,6 +14,7 @@ import { useOwnerPlans } from '../../api/hooks/useSubscription';
 import { toast } from '../../toast';
 import { extractApiError } from '../../api/client';
 import type { Venue } from '../../types';
+import { ResponsiveGrid, centeredContent } from '../../responsive';
 
 const FREE_COURT_THRESHOLD = 2;
 
@@ -72,13 +73,14 @@ export default function MyVenuesScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg }}
+        contentContainerStyle={{ padding: spacing.lg, ...centeredContent }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {venues.length === 0 && !isLoading ? (
           <EmptyState icon="🏟" title="No venues yet" subtitle="Add your first venue to start accepting bookings" />
         ) : (
-          venues.map((v) => {
+          <ResponsiveGrid>
+          {venues.map((v) => {
             const submittable = v.status === 'draft' || v.status === 'changes_requested';
             return (
               <View key={v.id} style={[styles.card, shadow.card]}>
@@ -181,7 +183,8 @@ export default function MyVenuesScreen({ navigation }: any) {
                 </View>
               </View>
             );
-          })
+          })}
+          </ResponsiveGrid>
         )}
       </ScrollView>
 

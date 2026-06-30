@@ -5,6 +5,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader, AppButton, EmptyState } from '../../components/common';
+import { centeredContent } from '../../responsive';
 import { ConfirmActionModal } from '../../modals';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { formatRelativeTime } from '../../utils/dateUtils';
@@ -78,7 +79,7 @@ export default function DisputeDetailScreen({ navigation, route }: any) {
         <EmptyState icon="⚠️" title="Could not load" subtitle="Try again in a moment." />
       ) : (
         <>
-          <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xl }}>
+          <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xl, ...centeredContent }}>
             {d.isOverdue && (
               <View style={styles.overdueBanner}>
                 <Text style={styles.overdueBannerText}>⏰ Overdue — past the {d.slaHours}h SLA.</Text>

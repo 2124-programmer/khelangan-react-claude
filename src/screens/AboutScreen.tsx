@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight } from '../theme';
+import { centeredContent } from '../responsive';
 import { toast } from '../toast';
 
 /**
@@ -64,18 +65,21 @@ export default function AboutScreen({ navigation }: any) {
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
-      {/* Lightweight header — no NotificationBell, so it's safe for logged-out guests. */}
+      {/* Lightweight header — no NotificationBell, so it's safe for logged-out guests.
+          Full-width bar with the row capped to the content band so the back button aligns with content on web. */}
       <View style={styles.header}>
-        {canBack ? (
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn} accessibilityLabel="Back">
-            <Text style={styles.headerBack}>‹</Text>
-          </TouchableOpacity>
-        ) : <View style={styles.headerBtn} />}
-        <Text style={styles.headerTitle}>About</Text>
-        <View style={styles.headerBtn} />
+        <View style={styles.headerInner}>
+          {canBack ? (
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn} accessibilityLabel="Back">
+              <Text style={styles.headerBack}>‹</Text>
+            </TouchableOpacity>
+          ) : <View style={styles.headerBtn} />}
+          <Text style={styles.headerTitle}>About</Text>
+          <View style={styles.headerBtn} />
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxl }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxl, ...centeredContent }}>
         {/* Brand + version */}
         <View style={styles.brand}>
           <Image
@@ -148,9 +152,13 @@ export default function AboutScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.sm, paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface,
+  },
+  headerInner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.sm,
+    width: '100%', maxWidth: 1200, alignSelf: 'center',
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerBack: { fontSize: 30, color: colors.text, marginTop: -2 },

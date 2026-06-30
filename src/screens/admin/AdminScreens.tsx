@@ -12,6 +12,7 @@ import {
 import { ConfirmActionModal } from '../../modals';
 import { useAuth } from '../../store/AuthContext';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
+import { centeredContent } from '../../responsive';
 import { formatVenueAddress } from '../../utils/venueUtils';
 import { formatRelativeTime } from '../../utils/dateUtils';
 
@@ -33,8 +34,8 @@ function Screen({ title, navigation, children, scroll = true, refreshControl }: 
     <SafeAreaView style={styles.safe} edges={['top']}>
       <AppHeader title={title} onBack={navigation ? () => navigation.goBack() : undefined} />
       <Body
-        style={styles.body}
-        contentContainerStyle={scroll ? styles.bodyContent : undefined}
+        style={scroll ? styles.body : [styles.body, centeredContent]}
+        contentContainerStyle={scroll ? [styles.bodyContent, centeredContent] : undefined}
         {...(scroll && refreshControl ? { refreshControl } : {})}
       >
         {children}
@@ -601,7 +602,8 @@ export function CategoryManagementScreen({ navigation }: any) {
         label={showForm && !isEdit ? 'Cancel' : '+ Add Sport'}
         variant={showForm && !isEdit ? 'secondary' : 'primary'}
         onPress={showForm && !isEdit ? closeForm : openCreate}
-        style={{ marginBottom: spacing.lg }}
+        fullWidth={false}
+        style={{ marginBottom: spacing.lg, alignSelf: 'flex-end', paddingHorizontal: spacing.xl }}
       />
 
       {showForm && (
