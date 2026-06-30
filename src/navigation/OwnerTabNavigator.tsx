@@ -22,6 +22,8 @@ import PhoneChangeScreen from '../screens/player/PhoneChangeScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import VenueDetailScreen from '../screens/player/VenueDetailScreen';
 import VenueReviewsScreen from '../screens/player/VenueReviewsScreen';
+import AboutScreen from '../screens/AboutScreen';
+import { TermsScreen, PrivacyPolicyScreen, HowItWorksScreen } from '../screens/InfoScreens';
 
 const SHARED = [
   { name: 'VenueDetail', component: VenueDetailScreen },
@@ -42,6 +44,10 @@ const SHARED = [
   { name: 'EmailChange', component: EmailChangeScreen },
   { name: 'PhoneChange', component: PhoneChangeScreen },
   { name: 'ForgotPassword', component: ForgotPasswordScreen },
+  { name: 'About', component: AboutScreen },
+  { name: 'HowItWorks', component: HowItWorksScreen },
+  { name: 'Terms', component: TermsScreen },
+  { name: 'Privacy', component: PrivacyPolicyScreen },
 ];
 
 function makeStack(initialName: string, initialComponent: any) {

@@ -26,6 +26,8 @@ import ChangePasswordScreen from '../screens/player/ChangePasswordScreen';
 import EmailChangeScreen from '../screens/player/EmailChangeScreen';
 import PhoneChangeScreen from '../screens/player/PhoneChangeScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import AboutScreen from '../screens/AboutScreen';
+import { TermsScreen, PrivacyPolicyScreen, HowItWorksScreen } from '../screens/InfoScreens';
 
 // Screens reachable from anywhere in the player app. Registered in every tab's
 // stack so any `navigation.navigate('X')` resolves regardless of the active tab.
@@ -53,6 +55,10 @@ const SHARED = [
   { name: 'PhoneChange', component: PhoneChangeScreen },
   { name: 'DeleteAccount', component: DeleteAccountScreen },
   { name: 'ForgotPassword', component: ForgotPasswordScreen },
+  { name: 'About', component: AboutScreen },
+  { name: 'HowItWorks', component: HowItWorksScreen },
+  { name: 'Terms', component: TermsScreen },
+  { name: 'Privacy', component: PrivacyPolicyScreen },
 ];
 
 function makeStack(initialName: string, initialComponent: any) {

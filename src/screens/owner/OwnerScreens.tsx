@@ -1205,6 +1205,12 @@ export function OwnerSettingsScreen({ navigation }: any) {
           <View style={{ marginTop: spacing.lg }}>
             <AppearanceSelector />
           </View>
+
+          <Text style={styles.sectionTitle}>App</Text>
+          <TouchableOpacity style={styles.toggleRow} onPress={() => navigation.navigate('About')}>
+            <Text style={styles.toggleLabel}>About</Text>
+            <Text style={{ fontSize: 22, color: colors.textDim }}>›</Text>
+          </TouchableOpacity>
         </ScrollView>
       )}
     </SafeAreaView>

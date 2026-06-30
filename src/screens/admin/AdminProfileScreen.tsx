@@ -81,6 +81,13 @@ export default function AdminProfileScreen({ navigation }: any) {
           </>
         )}
 
+        {/* App */}
+        <Text style={styles.sectionLabel}>App</Text>
+        <View style={[styles.group, shadow.card]}>
+          <Row icon="info" label="About" hint="Version, legal & support"
+            onPress={() => navigation.navigate('About')} />
+        </View>
+
         {/* Appearance — light / dark / system */}
         <AppearanceSelector />
 
