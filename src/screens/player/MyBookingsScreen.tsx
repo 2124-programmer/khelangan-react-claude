@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
-  View, StyleSheet, ScrollView, ActivityIndicator, Alert, RefreshControl,
+  View, StyleSheet, ScrollView, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing } from '../../theme';
@@ -11,6 +11,7 @@ import { CancelBookingModal, ContactSheet } from '../../modals';
 import { useBookings, useCancelBooking, useCancelBookingGroup } from '../../api/hooks/useBookings';
 import { Booking, BookingGroup } from '../../types';
 import { extractApiError } from '../../api/client';
+import { toast } from '../../toast';
 import { groupBookingList, isGroup, isExpiredPending } from '../../utils/bookingUtils';
 
 const STATUS_MAP: Record<string, string> = {
@@ -23,6 +24,7 @@ const STATUS_MAP: Record<string, string> = {
 export default function MyBookingsScreen({ navigation }: any) {
   const [tab, setTab] = useState<string>('pending');
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
+  const [cancelGroupTarget, setCancelGroupTarget] = useState<BookingGroup | null>(null);
   const [contactTarget, setContactTarget] = useState<{ phone?: string; venueName?: string } | null>(null);
   const cancelBooking = useCancelBooking();
   const cancelBookingGroup = useCancelBookingGroup();
@@ -77,24 +79,31 @@ export default function MyBookingsScreen({ navigation }: any) {
 
   const items = groupBookingList(filteredBookings);
 
+  // Toasts fire after the confirmation sheet dismisses (~350ms): a toast that overlaps a closing
+  // Modal gets killed on Android, since the toast host is itself a Modal.
   const handleCancel = async () => {
     if (!cancelTarget) return;
     try {
       await cancelBooking.mutateAsync(Number(cancelTarget.id));
-    } catch (err) {
-      Alert.alert('Cancel Failed', extractApiError(err));
-    } finally {
       setCancelTarget(null);
+      setTimeout(() => toast.success('Booking cancelled.'), 350);
+    } catch (err) {
+      setCancelTarget(null);
+      setTimeout(() => toast.error(extractApiError(err)), 350);
     }
   };
 
-  const handleCancelGroup = useCallback(async (group: BookingGroup) => {
+  const handleCancelGroup = async () => {
+    if (!cancelGroupTarget) return;
     try {
-      await cancelBookingGroup.mutateAsync(group.groupId);
+      await cancelBookingGroup.mutateAsync(cancelGroupTarget.groupId);
+      setCancelGroupTarget(null);
+      setTimeout(() => toast.success('Booking cancelled.'), 350);
     } catch (err) {
-      Alert.alert('Cancel Failed', extractApiError(err));
+      setCancelGroupTarget(null);
+      setTimeout(() => toast.error(extractApiError(err)), 350);
     }
-  }, [cancelBookingGroup]);
+  };
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -130,7 +139,7 @@ export default function MyBookingsScreen({ navigation }: any) {
                   viewAs="player"
                   showContact={showContact}
                   tabCtx={tabCtx}
-                  onCancelAll={() => handleCancelGroup(item)}
+                  onCancelAll={() => setCancelGroupTarget(item)}
                   onContact={() => setContactTarget({ phone: item.venuePhone, venueName: item.venueName })}
                 />
               );
@@ -161,6 +170,15 @@ export default function MyBookingsScreen({ navigation }: any) {
         loading={cancelBooking.isPending}
         onConfirm={handleCancel}
         onDismiss={() => setCancelTarget(null)}
+      />
+
+      <CancelBookingModal
+        visible={!!cancelGroupTarget}
+        venueName={cancelGroupTarget?.venueName ?? ''}
+        refundAmount={cancelGroupTarget ? Math.round(cancelGroupTarget.totalAmount * 0.5) : 0}
+        loading={cancelBookingGroup.isPending}
+        onConfirm={handleCancelGroup}
+        onDismiss={() => setCancelGroupTarget(null)}
       />
 
       <ContactSheet

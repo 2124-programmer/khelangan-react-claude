@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, AppInput, EmptyState, LoadingOverlay, StatusBadge } from '../../components/common';
-import { centeredContent } from '../../responsive';
+import { centeredContent, MAX_CONTENT_WIDTH } from '../../responsive';
 import { toast } from '../../toast';
 import { VenueImageCarousel } from '../../components/venue';
 import { VenueMap } from '../../components/venue/VenueMap';
@@ -863,6 +863,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     backgroundColor: colors.surface, padding: spacing.lg,
     borderTopWidth: 1, borderTopColor: colors.border,
+    // On web large screens, cap + center the bar so its buttons line up with the centered page
+    // content (which is capped at MAX_CONTENT_WIDTH). Mobile is unaffected — the cap never bites.
+    ...(Platform.OS === 'web' ? { maxWidth: MAX_CONTENT_WIDTH, marginHorizontal: 'auto' } : null),
   },
   priceLabel: { fontSize: fontSize.xs, color: colors.textDim },
   price: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },

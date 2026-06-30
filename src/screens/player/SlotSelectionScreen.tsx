@@ -1,17 +1,17 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Alert, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
 import { AppHeader, AppButton, EmptyState, LoadingOverlay } from '../../components/common';
-import { centeredContent } from '../../responsive';
+import { centeredContent, MAX_CONTENT_WIDTH } from '../../responsive';
+import { toast } from '../../toast';
 import { SlotGrid } from '../../components/venue';
 import { SlotLockExpiredModal, BookingRequestModal } from '../../modals';
 import { useVenueDetail } from '../../api/hooks/useVenues';
 import { useSlots } from '../../api/hooks/useSlots';
-import { useCourts } from '../../api/hooks/useCourts';
 import { useSports } from '../../api/hooks/useSports';
 import { useBulkCreateBooking } from '../../api/hooks/useBookings';
 import { Slot } from '../../types';
@@ -151,7 +151,10 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
   const initialSportId: string | null = route.params.sportId ?? null;
 
   const { data: venue, isLoading: venueLoading } = useVenueDetail(venueId);
-  const { data: allCourts = [], isLoading: courtsLoading } = useCourts(Number(venueId));
+  // Courts come straight from the venue detail, which for players already lists only the
+  // subscription-covered (bookable) courts. This keeps the court tabs in sync with the sport
+  // tabs (venue.sports) so a player can never land on a court that isn't actually bookable.
+  const allCourts = useMemo(() => venue?.courts ?? [], [venue]);
   const { data: sports = [] } = useSports();
 
   const today = useMemo(() => {
@@ -319,7 +322,7 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
     );
   }
 
-  const loadingSlots = courtsLoading || slotsLoading;
+  const loadingSlots = slotsLoading;
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -411,10 +414,13 @@ export default function SlotSelectionScreen({ navigation, route }: any) {
           setShowBookingModal(false);
           setSelected([]);
         }}
-        onGoToBookings={() => {
+        onSuccess={() => {
           setShowBookingModal(false);
           setSelected([]);
-          navigation.navigate('Bookings');
+          // Toast after the sheet finishes dismissing — a toast shown while the modal is still
+          // closing stacks-and-dies on Android (both are Modals). The booked slot turns blocked
+          // automatically when the bulk-create mutation invalidates the slots query.
+          setTimeout(() => toast.success('Booking request sent! The venue will confirm shortly.'), 350);
         }}
       />
     </SafeAreaView>
@@ -512,6 +518,9 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    // On web large screens, cap + center the bar so the price/Proceed buttons line up with the
+    // centered page content (capped at MAX_CONTENT_WIDTH). Mobile is unaffected — cap never bites.
+    ...(Platform.OS === 'web' ? { maxWidth: MAX_CONTENT_WIDTH, marginHorizontal: 'auto' } : null),
   },
   selLabel: { fontSize: fontSize.xs, color: colors.textDim },
   selPrice: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },

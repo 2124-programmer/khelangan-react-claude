@@ -1,9 +1,19 @@
 // Reusable modal/popup overlays.
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Linking, Platform } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Linking, Platform, ViewStyle } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../theme';
 import { AppButton, StarRating } from '../components/common';
+import { MAX_CONTENT_WIDTH } from '../responsive';
 import { toast } from '../toast';
+
+/**
+ * On web large screens, cap + center a bottom sheet at the page's max content width so it lines up
+ * with the rest of the centered layout instead of stretching edge-to-edge. Mobile is untouched
+ * (the cap never bites and the sheet stays full-width).
+ */
+const sheetWebContainer: ViewStyle = Platform.OS === 'web'
+  ? { width: '100%', maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center' }
+  : {};
 
 /* ───────────────── ConfirmActionModal ───────────────── */
 interface ConfirmProps {
@@ -237,14 +247,15 @@ interface BookingRequestProps {
   slots: SlotEntry[];
   onConfirm: () => Promise<void>;
   onDismiss: () => void;
-  onGoToBookings: () => void;
+  /** Called once the booking request succeeds — the parent dismisses the sheet and shows a toast. */
+  onSuccess: () => void;
 }
 
 export function BookingRequestModal({
   visible, venueName, sport, date, slots,
-  onConfirm, onDismiss, onGoToBookings,
+  onConfirm, onDismiss, onSuccess,
 }: BookingRequestProps) {
-  const [phase, setPhase] = React.useState<'confirm' | 'loading' | 'success' | 'error'>('confirm');
+  const [phase, setPhase] = React.useState<'confirm' | 'loading' | 'error'>('confirm');
   const [errorMsg, setErrorMsg] = React.useState('');
 
   const totalPrice = slots.reduce((sum, s) => sum + s.price, 0);
@@ -265,7 +276,9 @@ export function BookingRequestModal({
     setPhase('loading');
     try {
       await onConfirm();
-      setPhase('success');
+      // Success is communicated by a toast (shown by the parent after this sheet closes), not an
+      // in-sheet success screen — hand back to the parent to dismiss and toast.
+      onSuccess();
     } catch (e: any) {
       setErrorMsg(e?.response?.data?.message ?? e?.message ?? 'Something went wrong. Please try again.');
       setPhase('error');
@@ -280,7 +293,7 @@ export function BookingRequestModal({
       onRequestClose={phase !== 'loading' ? onDismiss : undefined}
     >
       <View style={styles.sheetOverlay}>
-        <View style={[styles.sheet, shadow.modal]}>
+        <View style={[styles.sheet, sheetWebContainer, shadow.modal]}>
           <View style={styles.sheetHandle} />
 
           {phase === 'confirm' && (
@@ -323,22 +336,6 @@ export function BookingRequestModal({
             <View style={brStyles.centeredContent}>
               <ActivityIndicator size="large" color={colors.primary} />
               <Text style={brStyles.loadingText}>Sending booking request…</Text>
-            </View>
-          )}
-
-          {phase === 'success' && (
-            <View style={brStyles.centeredContent}>
-              <View style={brStyles.successCircle}>
-                <Text style={{ fontSize: 36 }}>✓</Text>
-              </View>
-              <Text style={[styles.dialogTitle, { textAlign: 'center', marginTop: spacing.lg }]}>
-                Booking Request Sent!
-              </Text>
-              <Text style={[styles.dialogMsg, { textAlign: 'center' }]}>
-                Your booking request has been sent successfully. The venue will confirm shortly.
-              </Text>
-              <AppButton label="Go to Bookings" onPress={onGoToBookings} style={{ marginTop: spacing.xl, width: '100%' }} />
-              <AppButton label="Cancel" variant="secondary" onPress={onDismiss} />
             </View>
           )}
 
@@ -395,14 +392,6 @@ const brStyles = StyleSheet.create({
   priceValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text },
   centeredContent: { alignItems: 'center', paddingVertical: spacing.lg, width: '100%' },
   loadingText: { fontSize: fontSize.md, color: colors.textMid, marginTop: spacing.lg },
-  successCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });
 
 /* ───────────────── CheckInConfirmModal ───────────────── */

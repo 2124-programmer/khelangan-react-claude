@@ -5,7 +5,7 @@ import { colors, spacing, fontSize, fontWeight } from '../theme';
 import { useResponsive, MAX_CONTENT_WIDTH } from '../responsive';
 
 /** Height of the desktop top nav bar; navigators pad their scene by this on desktop. */
-export const TOPNAV_HEIGHT = 60;
+export const TOPNAV_HEIGHT = 72;
 
 /**
  * Swaps navigation chrome by width WITHOUT forking the navigators:
@@ -75,7 +75,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
   },
-  logo: { width: 132, height: 36 },
+  // Larger, more legible brand mark on the desktop top nav (mobile uses the bottom tab bar — no logo).
+  logo: { width: 190, height: 52 },
   items: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   item: {
     flexDirection: 'row', alignItems: 'center', gap: 6,

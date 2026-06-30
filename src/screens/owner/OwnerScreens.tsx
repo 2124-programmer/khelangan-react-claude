@@ -96,22 +96,27 @@ export function BookingManagementScreen({ navigation, route }: any) {
   }, [routeTab]);
   // Counts down from REFRESH_COOLDOWN_SECS → 0; button is disabled while > 0
   const [cooldownSecs, setCooldownSecs] = useState(0);
+  // Search by player name / mobile. Only widens the page size while a query is active, so the
+  // default browse view (and its render cost) is byte-for-byte unchanged; matching is client-side.
+  const [search, setSearch] = useState('');
+  const trimmedSearch = search.trim();
+  const searchSize = trimmedSearch ? 200 : undefined;
 
   const todayStr = useMemo(getTodayStr, []);
-  const params = useMemo(() => tabQueryParams(tab), [tab]);
+  const params = useMemo(() => ({ ...tabQueryParams(tab), size: searchSize }), [tab, searchSize]);
 
   // Primary query — params change per tab, so each tab triggers its own API call
   const { data, isLoading, refetch } = useBookings(params);
 
   // PENDING second query — only enabled on the Cancelled tab to surface expired pending requests
   const { data: pendingData, refetch: refetchPending } = useBookings(
-    { status: 'PENDING' },
+    { status: 'PENDING', size: searchSize },
     { enabled: tab === 'cancelled' }
   );
 
   // CHECKED_IN second query — only enabled on the Completed tab so checked-in bookings appear alongside COMPLETED ones
   const { data: checkedInData, refetch: refetchCheckedIn } = useBookings(
-    { status: 'CHECKED_IN' },
+    { status: 'CHECKED_IN', size: searchSize },
     { enabled: tab === 'completed' }
   );
 
@@ -155,6 +160,7 @@ export function BookingManagementScreen({ navigation, route }: any) {
     | { kind: 'single'; booking: Booking }
     | { kind: 'group'; group: BookingGroup; slotTimes: string };
   const [pendingCheckIn, setPendingCheckIn] = useState<PendingCheckIn | null>(null);
+  const [rejectGroupTarget, setRejectGroupTarget] = useState<BookingGroup | null>(null);
 
   const handleCheckInConfirm = async () => {
     if (!pendingCheckIn) return;
@@ -164,6 +170,24 @@ export function BookingManagementScreen({ navigation, route }: any) {
       await checkInGroup.mutateAsync(pendingCheckIn.group.groupId);
     }
     setPendingCheckIn(null);
+  };
+
+  // Accept fires immediately (no modal) → toast on success. Reject needs a confirmation first.
+  // Errors surface via the global MutationCache toast handler, so only success is toasted here.
+  const handleAcceptGroup = (group: BookingGroup) => {
+    acceptGroup.mutate(group.groupId, { onSuccess: () => toast.success('Booking accepted.') });
+  };
+
+  const handleRejectGroup = () => {
+    const group = rejectGroupTarget;
+    if (!group) return;
+    rejectGroup.mutate(group.groupId, {
+      onSuccess: () => {
+        setRejectGroupTarget(null);
+        // Toast after the confirm sheet dismisses — a toast overlapping a closing Modal dies on Android.
+        setTimeout(() => toast.success('Booking rejected.'), 350);
+      },
+    });
   };
 
   const filteredBookings = useMemo(() => {
@@ -194,8 +218,19 @@ export function BookingManagementScreen({ navigation, route }: any) {
       list.sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
     }
 
+    if (trimmedSearch) {
+      const q = trimmedSearch.toLowerCase();
+      const qDigits = q.replace(/\D/g, '');
+      list = list.filter((b) => {
+        const nameHit = (b.playerName ?? '').toLowerCase().includes(q);
+        const phoneHit = qDigits.length > 0
+          && (b.playerPhone ?? '').replace(/\D/g, '').includes(qDigits);
+        return nameHit || phoneHit;
+      });
+    }
+
     return list;
-  }, [data, pendingData, checkedInData, tab, todayStr]);
+  }, [data, pendingData, checkedInData, tab, todayStr, trimmedSearch]);
 
   const items = groupBookingList(filteredBookings);
 
@@ -221,6 +256,22 @@ export function BookingManagementScreen({ navigation, route }: any) {
           activeTab={tab}
           onChange={(t) => setTab(t as TabKey)}
         />
+        <View style={styles.bmsSearchWrap}>
+          <AppInput
+            placeholder="Search by player name or mobile"
+            value={search}
+            onChangeText={setSearch}
+            autoCapitalize="none"
+            returnKeyType="search"
+            rightElement={
+              search ? (
+                <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={styles.bmsSearchClear}>✕</Text>
+                </TouchableOpacity>
+              ) : undefined
+            }
+          />
+        </View>
         <View style={styles.bmsRefreshBar}>
           <Text style={styles.bmsRefreshLabel}>
             {isLoading || refreshing ? 'Loading…' : `${items.length} result${items.length !== 1 ? 's' : ''}`}
@@ -240,7 +291,11 @@ export function BookingManagementScreen({ navigation, route }: any) {
         {isLoading ? (
           <LoadingOverlay visible={isLoading} />
         ) : items.length === 0 ? (
-          <EmptyState icon="📅" title="No bookings" subtitle="" />
+          <EmptyState
+            icon="📅"
+            title={trimmedSearch ? 'No matching bookings' : 'No bookings'}
+            subtitle={trimmedSearch ? 'Try a different player name or mobile number' : ''}
+          />
         ) : (
           <ResponsiveGrid>
           {items.map((item) => {
@@ -259,8 +314,8 @@ export function BookingManagementScreen({ navigation, route }: any) {
                   viewAs="owner"
                   showContact={showContact}
                   tabCtx={tabCtx}
-                  onAcceptAll={tab === 'requests' ? () => acceptGroup.mutate(item.groupId) : undefined}
-                  onRejectAll={tab === 'requests' ? () => rejectGroup.mutate(item.groupId) : undefined}
+                  onAcceptAll={tab === 'requests' ? () => handleAcceptGroup(item) : undefined}
+                  onRejectAll={tab === 'requests' ? () => setRejectGroupTarget(item) : undefined}
                   onCheckInAll={tab === 'today' ? () => setPendingCheckIn({ kind: 'group', group: item, slotTimes }) : undefined}
                   acceptPending={acceptGroup.isPending && acceptGroup.variables === item.groupId}
                   rejectPending={rejectGroup.isPending && rejectGroup.variables === item.groupId}
@@ -315,6 +370,21 @@ export function BookingManagementScreen({ navigation, route }: any) {
           onDismiss={() => setPendingCheckIn(null)}
         />
       )}
+
+      <ConfirmActionModal
+        visible={!!rejectGroupTarget}
+        title="Reject Booking?"
+        message={
+          rejectGroupTarget
+            ? `Reject ${rejectGroupTarget.playerName}'s ${rejectGroupTarget.bookings.length}-slot request for ${rejectGroupTarget.date}? The slot(s) will be released.`
+            : ''
+        }
+        confirmLabel="Reject"
+        danger
+        confirmLoading={rejectGroup.isPending}
+        onConfirm={handleRejectGroup}
+        onDismiss={() => setRejectGroupTarget(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -337,15 +407,25 @@ export function OwnerBookingDetailScreen({ navigation, route }: any) {
     );
   }
 
-  const handleAccept = async () => {
-    await acceptBooking.mutateAsync(Number(booking.id));
-    navigation.goBack();
+  // Errors surface via the global MutationCache toast handler; only success is toasted here.
+  const handleAccept = () => {
+    acceptBooking.mutate(Number(booking.id), {
+      onSuccess: () => {
+        toast.success('Booking accepted.');
+        navigation.goBack();
+      },
+    });
   };
 
-  const handleReject = async () => {
-    await rejectBooking.mutateAsync(Number(booking.id));
-    setShowReject(false);
-    navigation.goBack();
+  const handleReject = () => {
+    rejectBooking.mutate(Number(booking.id), {
+      onSuccess: () => {
+        setShowReject(false);
+        navigation.goBack();
+        // Toast after the confirm sheet dismisses — a toast overlapping a closing Modal dies on Android.
+        setTimeout(() => toast.success('Booking rejected.'), 350);
+      },
+    });
   };
 
   const actionInFlight = acceptBooking.isPending || rejectBooking.isPending;
@@ -418,6 +498,8 @@ export function OwnerBookingDetailScreen({ navigation, route }: any) {
         title="Reject Booking?"
         message={`Reject ${booking.playerName}'s booking request for ${booking.date}? The slot will be released.`}
         confirmLabel="Reject"
+        danger
+        confirmLoading={rejectBooking.isPending}
         onConfirm={handleReject}
         onDismiss={() => setShowReject(false)}
       />
@@ -1524,6 +1606,8 @@ const styles = StyleSheet.create({
   planName: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
   planPrice: { fontSize: fontSize.lg, color: colors.primary, fontWeight: fontWeight.semibold, marginTop: 4 },
   planFeature: { fontSize: fontSize.sm, color: colors.textMid, marginTop: spacing.xs },
+  bmsSearchWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, marginBottom: -spacing.sm },
+  bmsSearchClear: { fontSize: fontSize.md, color: colors.textDim, paddingHorizontal: spacing.xs },
   bmsRefreshBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: 8, backgroundColor: colors.bg, borderBottomWidth: 1, borderBottomColor: colors.border },
   bmsRefreshLabel: { fontSize: fontSize.xs, color: colors.textDim },
   bmsRefreshBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.md, paddingVertical: 5, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.primary },
