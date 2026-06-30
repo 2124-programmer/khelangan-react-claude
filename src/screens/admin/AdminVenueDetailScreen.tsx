@@ -211,18 +211,23 @@ export default function AdminVenueDetailScreen({ navigation, route }: any) {
                 <Text style={[styles.muted, { marginTop: spacing.sm }]}>No courts added yet.</Text>
               ) : (
                 venue.courts.map((c) => {
-                  const live = coveredIds.has(c.id) && c.isActive;
-                  const label = live ? 'Live' : !c.isActive ? 'Inactive' : 'Not covered';
+                  // Deleted is admin-only (owners/players never receive these) and takes precedence
+                  // over the live/coverage badge so it's unmistakable a court was removed.
+                  const deleted = c.isDeleted;
+                  const live = !deleted && coveredIds.has(c.id) && c.isActive;
+                  const label = deleted ? 'Deleted' : live ? 'Live' : !c.isActive ? 'Inactive' : 'Not covered';
+                  const badgeBg = deleted ? '#FDE8E8' : live ? '#E6F7EE' : colors.surfaceAlt;
+                  const badgeFg = deleted ? colors.danger : live ? colors.success : colors.textMid;
                   return (
                     <View key={c.id} style={styles.courtRow}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.courtName}>{c.name}</Text>
+                        <Text style={[styles.courtName, deleted && { textDecorationLine: 'line-through', color: colors.textMid }]}>{c.name}</Text>
                         <Text style={styles.courtMeta}>
                           {[sportName(c.sportId), c.type, `₹${c.effectivePricePerHour}/hr`].filter(Boolean).join('  ·  ')}
                         </Text>
                       </View>
-                      <View style={[styles.courtBadge, { backgroundColor: live ? '#E6F7EE' : colors.surfaceAlt }]}>
-                        <Text style={[styles.courtBadgeText, { color: live ? colors.success : colors.textMid }]}>{label}</Text>
+                      <View style={[styles.courtBadge, { backgroundColor: badgeBg }]}>
+                        <Text style={[styles.courtBadgeText, { color: badgeFg }]}>{label}</Text>
                       </View>
                     </View>
                   );

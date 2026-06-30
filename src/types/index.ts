@@ -58,6 +58,8 @@ export interface Court {
   isActive: boolean;
   /** true = LIVE (player-bookable); false = LOCKED (exists, owner-only). Server-computed. */
   isLive: boolean;
+  /** true = soft-deleted (kept in DB, admin-only view). Owners/players never receive these. */
+  isDeleted: boolean;
   /** Server-resolved effective values */
   effectivePricePerHour: number;
   effectiveOpenTime: string;

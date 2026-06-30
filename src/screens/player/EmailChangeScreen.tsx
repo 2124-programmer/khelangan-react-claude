@@ -85,7 +85,11 @@ export default function EmailChangeScreen({ navigation }: any) {
     } catch (err) {
       const status = getHttpStatus(err);
       if (status === 409) {
-        setErrors({ newEmail: extractApiError(err) || 'Email already in use or request pending.' });
+        // Email already belongs to another account — surface it both inline and as a toast so it's
+        // unmissable, and stay on step 1 (no OTP is sent for a taken address).
+        const msg = extractApiError(err) || 'This email address is already in use by another account.';
+        setErrors({ newEmail: msg });
+        toast.error(msg);
       } else {
         toast.error(extractApiError(err) || 'Failed to submit request.');
       }

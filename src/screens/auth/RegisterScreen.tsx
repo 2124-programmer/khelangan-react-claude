@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme';
-import { AppInput, AppButton, AppHeader, LoadingOverlay } from '../../components/common';
+import { AppInput, AppButton, AppHeader } from '../../components/common';
 import { toast } from '../../toast';
 import { UserRole } from '../../types';
 import type { UserDto } from '../../api/types';
@@ -89,24 +89,26 @@ export default function RegisterScreen({ navigation, route }: any) {
         acceptedTerms,
       });
     } catch (err) {
+      // Clear loading first so the Register button's spinner stops before we surface the error.
+      setScreenState('idle');
       const status = getHttpStatus(err);
       const fe = extractFieldErrors(err);
       if (Object.keys(fe).length) {
         setFieldErrors(fe);
       } else if (status === 409) {
-        // The conflict can be on either identifier — route the inline error to the right field.
+        // Duplicate email/phone — highlight the right field inline AND show a toast (which stays
+        // ~4.5s) so the reason is unmissable, not just a small field hint.
         const msg = extractApiError(err) || '';
-        if (/phone/i.test(msg)) {
-          setFieldErrors({ phone: 'This phone number is already registered. Try logging in.' });
-          phoneRef.current?.focus();
-        } else {
-          setFieldErrors({ email: 'An account with this email already exists. Try logging in.' });
-          emailRef.current?.focus();
-        }
+        const isPhone = /phone/i.test(msg);
+        const friendly = isPhone
+          ? 'This phone number is already registered. Try logging in.'
+          : 'An account with this email already exists. Try logging in.';
+        setFieldErrors({ [isPhone ? 'phone' : 'email']: friendly });
+        (isPhone ? phoneRef : emailRef).current?.focus();
+        toast.error(friendly);
       } else {
         toast.error(extractApiError(err) || 'Registration failed. Please try again.');
       }
-      setScreenState('idle');
     }
 
     if (result) {
@@ -231,14 +233,15 @@ export default function RegisterScreen({ navigation, route }: any) {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login', { returnTo: route.params?.returnTo })}>
-            <Text style={styles.link}>Login</Text>
+          <TouchableOpacity
+            disabled={busy}
+            onPress={() => navigation.navigate('Login', { returnTo: route.params?.returnTo })}
+          >
+            <Text style={[styles.link, busy && { opacity: 0.5 }]}>Login</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
       </KeyboardAvoidingView>
-
-      <LoadingOverlay visible={screenState === 'loading'} />
     </SafeAreaView>
   );
 }

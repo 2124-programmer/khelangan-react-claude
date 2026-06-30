@@ -100,6 +100,7 @@ export function adaptCourt(dto: CourtDto): Court {
     slotDurationMins: dto.slotDurationMins ?? 60,
     isActive: dto.isActive ?? true,
     isLive: dto.isLive ?? false,
+    isDeleted: dto.isDeleted ?? false,
     effectivePricePerHour: dto.effectivePricePerHour ?? dto.pricePerHour ?? 0,
     effectiveOpenTime: dto.effectiveOpenTime ?? dto.openTime ?? '05:00',
     effectiveCloseTime: dto.effectiveCloseTime ?? dto.closeTime ?? '23:00',

@@ -578,6 +578,8 @@ export interface CourtDto {
   effectiveCloseTime?: string;
   /** true = LIVE (player-bookable); false = LOCKED (owner-only). Read-only, server-computed. */
   isLive?: boolean;
+  /** true = soft-deleted; only present in admin/super-admin responses. Read-only. */
+  isDeleted?: boolean;
 }
 
 export interface CreateCourtRequest {
