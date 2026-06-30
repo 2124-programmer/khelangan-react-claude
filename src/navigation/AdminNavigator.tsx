@@ -26,6 +26,8 @@ import AdminVenuesScreen from '../screens/admin/AdminVenuesScreen';
 import AdminVenueDetailScreen from '../screens/admin/AdminVenueDetailScreen';
 import AdminPlayersScreen from '../screens/admin/AdminPlayersScreen';
 import PlayerDetailScreen from '../screens/admin/PlayerDetailScreen';
+import AboutScreen from '../screens/AboutScreen';
+import { TermsScreen, PrivacyPolicyScreen, HowItWorksScreen } from '../screens/InfoScreens';
 
 const Stack = createNativeStackNavigator();
 
@@ -62,6 +64,10 @@ export default function AdminNavigator() {
       <Stack.Screen name="SubscriptionDetail" component={SubscriptionDetailScreen} />
       <Stack.Screen name="CourtChangeRequests" component={AdminCourtChangeRequestsScreen} />
       <Stack.Screen name="AdminSettings" component={AdminSettingsScreen} />
+      <Stack.Screen name="About" component={AboutScreen} />
+      <Stack.Screen name="HowItWorks" component={HowItWorksScreen} />
+      <Stack.Screen name="Terms" component={TermsScreen} />
+      <Stack.Screen name="Privacy" component={PrivacyPolicyScreen} />
       <Stack.Screen name="EmailChange" component={EmailChangeScreen} />
       <Stack.Screen name="PhoneChange" component={PhoneChangeScreen} />
       {/* Admin Profile hub + reused personal-account screens */}

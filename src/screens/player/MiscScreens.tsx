@@ -96,7 +96,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const SUPPORT_EMAIL = 'support@khelangan.com';
+const SUPPORT_EMAIL = 'score.addda@gmail.com';
 
 // Answers reflect the platform money model: the platform processes no payments,
 // so refunds are settled by the venue/owner directly (never a platform refund).
@@ -239,6 +239,12 @@ export function SettingsScreen({ navigation }: any) {
         </TouchableOpacity>
         <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate('DeleteAccount')}>
           <Text style={[styles.toggleLabel, { color: colors.danger }]}>Delete Account</Text>
+          <Text style={styles.menuArrow}>›</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.sectionTitle}>App</Text>
+        <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate('About')}>
+          <Text style={styles.toggleLabel}>About</Text>
           <Text style={styles.menuArrow}>›</Text>
         </TouchableOpacity>
       </ScrollView>
