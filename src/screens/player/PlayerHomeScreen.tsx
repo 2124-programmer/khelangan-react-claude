@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../../theme';
-import { SportChip, AppHeader, LoadingOverlay } from '../../components/common';
+import { SportChip, AppHeader } from '../../components/common';
 import { QueryState } from '../../components/QueryState';
 import { VenueCard } from '../../components/venue';
 import { useAuth } from '../../store/AuthContext';
@@ -167,7 +167,11 @@ export default function PlayerHomeScreen({ navigation }: any) {
 
       <Text style={styles.sectionTitle}>Choose a sport</Text>
       {sportsQuery.isLoading ? (
-        <LoadingOverlay visible={sportsQuery.isLoading} />
+        // Inline, chip-height loader — NOT the full-screen LoadingOverlay modal, which would stack a
+        // second loader on top of the venue feed's loader during the initial load.
+        <View style={styles.chipLoading}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
       ) : (
         <ScrollView
           horizontal
@@ -300,6 +304,7 @@ const styles = StyleSheet.create({
   filterBadge: { position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
   filterBadgeText: { fontSize: 9, fontWeight: fontWeight.bold, color: colors.white },
   sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text, paddingHorizontal: spacing.lg, marginTop: spacing.md, marginBottom: spacing.md },
+  chipLoading: { height: 52, alignItems: 'center', justifyContent: 'center' },
   chipScroll: { flexGrow: 0 },
   chipScrollContent: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, alignItems: 'center' },
   listHeaderRow: { paddingHorizontal: spacing.lg, marginTop: spacing.md },

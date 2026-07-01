@@ -4,6 +4,7 @@
     "slug": "turfbook",
     "scheme": "scoreadda",
     "version": "1.0.0",
+    "newArchEnabled": false,
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/logo/icon.png",
@@ -42,11 +43,15 @@
         "expo-build-properties",
         {
           "android": {
-            "usesCleartextTraffic": false
+            "usesCleartextTraffic": false,
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-secure-store",
+      "expo-asset"
     ],
     "ios": {
       "supportsTablet": true,

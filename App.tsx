@@ -33,11 +33,15 @@ export default function App() {
   const pendingVenueId = useRef<string | null>(null);
 
   // Load Inter's weight files directly (the family keys match the names used by applyInterFont).
-  const [fontsLoaded] = useFonts({
-    Inter_400Regular: require('@expo-google-fonts/inter/Inter_400Regular.ttf'),
-    Inter_500Medium: require('@expo-google-fonts/inter/Inter_500Medium.ttf'),
-    Inter_600SemiBold: require('@expo-google-fonts/inter/Inter_600SemiBold.ttf'),
-    Inter_700Bold: require('@expo-google-fonts/inter/Inter_700Bold.ttf'),
+  // Load Inter from the project's own assets/fonts (NOT node_modules): assets under the project
+  // root are embedded in the standalone binary via `assetBundlePatterns`, whereas fonts required
+  // from node_modules aren't reliably bundled — that failure is what left release APKs rendering
+  // in the device's fallback font. The family keys still match the names used by applyInterFont.
+  const [fontsLoaded, fontError] = useFonts({
+    Inter_400Regular: require('./assets/fonts/Inter_400Regular.ttf'),
+    Inter_500Medium: require('./assets/fonts/Inter_500Medium.ttf'),
+    Inter_600SemiBold: require('./assets/fonts/Inter_600SemiBold.ttf'),
+    Inter_700Bold: require('./assets/fonts/Inter_700Bold.ttf'),
   });
 
   const navigateToVenue = (venueId: string) => {
@@ -73,7 +77,9 @@ export default function App() {
   };
 
   // Hold the (native splash) until Inter is ready so the first paint isn't a system-font flash.
-  if (!fontsLoaded) return null;
+  // But NEVER block forever: if font loading errors in a standalone build, render anyway (falling
+  // back to the system font) instead of leaving a permanent blank/white screen.
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <QueryClientProvider client={queryClient}>

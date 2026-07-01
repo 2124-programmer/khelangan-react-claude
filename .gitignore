@@ -54,6 +54,10 @@ build/Release
 !android/app/debug.keystore
 gradle.properties
 
+# Google Play submit credentials — service account JSON for `eas submit`
+play-service-account.json
+*service-account*.json
+
 # Cache
 .cache
 .parcel-cache
